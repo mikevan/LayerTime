@@ -82,11 +82,26 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
     lv_obj_set_style_pad_all(_monitor, 0, 0);
     lv_obj_add_flag(_monitor, LV_OBJ_FLAG_HIDDEN);
     _status = lv_label_create(_monitor);
-    lv_obj_set_width(_status, 370);
-    lv_obj_set_pos(_status, 8, 4);
-    lv_obj_set_style_text_align(_status, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(_status, 258);
+    lv_obj_set_pos(_status, 4, 8);
+    lv_obj_set_style_text_align(_status, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(_status, Theme::gold(), 0);
     lv_obj_set_style_text_font(_status, &lv_font_montserrat_16, 0);
+
+    lv_obj_t *clearLog = lv_button_create(_monitor);
+    lv_obj_set_size(clearLog, 108, 34);
+    lv_obj_set_pos(clearLog, 262, 2);
+    lv_obj_set_style_bg_color(clearLog, Theme::background(), 0);
+    lv_obj_set_style_border_color(clearLog, Theme::danger(), 0);
+    lv_obj_set_style_border_width(clearLog, 2, 0);
+    lv_obj_set_style_radius(clearLog, 8, 0);
+    lv_obj_add_event_cb(clearLog, clearLogThunk, LV_EVENT_CLICKED, this);
+    lv_obj_t *clearLogLabel = lv_label_create(clearLog);
+    lv_label_set_text(clearLogLabel, "CLEAR LOG");
+    lv_obj_set_style_text_color(clearLogLabel, Theme::danger(), 0);
+    lv_obj_set_style_text_font(clearLogLabel, &lv_font_montserrat_12, 0);
+    lv_obj_center(clearLogLabel);
+
     _results = lv_label_create(_monitor);
     lv_obj_set_size(_results, 370, 340);
     lv_obj_set_pos(_results, 8, 38);
@@ -177,13 +192,15 @@ void ReconScreen::renderMonitor()
     std::string text = s.detectionCount ? "" : "No activity detected.";
     for (size_t i = 0; i < s.detectionCount; ++i) {
         const ReconDetection &d = s.detections[i];
-        char line[150];
+        char line[170];
         if (d.channel)
-            snprintf(line, sizeof(line), "%s\n%s\n%s  %d dBm  CH %u\n\n",
-                     d.category, d.detail, d.address, static_cast<int>(d.rssi), static_cast<unsigned>(d.channel));
+            snprintf(line, sizeof(line), "%s\n%s\n%s  %d dBm  CH %u  x%lu\n\n",
+                     d.category, d.detail, d.address, static_cast<int>(d.rssi), static_cast<unsigned>(d.channel),
+                     static_cast<unsigned long>(d.encounterCount));
         else
-            snprintf(line, sizeof(line), "%s\n%s\n%s  %d dBm\n\n",
-                     d.category, d.detail, d.address, static_cast<int>(d.rssi));
+            snprintf(line, sizeof(line), "%s\n%s\n%s  %d dBm  x%lu\n\n",
+                     d.category, d.detail, d.address, static_cast<int>(d.rssi),
+                     static_cast<unsigned long>(d.encounterCount));
         text += line;
     }
     lv_label_set_text(_results, text.c_str());
@@ -224,4 +241,12 @@ void ReconScreen::dismissThunk(lv_event_t *event)
     if (!self || !self->_service) return;
     self->_service->acknowledgeAlert();
     lv_obj_add_flag(self->_alert, LV_OBJ_FLAG_HIDDEN);
+}
+
+void ReconScreen::clearLogThunk(lv_event_t *event)
+{
+    auto *self = static_cast<ReconScreen *>(lv_event_get_user_data(event));
+    if (!self || !self->_service) return;
+    self->_service->clearDetections();
+    self->renderMonitor();
 }

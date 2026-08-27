@@ -215,17 +215,25 @@ void WatchFace::render(const WatchState &state, const AppSettings &settings, con
         lv_label_set_text(_rightBottom, "GPS\nWAIT");
     }
 
-    const bool reconOff = !reconStatus.monitoring && !reconStatus.earlyWarningEnabled;
-    if (reconOff) {
-        lv_label_set_text(_leftBottom, "THREATS\nOFF");
-        lv_obj_set_style_text_color(_leftBottom, Theme::green(), 0);
-    } else if (reconStatus.detectionCount > 0) {
-        lv_label_set_text_fmt(_leftBottom, "THREATS\n%u", static_cast<unsigned>(reconStatus.detectionCount));
-        lv_obj_set_style_text_color(_leftBottom, Theme::danger(), 0);
+    // Status text reflects what's actively scanning right now: the selected
+    // manual detector ("ALL", "DEAUTH", ...), "EARLY WARNING" when only the
+    // background sweep is running, or "OFF" when nothing is scanning at all.
+    const char *reconStatusText;
+    if (reconStatus.monitoring) {
+        reconStatusText = ReconService::detectorName(reconStatus.detector);
+    } else if (reconStatus.earlyWarningEnabled) {
+        reconStatusText = ReconService::detectorName(ReconDetector::EarlyWarning);
     } else {
-        lv_label_set_text(_leftBottom, "THREATS\nCLEAR");
-        lv_obj_set_style_text_color(_leftBottom, Theme::green(), 0);
+        reconStatusText = "OFF";
     }
+    lv_label_set_text_fmt(_leftBottom, "THREATS\n%s", reconStatusText);
+
+    // Color is independent of live scan state: red as long as anything is in
+    // the threat log, regardless of whether monitoring is currently running.
+    // The log persists across start/stop - only the user's CLEAR LOG button
+    // on the Recon screen resets it - so a threat found earlier stays flagged
+    // here until the user acknowledges and clears it.
+    lv_obj_set_style_text_color(_leftBottom, reconStatus.detectionCount > 0 ? Theme::danger() : Theme::green(), 0);
 }
 
 void WatchFace::setSettingsRequestedCallback(
