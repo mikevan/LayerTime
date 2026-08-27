@@ -28,7 +28,7 @@ void MeshScreen::create(MeshService *service, BackCallback backCallback, void *u
     lv_obj_t *backLabel = lv_label_create(back);
     lv_label_set_text(backLabel, "BACK");
     lv_obj_set_style_text_color(backLabel, Theme::gold(), 0);
-    lv_obj_set_style_text_font(backLabel, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(backLabel, &lv_font_montserrat_20, 0);
     lv_obj_center(backLabel);
 
     lv_obj_t *title = lv_label_create(_screen);
@@ -51,7 +51,7 @@ void MeshScreen::create(MeshService *service, BackCallback backCallback, void *u
     lv_obj_t *composeLabel = lv_label_create(compose);
     lv_label_set_text(composeLabel, "CHAT");
     lv_obj_set_style_text_color(composeLabel, Theme::green(), 0);
-    lv_obj_set_style_text_font(composeLabel, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(composeLabel, &lv_font_montserrat_20, 0);
     lv_obj_center(composeLabel);
 
     lv_obj_t *preset = lv_label_create(_screen);
@@ -60,50 +60,71 @@ void MeshScreen::create(MeshService *service, BackCallback backCallback, void *u
     lv_obj_set_pos(preset, 10, 66);
     lv_obj_set_style_text_align(preset, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(preset, Theme::teal(), 0);
-    lv_obj_set_style_text_font(preset, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(preset, &lv_font_montserrat_18, 0);
 
     _status = lv_label_create(_screen);
     lv_obj_set_width(_status, 390);
     lv_obj_set_pos(_status, 10, 96);
     lv_obj_set_style_text_align(_status, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_font(_status, &lv_font_montserrat_18, 0);
+    lv_obj_set_style_text_font(_status, &lv_font_montserrat_20, 0);
 
     _summary = lv_label_create(_screen);
     lv_obj_set_width(_summary, 390);
     lv_obj_set_pos(_summary, 10, 126);
     lv_obj_set_style_text_align(_summary, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(_summary, Theme::gold(), 0);
-    lv_obj_set_style_text_font(_summary, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(_summary, &lv_font_montserrat_20, 0);
 
     lv_obj_t *nodesTitle = lv_label_create(_screen);
     lv_label_set_text(nodesTitle, "HEARD NODES");
     lv_obj_set_pos(nodesTitle, 18, 158);
     lv_obj_set_style_text_color(nodesTitle, Theme::green(), 0);
-    lv_obj_set_style_text_font(nodesTitle, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(nodesTitle, &lv_font_montserrat_20, 0);
 
-    _nodes = lv_label_create(_screen);
-    lv_obj_set_width(_nodes, 374);
-    lv_obj_set_height(_nodes, 105);
-    lv_obj_set_pos(_nodes, 18, 182);
+    // Wrapped in its own scrollable container so the label can grow to fit
+    // however many nodes have been heard - previously this was a fixed-
+    // height label that silently clipped anything past its first ~5 lines.
+    lv_obj_t *nodesBox = lv_obj_create(_screen);
+    lv_obj_set_size(nodesBox, 374, 105);
+    lv_obj_set_pos(nodesBox, 18, 182);
+    lv_obj_set_style_bg_opa(nodesBox, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(nodesBox, 0, 0);
+    lv_obj_set_style_pad_all(nodesBox, 0, 0);
+    lv_obj_set_scroll_dir(nodesBox, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(nodesBox, LV_SCROLLBAR_MODE_AUTO);
+
+    _nodes = lv_label_create(nodesBox);
+    lv_obj_set_width(_nodes, 358);
+    lv_obj_set_pos(_nodes, 0, 0);
     lv_obj_set_style_text_color(_nodes, Theme::green(), 0);
-    lv_obj_set_style_text_font(_nodes, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(_nodes, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_line_space(_nodes, 3, 0);
-    lv_label_set_long_mode(_nodes, LV_LABEL_LONG_CLIP);
+    lv_label_set_long_mode(_nodes, LV_LABEL_LONG_WRAP);
 
     lv_obj_t *messagesTitle = lv_label_create(_screen);
     lv_label_set_text(messagesTitle, "PUBLIC CHAT");
     lv_obj_set_pos(messagesTitle, 18, 296);
     lv_obj_set_style_text_color(messagesTitle, Theme::teal(), 0);
-    lv_obj_set_style_text_font(messagesTitle, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(messagesTitle, &lv_font_montserrat_20, 0);
 
-    _messages = lv_label_create(_screen);
-    lv_obj_set_width(_messages, 374);
-    lv_obj_set_height(_messages, 122);
-    lv_obj_set_pos(_messages, 18, 320);
+    // Same treatment as nodesBox above - scrollable so older chat history
+    // beyond the visible area is reachable instead of silently hidden.
+    lv_obj_t *messagesBox = lv_obj_create(_screen);
+    lv_obj_set_size(messagesBox, 374, 122);
+    lv_obj_set_pos(messagesBox, 18, 320);
+    lv_obj_set_style_bg_opa(messagesBox, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(messagesBox, 0, 0);
+    lv_obj_set_style_pad_all(messagesBox, 0, 0);
+    lv_obj_set_scroll_dir(messagesBox, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(messagesBox, LV_SCROLLBAR_MODE_AUTO);
+
+    _messages = lv_label_create(messagesBox);
+    lv_obj_set_width(_messages, 358);
+    lv_obj_set_pos(_messages, 0, 0);
     lv_obj_set_style_text_color(_messages, Theme::white(), 0);
-    lv_obj_set_style_text_font(_messages, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(_messages, &lv_font_montserrat_18, 0);
     lv_obj_set_style_text_line_space(_messages, 4, 0);
-    lv_label_set_long_mode(_messages, LV_LABEL_LONG_CLIP);
+    lv_label_set_long_mode(_messages, LV_LABEL_LONG_WRAP);
 
     lv_obj_t *footer = lv_label_create(_screen);
     lv_label_set_text(footer, "LAYERTIME  |  T-WATCH ULTRA");
@@ -137,7 +158,7 @@ void MeshScreen::create(MeshService *service, BackCallback backCallback, void *u
     lv_textarea_set_one_line(_textArea, false);
     lv_textarea_set_max_length(_textArea, 110);
     lv_textarea_set_placeholder_text(_textArea, "Message public channel...");
-    lv_obj_set_style_text_font(_textArea, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(_textArea, &lv_font_montserrat_20, 0);
 
     lv_obj_t *cancel = lv_button_create(_composer);
     lv_obj_set_size(cancel, 105, 42);

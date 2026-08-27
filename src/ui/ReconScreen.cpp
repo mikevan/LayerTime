@@ -37,7 +37,7 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
     lv_obj_t *backLabel = lv_label_create(back);
     lv_label_set_text(backLabel, "BACK");
     lv_obj_set_style_text_color(backLabel, Theme::gold(), 0);
-    lv_obj_set_style_text_font(backLabel, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(backLabel, &lv_font_montserrat_20, 0);
     lv_obj_center(backLabel);
 
     lv_obj_t *title = lv_label_create(_screen);
@@ -70,7 +70,7 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
         lv_obj_t *label = lv_label_create(button);
         lv_label_set_text(label, kButtons[i].title);
         lv_obj_set_style_text_color(label, i == 0 ? Theme::gold() : Theme::white(), 0);
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+        lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
         lv_obj_center(label);
     }
 
@@ -86,7 +86,7 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
     lv_obj_set_pos(_status, 4, 8);
     lv_obj_set_style_text_align(_status, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_style_text_color(_status, Theme::gold(), 0);
-    lv_obj_set_style_text_font(_status, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(_status, &lv_font_montserrat_20, 0);
 
     lv_obj_t *clearLog = lv_button_create(_monitor);
     lv_obj_set_size(clearLog, 108, 34);
@@ -99,17 +99,34 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
     lv_obj_t *clearLogLabel = lv_label_create(clearLog);
     lv_label_set_text(clearLogLabel, "CLEAR LOG");
     lv_obj_set_style_text_color(clearLogLabel, Theme::danger(), 0);
-    lv_obj_set_style_text_font(clearLogLabel, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(clearLogLabel, &lv_font_montserrat_14, 0);
     lv_obj_center(clearLogLabel);
 
-    _results = lv_label_create(_monitor);
-    lv_obj_set_size(_results, 370, 340);
-    lv_obj_set_pos(_results, 8, 38);
+    // Wrapped in its own scrollable container so the (now persistent, up to
+    // 40-entry) threat log can grow past what fits on screen without hiding
+    // older entries - scroll to reach them instead of them being clipped.
+    lv_obj_t *resultsBox = lv_obj_create(_monitor);
+    lv_obj_set_size(resultsBox, 370, 340);
+    lv_obj_set_pos(resultsBox, 8, 38);
+    lv_obj_set_style_bg_opa(resultsBox, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(resultsBox, 0, 0);
+    lv_obj_set_style_pad_all(resultsBox, 0, 0);
+    lv_obj_set_scroll_dir(resultsBox, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(resultsBox, LV_SCROLLBAR_MODE_AUTO);
+
+    _results = lv_label_create(resultsBox);
+    lv_obj_set_width(_results, 354);
+    lv_obj_set_pos(_results, 0, 0);
     lv_label_set_long_mode(_results, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(_results, Theme::white(), 0);
-    lv_obj_set_style_text_font(_results, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(_results, &lv_font_montserrat_18, 0);
 
-    _alert = lv_obj_create(_screen);
+    // Parented to LVGL's top layer, not _screen: this makes the alert a true
+    // global overlay that renders above whatever screen is currently active
+    // (watch face, GPS, Settings, Mesh chat, ...) instead of only appearing
+    // while the Recon screen itself is loaded, and it never needs to trigger
+    // a screen change to be seen or dismissed.
+    _alert = lv_obj_create(lv_layer_top());
     lv_obj_set_size(_alert, 370, 260);
     lv_obj_center(_alert);
     lv_obj_set_style_bg_color(_alert, Theme::background(), 0);
@@ -131,7 +148,7 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
     lv_label_set_long_mode(_alertText, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_align(_alertText, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(_alertText, Theme::white(), 0);
-    lv_obj_set_style_text_font(_alertText, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(_alertText, &lv_font_montserrat_20, 0);
     lv_obj_t *dismiss = lv_button_create(_alert);
     lv_obj_set_size(dismiss, 180, 48);
     lv_obj_set_pos(dismiss, 91, 188);
@@ -140,6 +157,7 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
     lv_obj_t *dismissLabel = lv_label_create(dismiss);
     lv_label_set_text(dismissLabel, "DISMISS");
     lv_obj_set_style_text_color(dismissLabel, Theme::background(), 0);
+    lv_obj_set_style_text_font(dismissLabel, &lv_font_montserrat_20, 0);
     lv_obj_center(dismissLabel);
 
     lv_obj_t *footer = lv_label_create(_screen);
@@ -181,13 +199,16 @@ void ReconScreen::renderMenu()
 {
     lv_obj_clear_flag(_menu, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(_monitor, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(_alert, LV_OBJ_FLAG_HIDDEN);
+    // Note: does NOT touch _alert. It lives on the top layer now, independent
+    // of Recon's own menu/monitor sub-pages, so navigating within (or away
+    // from) the Recon screen never dismisses a pending alert out from under
+    // the user - only the DISMISS button does that.
 }
 
 void ReconScreen::renderMonitor()
 {
     const ReconStatus &s = _service->status();
-    lv_label_set_text_fmt(_status, "%s | MONITORING | %u",
+    lv_label_set_text_fmt(_status, "%s  x%u",
                           ReconService::detectorName(s.detector), static_cast<unsigned>(s.detectionCount));
     std::string text = s.detectionCount ? "" : "No activity detected.";
     for (size_t i = 0; i < s.detectionCount; ++i) {
@@ -216,7 +237,10 @@ void ReconScreen::renderAlert()
     _renderedEventSerial = s.eventSerial;
     lv_obj_clear_flag(_alert, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(_alert);
-    if (lv_screen_active() != _screen) lv_screen_load(_screen);
+    // No lv_screen_load() here on purpose - the alert is a top-layer overlay,
+    // so it's already visible above whichever screen the user is on. We
+    // never change screens to show it, and dismissing it (dismissThunk) never
+    // changes screens either, so the user stays exactly where they were.
 }
 
 void ReconScreen::backThunk(lv_event_t *event)
