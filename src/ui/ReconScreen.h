@@ -22,6 +22,7 @@ private:
     static void backThunk(lv_event_t *event);
     static void detectorThunk(lv_event_t *event);
     static void dismissThunk(lv_event_t *event);
+    static void clearLogThunk(lv_event_t *event);
     void selectDetector(ReconDetector detector);
     void renderMenu();
     void renderMonitor();

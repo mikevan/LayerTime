@@ -19,10 +19,18 @@ struct ReconDetection {
     int8_t rssi = 0;
     uint8_t channel = 0;
     uint32_t lastSeenMs = 0;
+    // How many times this unique (category, address) signal has been seen
+    // since the log was last cleared. Wide on purpose - a real attack can
+    // mean thousands of repeats of the same deauth frame.
+    uint32_t encounterCount = 1;
 };
 
 struct ReconStatus {
-    static constexpr size_t MAX_DETECTIONS = 12;
+    // This is a persistent session log, not a live scan snapshot - it is
+    // only cleared by an explicit user action (ReconScreen's CLEAR LOG
+    // button), never automatically by stop()/start(). Sized generously so
+    // a long monitoring session doesn't evict genuine unique threats.
+    static constexpr size_t MAX_DETECTIONS = 40;
     ReconDetector detector = ReconDetector::None;
     ReconDetector activeDetector = ReconDetector::None;
     ReconDetection detections[MAX_DETECTIONS];

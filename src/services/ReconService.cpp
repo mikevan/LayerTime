@@ -117,7 +117,10 @@ void ReconService::begin()
 void ReconService::startDetector(ReconDetector detector)
 {
     stop();
-    clearDetections();
+    // Note: does NOT clearDetections() here. The threat log is persistent
+    // across start/stop cycles by design - only an explicit user action
+    // (ReconScreen's CLEAR LOG button) clears it, so the user always knows
+    // whether anything has ever been seen, not just this session.
     _status.detector = detector;
     _status.activeDetector = detector;
     _status.monitoring = detector != ReconDetector::None;
@@ -359,6 +362,7 @@ void ReconService::addDetection(ReconDetector detector, const char *detail, cons
             existing.rssi = rssi;
             existing.channel = channel;
             existing.lastSeenMs = millis();
+            ++existing.encounterCount;
             return;
         }
     }

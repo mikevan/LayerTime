@@ -6,7 +6,7 @@ Current-state feature documentation for the LayerTime firmware, targeting the Li
 
 - Time, date, and battery percentage.
 - Large, colored ALT / COG / THREATS / GPS data blocks, Montserrat 18.
-- **THREATS** (bottom-left, green/red): live Recon status at a glance - `OFF` (green) when neither manual monitoring nor Early Warning is running, `CLEAR` (green) when active with nothing detected, or a live count (red) once anything's been detected. Tap it to jump straight into Recon's All-detectors monitor, skipping the detector-picker menu.
+- **THREATS** (bottom-left, green/red): status text shows what's actively scanning right now - `ALL`, a single detector name (e.g. `DEAUTH`) when manually selected, `EARLY WARNING` when only the background sweep is running, or `OFF` when nothing is scanning at all. Color is separate from that text: red as long as the persistent threat log (see Recon below) holds anything, green when it's empty - so a threat found earlier stays flagged red even after monitoring stops, until the user clears the log. Tap it to jump straight into Recon's All-detectors monitor, skipping the detector-picker menu.
 - No seconds or AM/PM shown; the 12/24-hour setting still controls the hour format.
 - Long-press anywhere on the face to open **Settings**.
 - Tap the green GPS block to open the **GPS** page.
@@ -32,6 +32,7 @@ Passive Wi-Fi/BLE survey and monitoring — no active transmission, injection, o
 - **Detectors**: Deauth, Pwnagotchi, MultiSSID rogue-AP patterns, and Pineapple over Wi-Fi; Flipper Zero, AirTag, and Meta (Flock/other BLE beacon) devices over BLE.
 - **Early Warning**: an optional always-on, duty-cycled background sweep across the same detectors, independent of whether the Recon screen is open. Persisted; defaults **on**. This is the single largest background power draw in the firmware — disable it (along with Mesh/Meshtastic) if the watch needs to run unplugged for extended stretches.
 - **SD logging**: a **SD LOGGING** toggle in Settings appends every new (non-duplicate) detection to `/recon_log.csv` on the SD card (timestamp, category, detail, address, RSSI, channel). Persisted; defaults off.
+- **Persistent threat log**: the Recon monitor's detection list is a running log, not a per-session snapshot - it survives stopping and restarting monitoring (starting a new detector no longer wipes it) and only resets when the user taps **CLEAR LOG** on the Recon monitor screen. Each unique `(detector, address)` entry tracks an encounter count so a repeat-seen signal (e.g. 13,000 deauth frames from the same MAC vs. just one) is visible as a real attack indicator, not just a single line. Capped at 40 unique entries (oldest evicted first).
 
 ## Mesh radios
 
