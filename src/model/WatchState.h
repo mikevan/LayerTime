@@ -37,11 +37,4 @@ struct WatchState {
 
     bool gpsCourseValid = false;
     float gpsCourseDegrees = 0.0f;
-
-    // Reserved/placeholder heading until a real heading source is wired.
-    float headingDegrees = 0.0f;
-
-    // Weather received from the BLE phone bridge.
-    bool weatherValid = false;
-    float temperatureC = 0.0f;
 };

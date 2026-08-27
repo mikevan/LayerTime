@@ -7,7 +7,10 @@ class ReconScreen {
 public:
     using BackCallback = void (*)(void *userData);
     void create(ReconService *service, BackCallback backCallback, void *userData);
-    void show();
+    // detector: None opens the detector-picker menu (default, matches the
+    // RECON watch-face button). Any other value skips straight to that
+    // detector's monitor page, e.g. ReconDetector::All for the THREATS box.
+    void show(ReconDetector detector = ReconDetector::None);
     void render();
 
 private:

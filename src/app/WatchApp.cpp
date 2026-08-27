@@ -28,7 +28,6 @@ void WatchApp::begin()
     _meshtastic.setAdvertisingEnabled(_settings.meshtasticAdvertiseEnabled);
     // Meshtastic radio also always starts powered off, same reasoning as
     // Mesh above - and the two are kept mutually exclusive in settingsChanged().
-    //_weatherBle.begin();
     _sdCard.begin();
     _recon.begin();
     _recon.setEarlyWarningEnabled(_settings.reconEarlyWarningEnabled);
@@ -40,6 +39,7 @@ void WatchApp::begin()
     _face.setMeshRequestedCallback(meshRequestedThunk, this);
     _face.setMeshtasticRequestedCallback(meshtasticRequestedThunk, this);
     _face.setReconRequestedCallback(reconRequestedThunk, this);
+    _face.setThreatsRequestedCallback(threatsRequestedThunk, this);
 
     // Create every secondary screen before the first render.
     _gpsScreen.create(gpsBackThunk, this);
@@ -65,7 +65,6 @@ void WatchApp::tick()
     _gps.poll(_state);
     _mesh.poll();
     _meshtastic.poll();
-    //_weatherBle.poll(_state);
     _recon.poll();
     lv_timer_handler();
 
@@ -92,7 +91,7 @@ void WatchApp::refreshState()
 {
     _clock.update(_state);
     _battery.update(_state);
-    _face.render(_state, _settings);
+    _face.render(_state, _settings, _recon.status());
     _gpsScreen.render(_state, _settings);
     _meshScreen.render(_mesh.status());
     _meshtasticScreen.render(_meshtastic.status());
@@ -137,6 +136,11 @@ void WatchApp::meshtasticBackThunk(void *userData)
 void WatchApp::reconRequestedThunk(void *userData)
 {
     static_cast<WatchApp *>(userData)->openRecon();
+}
+
+void WatchApp::threatsRequestedThunk(void *userData)
+{
+    static_cast<WatchApp *>(userData)->openThreatsRecon();
 }
 
 void WatchApp::reconBackThunk(void *userData)
@@ -205,6 +209,11 @@ void WatchApp::openRecon()
     _reconScreen.show();
 }
 
+void WatchApp::openThreatsRecon()
+{
+    _reconScreen.show(ReconDetector::All);
+}
+
 void WatchApp::closeRecon()
 {
     _recon.exitManualMode();
@@ -241,7 +250,7 @@ void WatchApp::settingsChanged()
     _meshtastic.setAdvertisingEnabled(_settings.meshtasticAdvertiseEnabled);
     _recon.setEarlyWarningEnabled(_settings.reconEarlyWarningEnabled);
     _settingsService.save(_settings);
-    _face.render(_state, _settings);
+    _face.render(_state, _settings, _recon.status());
     _gpsScreen.render(_state, _settings);
     _meshScreen.render(_mesh.status());
     _meshtasticScreen.render(_meshtastic.status());

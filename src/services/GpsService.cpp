@@ -1,5 +1,6 @@
 #include "GpsService.h"
 
+#include <Arduino.h>
 #include <LilyGoLib.h>
 
 namespace {
@@ -9,7 +10,12 @@ constexpr float kMetersToFeet = 3.280839895f;
 
 void GpsService::begin(bool enabled)
 {
-    setEnabled(enabled);
+    // Unlike setEnabled(), always run the enable/disable path once at boot -
+    // _enabled already defaults to true (matching gpsEnabled's default), so
+    // routing through setEnabled() here would silently no-op on the common
+    // case and skip the GGA-enable command below.
+    _enabled = enabled;
+    applyEnabled(enabled);
 }
 
 void GpsService::setEnabled(bool enabled)
@@ -19,7 +25,26 @@ void GpsService::setEnabled(bool enabled)
     }
 
     _enabled = enabled;
+    applyEnabled(enabled);
+}
+
+void GpsService::applyEnabled(bool enabled)
+{
     instance.powerControl(POWER_GPS, enabled);
+
+    if (enabled) {
+        // The MIA-M10Q doesn't reliably come up with GGA enabled on its
+        // NMEA output set. GGA is the only one of the standard sentences
+        // that carries altitude - lat/long/speed/course all come through
+        // RMC too, so a fix can look otherwise healthy (location valid,
+        // satellites counting) while altitude simply never populates.
+        // Explicitly (re)enable GGA on UART1 every time the rail powers up,
+        // rather than depending on whatever the module happened to boot
+        // into. $PUBX,40,GGA,<ddc,us1,us2,usb,spi rates>*checksum - us1=1
+        // means "output every fix" on the UART1 port LayerTime uses.
+        delay(300); // Let the module finish booting before it'll ack commands.
+        Serial1.print("$PUBX,40,GGA,0,1,0,0,0,0*5A\r\n");
+    }
 }
 
 void GpsService::poll(WatchState &state)

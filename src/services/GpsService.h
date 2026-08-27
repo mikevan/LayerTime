@@ -10,5 +10,7 @@ public:
     bool enabled() const { return _enabled; }
 
 private:
+    void applyEnabled(bool enabled);
+
     bool _enabled = true; // LilyGoLib powers/initializes GNSS during instance.begin().
 };

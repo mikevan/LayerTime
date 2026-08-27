@@ -136,7 +136,15 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
     lv_obj_set_style_text_font(footer, &lv_font_montserrat_16, 0);
 }
 
-void ReconScreen::show() { renderMenu(); lv_screen_load(_screen); }
+void ReconScreen::show(ReconDetector detector)
+{
+    if (detector == ReconDetector::None) {
+        renderMenu();
+    } else {
+        selectDetector(detector);
+    }
+    lv_screen_load(_screen);
+}
 void ReconScreen::render()
 {
     if (!_service) return;
