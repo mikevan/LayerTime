@@ -21,6 +21,7 @@ Current-state feature documentation for the LayerTime firmware, targeting the Li
 - In-page WGS84-to-UTM conversion (zone/easting/northing), no map engine or SD dependency.
 - GPS can be toggled on/off in Settings; the Ultra's GNSS rail is powered down when off.
 - HDG is shown as GPS course-over-ground (COG), not a true compass heading - the Ultra's BHI260AP is a 6-axis IMU, not a magnetometer, so there's no stationary heading source on this board. COG only reflects direction of travel while moving (>0.5 mph); it reads blank while stationary, since course-over-ground is undefined at zero speed.
+- Magnetic declination tool (DECLINATION button, new sub-page): computes the local declination fully offline using NOAA's World Magnetic Model (WMM2025, coefficients embedded in firmware, valid 2025.0-2030.0). No network/API call is made - the spherical-harmonic math runs on-device from a lat/lon and the RTC date. Location defaults to the live GPS fix; "ENTER LOCATION" lets the user override with a manually typed lat/lon (e.g. for planning a route to a location without a fix yet). The declination result also feeds a bearing converter sub-page ("CONVERT A COMPASS BEARING") that turns a magnetic (compass) bearing into a true (map) bearing and vice versa - useful for map-and-compass navigation. The WMM computation only runs while the declination page is actually visible, not on every render tick, to avoid unnecessary CPU work.
 
 ## Recon
 

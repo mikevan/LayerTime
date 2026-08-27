@@ -106,7 +106,7 @@ lv_obj_t *SettingsScreen::makeButton(
     lv_obj_t *label = lv_label_create(button);
     lv_label_set_text(label, text);
     lv_obj_set_style_text_color(label, Theme::white(), 0);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
     lv_obj_center(label);
     return button;
 }
@@ -135,8 +135,8 @@ void SettingsScreen::buildMainPage()
 
     makeButton(_mainPage, "DATE / TIME", 25, 62, 360, 52, dateTimeThunk);
 
-    makeLabel(_mainPage, "BRIGHTNESS", 30, 135, 160, &lv_font_montserrat_16, Theme::white());
-    _brightnessValue = makeLabel(_mainPage, "80", 310, 135, 70, &lv_font_montserrat_16, Theme::teal());
+    makeLabel(_mainPage, "BRIGHTNESS", 30, 135, 160, &lv_font_montserrat_20, Theme::white());
+    _brightnessValue = makeLabel(_mainPage, "80", 310, 135, 70, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_brightnessValue, LV_TEXT_ALIGN_RIGHT, 0);
 
     _brightnessSlider = lv_slider_create(_mainPage);
@@ -146,43 +146,43 @@ void SettingsScreen::buildMainPage()
     lv_obj_add_event_cb(_brightnessSlider, brightnessThunk, LV_EVENT_VALUE_CHANGED, this);
 
     makeButton(_mainPage, "CLOCK FORMAT", 25, 214, 250, 52, clockModeThunk);
-    _clockValue = makeLabel(_mainPage, "12 H", 290, 230, 90, &lv_font_montserrat_16, Theme::teal());
+    _clockValue = makeLabel(_mainPage, "12 H", 290, 230, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_clockValue, LV_TEXT_ALIGN_CENTER, 0);
 
     makeButton(_mainPage, "UNITS", 25, 282, 250, 52, unitsThunk);
-    _unitsValue = makeLabel(_mainPage, "IMPERIAL", 282, 298, 105, &lv_font_montserrat_16, Theme::teal());
+    _unitsValue = makeLabel(_mainPage, "IMPERIAL", 282, 298, 105, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_unitsValue, LV_TEXT_ALIGN_CENTER, 0);
 
     makeButton(_mainPage, "GPS", 25, 350, 250, 52, gpsThunk);
-    _gpsValue = makeLabel(_mainPage, "ON", 290, 366, 90, &lv_font_montserrat_16, Theme::teal());
+    _gpsValue = makeLabel(_mainPage, "ON", 290, 366, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_gpsValue, LV_TEXT_ALIGN_CENTER, 0);
 
     makeButton(_mainPage, "MESHCORE", 25, 414, 250, 42, meshEnabledThunk);
-    _meshEnabledValue = makeLabel(_mainPage, "OFF", 290, 426, 90, &lv_font_montserrat_16, Theme::teal());
+    _meshEnabledValue = makeLabel(_mainPage, "OFF", 290, 426, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_meshEnabledValue, LV_TEXT_ALIGN_CENTER, 0);
 
-    makeButton(_mainPage, "MESHCORE ADVERTISE", 25, 462, 250, 42, meshAdvertiseThunk);
-    _meshAdvertiseValue = makeLabel(_mainPage, "OFF", 290, 474, 90, &lv_font_montserrat_16, Theme::teal());
+    makeButton(_mainPage, "MESHCORE ADVERTISE", 25, 462, 275, 42, meshAdvertiseThunk);
+    _meshAdvertiseValue = makeLabel(_mainPage, "OFF", 305, 474, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_meshAdvertiseValue, LV_TEXT_ALIGN_CENTER, 0);
 
     makeButton(_mainPage, "MESHTASTIC", 25, 510, 250, 42, meshtasticEnabledThunk);
-    _meshtasticEnabledValue = makeLabel(_mainPage, "OFF", 290, 522, 90, &lv_font_montserrat_16, Theme::teal());
+    _meshtasticEnabledValue = makeLabel(_mainPage, "OFF", 290, 522, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_meshtasticEnabledValue, LV_TEXT_ALIGN_CENTER, 0);
 
-    makeButton(_mainPage, "MESHTASTIC ADVERTISE", 25, 558, 250, 42, meshtasticAdvertiseThunk);
-    _meshtasticAdvertiseValue = makeLabel(_mainPage, "OFF", 290, 570, 90, &lv_font_montserrat_16, Theme::teal());
+    makeButton(_mainPage, "MESHTASTIC ADVERTISE", 25, 558, 275, 42, meshtasticAdvertiseThunk);
+    _meshtasticAdvertiseValue = makeLabel(_mainPage, "OFF", 305, 570, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_meshtasticAdvertiseValue, LV_TEXT_ALIGN_CENTER, 0);
 
     makeButton(_mainPage, "MESHTASTIC NAME", 25, 606, 250, 42, meshtasticNameThunk);
-    _meshtasticNameValue = makeLabel(_mainPage, "AUTO", 290, 618, 90, &lv_font_montserrat_16, Theme::teal());
+    _meshtasticNameValue = makeLabel(_mainPage, "AUTO", 290, 618, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_meshtasticNameValue, LV_TEXT_ALIGN_CENTER, 0);
 
     makeButton(_mainPage, "EARLY WARNING", 25, 654, 250, 42, earlyWarningThunk);
-    _earlyWarningValue = makeLabel(_mainPage, "ON", 290, 666, 90, &lv_font_montserrat_16, Theme::teal());
+    _earlyWarningValue = makeLabel(_mainPage, "ON", 290, 666, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_earlyWarningValue, LV_TEXT_ALIGN_CENTER, 0);
 
     makeButton(_mainPage, "SD LOGGING", 25, 702, 250, 42, reconSdLoggingThunk);
-    _reconSdLoggingValue = makeLabel(_mainPage, "OFF", 290, 714, 90, &lv_font_montserrat_16, Theme::teal());
+    _reconSdLoggingValue = makeLabel(_mainPage, "OFF", 290, 714, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_reconSdLoggingValue, LV_TEXT_ALIGN_CENTER, 0);
 
     makeButton(_mainPage, "SD CARD", 25, 750, 360, 42, sdCardThunk);
@@ -246,7 +246,7 @@ void SettingsScreen::buildSdPage()
     _sdStatusValue = makeLabel(_sdPage, "UNKNOWN", 20, 90, 370, &lv_font_montserrat_28, Theme::teal());
     lv_obj_set_style_text_align(_sdStatusValue, LV_TEXT_ALIGN_CENTER, 0);
 
-    _sdSpaceValue = makeLabel(_sdPage, "", 20, 140, 370, &lv_font_montserrat_16, Theme::white());
+    _sdSpaceValue = makeLabel(_sdPage, "", 20, 140, 370, &lv_font_montserrat_20, Theme::white());
     lv_obj_set_style_text_align(_sdSpaceValue, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_long_mode(_sdSpaceValue, LV_LABEL_LONG_WRAP);
 
@@ -305,7 +305,7 @@ void SettingsScreen::buildMeshtasticNamePage()
     lv_textarea_set_one_line(_meshtasticNameTextArea, true);
     lv_textarea_set_max_length(_meshtasticNameTextArea, 19);
     lv_textarea_set_placeholder_text(_meshtasticNameTextArea, "Leave blank for auto name...");
-    lv_obj_set_style_text_font(_meshtasticNameTextArea, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(_meshtasticNameTextArea, &lv_font_montserrat_20, 0);
 
     makeButton(_meshtasticNamePage, "CANCEL", 25, 106, 170, 50, meshtasticNameCancelThunk);
     lv_obj_t *saveBtn = makeButton(_meshtasticNamePage, "SAVE", 215, 106, 170, 50, meshtasticNameSaveThunk);

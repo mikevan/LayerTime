@@ -5,15 +5,31 @@
 <h1 align="center">🌟 LayerTime 🌟</h1>
 <p align="center">Counter-intrusion field firmware for the LilyGo T-Watch Ultra</p>
 
+**Counter-intrusion and resilient communications firmware for the LILYGO T-Watch Ultra**
+
 ## Why this exists
 
-A few years ago I was scrolling through my home cameras and noticed a new one had shown up in my bedroom. I hadn't put it there — we had no idea it existed. That got me thinking: in today's world, how would I even know if my home were under a cyber attack? And if my cell connection got disrupted, how would I talk to anyone?
+A few years ago, I was reviewing my home security cameras when I discovered a camera feed from inside my bedroom. I had not installed it. No one in my household knew it existed.
 
-Around the same time I picked up one of those health-tracking bands, because I didn't want a smartwatch loaded with health-tracking cruft — I needed something different. So I built LayerTime.
+That left me with two uncomfortable questions:
 
-LayerTime turns a LilyGo T-Watch Ultra into counter-intrusion firmware. It passively scans your surroundings every few seconds for the most common signs of electronic infiltration: multiple SSIDs broadcasting from the same MAC address (evil-portal and Karma-style attacks), deauthentication packets, and the specific tools most likely to show up when someone — a government agency, a curious neighbor, whoever — is watching or listening: Flock cameras, Pwnagotchi, Wi-Fi Pineapples, AirTags, Flipper Zeros, and Meta smart glasses.
+**How would I know if someone were using wireless technology to monitor or attack my home? And if normal communications failed, how would I reach anyone?**
 
-And when the normal ways of reaching people are down, it talks over LoRa mesh instead of cell service — on your choice of two independent, non-interoperable networks.
+At the same time, I wanted a field watch without the health tracking, subscriptions, and lifestyle features built into most commercial smartwatches. I needed something focused on awareness, privacy, navigation, and resilient communications.
+
+So I built LayerTime.
+
+LayerTime transforms the LILYGO T-Watch Ultra into a wearable counter-intrusion and field-communications platform. It passively monitors nearby Wi-Fi and Bluetooth activity for indicators associated with surveillance equipment, tracking devices, and common wireless attack tools.
+
+Depending on the available radio data, LayerTime can flag:
+
+- Multiple SSIDs associated with the same transmitter, which may indicate evil-portal or Karma-style activity.
+- Wi-Fi deauthentication frames.
+- Nearby devices or radio signatures associated with Flock cameras, Pwnagotchi, Wi-Fi Pineapples, AirTags, Flipper Zero devices, and Meta smart glasses.
+
+These detections are indicators, not proof of an attack. LayerTime gives the wearer information that consumer smartwatches ordinarily ignore.
+
+When cellular and internet service are unavailable, LayerTime can also communicate over LoRa using either of two independent mesh ecosystems. The networks are intentionally separate and non-interoperable, giving the wearer an alternative when conventional communications cannot be trusted or simply do not work.
 
 ## What it does
 
