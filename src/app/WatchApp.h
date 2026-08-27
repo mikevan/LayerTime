@@ -12,7 +12,6 @@
 #include "../services/ReconService.h"
 #include "../services/SdCardService.h"
 #include "../services/SettingsService.h"
-#include "../services/WeatherBleService.h"
 #include "../ui/GpsScreen.h"
 #include "../ui/MeshScreen.h"
 #include "../ui/MeshtasticScreen.h"
@@ -35,6 +34,7 @@ private:
     static void meshtasticBackThunk(void *userData);
     static void reconRequestedThunk(void *userData);
     static void reconBackThunk(void *userData);
+    static void threatsRequestedThunk(void *userData);
     static void settingsBackThunk(void *userData);
     static void settingsChangedThunk(void *userData);
     static void reconDetectionSinkThunk(const ReconDetection &detection, void *userData);
@@ -55,6 +55,7 @@ private:
     void openMeshtastic();
     void closeMeshtastic();
     void openRecon();
+    void openThreatsRecon();
     void closeRecon();
     void closeSettings();
     void settingsChanged();
@@ -70,7 +71,6 @@ private:
     MeshService _mesh;
     MeshtasticService _meshtastic;
     ReconService _recon;
-    WeatherBleService _weatherBle;
     SdCardService _sdCard;
     SettingsService _settingsService;
 

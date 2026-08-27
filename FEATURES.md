@@ -5,7 +5,8 @@ Current-state feature documentation for the LayerTime firmware, targeting the Li
 ## Watch face
 
 - Time, date, and battery percentage.
-- Large, colored ALT / HDG / WX / GPS data blocks (gold/teal/green), Montserrat 18.
+- Large, colored ALT / COG / THREATS / GPS data blocks, Montserrat 18.
+- **THREATS** (bottom-left, green/red): live Recon status at a glance - `OFF` (green) when neither manual monitoring nor Early Warning is running, `CLEAR` (green) when active with nothing detected, or a live count (red) once anything's been detected. Tap it to jump straight into Recon's All-detectors monitor, skipping the detector-picker menu.
 - No seconds or AM/PM shown; the 12/24-hour setting still controls the hour format.
 - Long-press anywhere on the face to open **Settings**.
 - Tap the green GPS block to open the **GPS** page.
@@ -19,7 +20,7 @@ Current-state feature documentation for the LayerTime firmware, targeting the Li
 - Live latitude/longitude (6 decimal places), altitude in the selected unit system, satellite count, HDOP, speed, and course over ground when moving.
 - In-page WGS84-to-UTM conversion (zone/easting/northing), no map engine or SD dependency.
 - GPS can be toggled on/off in Settings; the Ultra's GNSS rail is powered down when off.
-- HDG (heading) is intentionally left as `---` — the Ultra's BHI260AP is a 6-axis IMU, not a magnetometer, so true-north heading isn't available from it.
+- HDG is shown as GPS course-over-ground (COG), not a true compass heading - the Ultra's BHI260AP is a 6-axis IMU, not a magnetometer, so there's no stationary heading source on this board. COG only reflects direction of travel while moving (>0.5 mph); it reads blank while stationary, since course-over-ground is undefined at zero speed.
 
 ## Recon
 
@@ -36,7 +37,7 @@ Passive Wi-Fi/BLE survey and monitoring — no active transmission, injection, o
 
 The T-Watch Ultra has one physical SX1262 LoRa radio. LayerTime implements two independent, non-interoperable mesh protocols against it — **MeshCore** and **Meshtastic** — kept mutually exclusive in software: enabling one in Settings automatically disables the other, since both would otherwise fight over the same radio.
 
-### MeshCore (deprecated)
+### MeshCore (active)
 
 The original mesh integration. Kept in the tree for reference and comparison, but no longer the primary/recommended protocol for this project.
 
@@ -77,12 +78,6 @@ Long-press the watch face (~1 second) to open. Scrollable; rows include:
 - **EARLY WARNING** — Recon background sweep, persisted, defaults on.
 - **SD LOGGING** — Recon-to-SD-card CSV logging, persisted, defaults off.
 - **SD CARD** — opens the SD card status/format sub-page.
-
-## BLE weather bridge (present, disabled by default)
-
-A GATT service (`WeatherBleService`) exists so a phone companion app can push a current temperature reading to the watch (device name `LayerTime`, custom service/characteristic UUIDs; Celsius as UTF-8 text, converted to the selected unit system; expires after 30 minutes without an update). It preserves the existing NimBLE stack used by Recon's BLE scans rather than re-initializing it.
-
-This service is currently commented out in `WatchApp.cpp` (`_weatherBle.begin()`/`poll()`) and is not active in the shipped build. It's kept in the tree for a future companion-app integration.
 
 ## Known cosmetic issue
 

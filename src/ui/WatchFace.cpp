@@ -69,18 +69,23 @@ void WatchFace::create()
     lv_obj_set_style_text_font(_battery, &lv_font_montserrat_20, 0);
 
     _leftTop = createDataLabel(_screen, 0, 82, 110, "ALT\n-- FT");
-    _rightTop = createDataLabel(_screen, 300, 82, 110, "HDG\n---");
-    _leftBottom = createDataLabel(_screen, 0, 205, 110, "WX\n-- F");
+    _rightTop = createDataLabel(_screen, 300, 82, 110, "COG\n---");
+    _leftBottom = createDataLabel(_screen, 0, 205, 110, "THREATS\n--");
     _rightBottom = createDataLabel(_screen, 300, 205, 110, "GPS\nWAIT");
 
     lv_obj_set_style_text_color(_leftTop, Theme::gold(), 0);
     lv_obj_set_style_text_color(_rightTop, Theme::teal(), 0);
-    lv_obj_set_style_text_color(_leftBottom, Theme::gold(), 0);
+    lv_obj_set_style_text_color(_leftBottom, Theme::green(), 0);
     lv_obj_set_style_text_color(_rightBottom, Theme::green(), 0);
 
     // GPS is an active touch target. Tap it to open the detailed GNSS page.
     lv_obj_add_flag(_rightBottom, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(_rightBottom, gpsEventThunk, LV_EVENT_CLICKED, this);
+
+    // THREATS is also a touch target - tap it to jump straight into Recon's
+    // All-detectors monitor, skipping the detector-picker menu.
+    lv_obj_add_flag(_leftBottom, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(_leftBottom, threatsEventThunk, LV_EVENT_CLICKED, this);
 
     // Mesh shortcut: lower-left over the owl field, deliberately compact.
     _meshButton = lv_button_create(_screen);
@@ -156,7 +161,7 @@ void WatchFace::create()
     lv_obj_set_style_text_font(footer, &lv_font_montserrat_20, 0);
 }
 
-void WatchFace::render(const WatchState &state, const AppSettings &settings)
+void WatchFace::render(const WatchState &state, const AppSettings &settings, const ReconStatus &reconStatus)
 {
     lv_label_set_text_fmt(
         _battery,
@@ -192,26 +197,14 @@ void WatchFace::render(const WatchState &state, const AppSettings &settings)
         lv_label_set_text(_leftTop, settings.metricUnits ? "ALT\n-- M" : "ALT\n-- FT");
     }
 
-    // Heading remains reserved until a reliable heading source is selected.
-    lv_label_set_text(_rightTop, "HDG\n---");
-
-    if (state.weatherValid) {
-        if (settings.metricUnits) {
-            lv_label_set_text_fmt(
-                _leftBottom,
-                "WX\n%d C",
-                static_cast<int>(state.temperatureC));
-        } else {
-            const float tempF = state.temperatureC * 9.0f / 5.0f + 32.0f;
-            lv_label_set_text_fmt(
-                _leftBottom,
-                "WX\n%d F",
-                static_cast<int>(tempF));
-        }
+    // No magnetometer on this board - there is no true (stationary) heading
+    // source. Show GPS course-over-ground instead, same data/threshold as
+    // the GPS detail page's COG readout: direction of travel while moving,
+    // blank while stationary (COG is undefined at zero speed).
+    if (state.gpsCourseValid && state.gpsSpeedMph > 0.5f) {
+        lv_label_set_text_fmt(_rightTop, "COG\n%03d DEG", static_cast<int>(state.gpsCourseDegrees + 0.5f));
     } else {
-        lv_label_set_text(
-            _leftBottom,
-            settings.metricUnits ? "WX\n-- C" : "WX\n-- F");
+        lv_label_set_text(_rightTop, "COG\n--");
     }
 
     if (!state.gpsEnabled) {
@@ -220,6 +213,18 @@ void WatchFace::render(const WatchState &state, const AppSettings &settings)
         lv_label_set_text_fmt(_rightBottom, "GPS\n3D %u", state.gpsSatellites);
     } else {
         lv_label_set_text(_rightBottom, "GPS\nWAIT");
+    }
+
+    const bool reconOff = !reconStatus.monitoring && !reconStatus.earlyWarningEnabled;
+    if (reconOff) {
+        lv_label_set_text(_leftBottom, "THREATS\nOFF");
+        lv_obj_set_style_text_color(_leftBottom, Theme::green(), 0);
+    } else if (reconStatus.detectionCount > 0) {
+        lv_label_set_text_fmt(_leftBottom, "THREATS\n%u", static_cast<unsigned>(reconStatus.detectionCount));
+        lv_obj_set_style_text_color(_leftBottom, Theme::danger(), 0);
+    } else {
+        lv_label_set_text(_leftBottom, "THREATS\nCLEAR");
+        lv_obj_set_style_text_color(_leftBottom, Theme::green(), 0);
     }
 }
 
@@ -261,6 +266,14 @@ void WatchFace::setReconRequestedCallback(
 {
     _reconRequestedCallback = callback;
     _reconRequestedUserData = userData;
+}
+
+void WatchFace::setThreatsRequestedCallback(
+    ThreatsRequestedCallback callback,
+    void *userData)
+{
+    _threatsRequestedCallback = callback;
+    _threatsRequestedUserData = userData;
 }
 
 void WatchFace::screenEventThunk(lv_event_t *event)
@@ -311,4 +324,14 @@ void WatchFace::reconEventThunk(lv_event_t *event)
     }
 
     self->_reconRequestedCallback(self->_reconRequestedUserData);
+}
+
+void WatchFace::threatsEventThunk(lv_event_t *event)
+{
+    auto *self = static_cast<WatchFace *>(lv_event_get_user_data(event));
+    if (self == nullptr || self->_threatsRequestedCallback == nullptr) {
+        return;
+    }
+
+    self->_threatsRequestedCallback(self->_threatsRequestedUserData);
 }

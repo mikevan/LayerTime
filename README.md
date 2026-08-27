@@ -1,31 +1,63 @@
 <div align="center" markdown="1">
-  <img src=".github/LilyGo_logo.png" alt="LilyGo logo" width="100"/>
+  <img src="assets/LayerTime-owl.svg" alt="LayerTime owl logo" width="140"/>
 </div>
 
 <h1 align="center">🌟 LayerTime 🌟</h1>
-<p align="center">Custom field/survivalism firmware for the LilyGo T-Watch Ultra</p>
+<p align="center">Counter-intrusion field firmware for the LilyGo T-Watch Ultra</p>
 
-# Overview
+## Why this exists
 
-LayerTime is a PlatformIO-based firmware for the [LilyGo T-Watch Ultra](https://lilygo.cc/products/t-watch-ultra) (ESP32-S3, SX1262 LoRa, AXP2101 PMU, MIA-M10Q GNSS), built on top of [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib). It turns the watch into a field companion: a live GPS page, passive Wi-Fi/BLE recon and threat detection, two independent LoRa mesh protocols (MeshCore and Meshtastic), SD-card logging and utilities, and a settings screen to tune all of it.
+A few years ago I was scrolling through my home cameras and noticed a new one had shown up in my bedroom. I hadn't put it there — we had no idea it existed. That got me thinking: in today's world, how would I even know if my home were under a cyber attack? And if my cell connection got disrupted, how would I talk to anyone?
 
-See [FEATURES.md](./FEATURES.md) for a full walkthrough of every screen and setting.
+Around the same time I picked up one of those health-tracking bands, because I didn't want a smartwatch loaded with health-tracking cruft — I needed something different. So I built LayerTime.
 
-# Highlights
+LayerTime turns a LilyGo T-Watch Ultra into counter-intrusion firmware. It passively scans your surroundings every few seconds for the most common signs of electronic infiltration: multiple SSIDs broadcasting from the same MAC address (evil-portal and Karma-style attacks), deauthentication packets, and the specific tools most likely to show up when someone — a government agency, a curious neighbor, whoever — is watching or listening: Flock cameras, Pwnagotchi, Wi-Fi Pineapples, AirTags, Flipper Zeros, and Meta smart glasses.
 
-- **Watch face** — time/date, battery, GPS status, and quick-launch buttons for MeshCore, Meshtastic, and Recon.
-- **GPS** — live lat/long, altitude, satellites, HDOP, speed, and course from the onboard GNSS.
-- **Recon** — passive Wi-Fi/BLE survey and monitoring, with dedicated detectors for deauth attacks, Pwnagotchi/Flipper/Flock/AirTag/Meta devices, rogue APs, and more. Optional always-on early-warning sweep and SD-card CSV logging of every detection.
-- **MeshCore** — the original LoRa mesh integration (public-channel chat, signed node adverts, heard-node list). Kept in the tree but deprecated in favor of Meshtastic for this project's use case.
-- **Meshtastic** — a parallel, actively-developed LoRa mesh implementation for the default US/LongFast public channel: node/telemetry/position decoding, public-channel chat (send + receive), and optional identity advertising. MeshCore and Meshtastic are mutually exclusive, since both drive the same physical radio.
-- **SD card** — format/recover a card in the field (including one left in a non-standard filesystem state by tools like Pwnagotchi), plus CSV logging of Recon detections.
-- **Settings** — brightness, clock format, units, GPS/mesh/recon toggles, date & time, SD card tools.
+And when the normal ways of reaching people are down, it talks over LoRa mesh instead of cell service — on your choice of two independent, non-interoperable networks.
 
-# Hardware target
+## What it does
 
-This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_ultra` in `platformio.ini`). The `platformio.ini` also carries environments for T-Watch-S3, T-LoRa-Pager, and the LilyGoLib emulator targets inherited from the base template, but LayerTime's own screens and services (Recon, MeshCore, Meshtastic, GPS, SD logging) are written against the Ultra's hardware and are not verified on the other boards.
+### Passive threat detection (Recon)
 
-# Build & flash (PlatformIO)
+No active transmission, injection, or association — LayerTime only listens.
+
+- **Wi-Fi scan**: SSID, BSSID, RSSI, channel, security, sorted strongest-first.
+- **BLE scan**: name, address, RSSI.
+- **Activity monitoring**: passive channel-hopping across all US 2.4 GHz Wi-Fi channels, counting management/data/control frames and flagging deauth/disassociation activity in real time — source, RSSI, channel.
+- **Dedicated detectors** for the specific tools and devices most associated with surveillance or intrusion: Deauth attacks, Pwnagotchi, MultiSSID rogue-AP patterns (evil portal/Karma), and Pineapple over Wi-Fi; Flock cameras, Flipper Zero, AirTag, and Meta smart glasses over BLE.
+- **Early Warning**: an optional always-on background sweep across every detector above, running whether or not you have the Recon screen open, so a threat gets flagged the moment it appears rather than only when you go looking.
+- **SD logging**: every new detection can be appended to a CSV log on the SD card automatically — a running, timestamped record of what's been detected around you.
+
+### GPS
+
+Live latitude/longitude, altitude, satellite count, HDOP, speed, and course over ground from the onboard GNSS, plus an in-page WGS84-to-UTM conversion — no map engine, no cell connection, no cloud dependency required.
+
+### Dual mesh radios — MeshCore or Meshtastic, your call
+
+The watch has one physical LoRa radio, and LayerTime can drive it as either of two independent mesh networks. They don't interoperate with each other, so which one you use comes down to who you need to reach:
+
+- **MeshCore** — the original integration: public-channel chat, signed node adverts with your name and GPS position, a heard-node list. Kept in the tree and fully working.
+- **Meshtastic** — a second, from-scratch implementation of the far more widely deployed Meshtastic protocol on its default US/LongFast public channel: node, telemetry, and position decoding, public-channel chat (send and receive), and optional identity broadcasting so others see your name instead of a raw node number.
+
+Only one radio is active at a time — enabling one in Settings automatically disables the other — but switching between them takes one tap, no reboot required. Bring a group on MeshCore, or talk to the much larger population of Meshtastic users out there; either way, you're not dependent on cell towers to reach someone.
+
+### SD card that fixes its own problems
+
+A destructive, in-the-field format utility — available any time a card is inserted, whether it currently mounts or not. This exists for a specific, annoying reason: a card used with tools like Pwnagotchi or Ragnar comes back in a filesystem state that nothing else will read, normally forcing you to dig up an old digital camera to force a low-level reformat before the card is useful again. LayerTime's format path does that reformat itself — force-invalidating whatever's on the card and laying down a fresh, standard FAT filesystem — so the watch handles its own SD card without needing a second device. The same card also doubles as the Recon detection log.
+
+### Everything else
+
+- **Watch face** — time, date, battery, and one-tap launch buttons for MeshCore, Meshtastic, and Recon.
+- **Settings** — brightness, clock format, units, GPS/mesh/recon toggles, date & time, and SD card tools, all persisted across reboots (with mesh radios deliberately defaulting to off every boot, so nothing keys up without you choosing to).
+- **Power-aware display** — the AMOLED panel sleeps after 15 seconds of no touch input and wakes on a touch or a short crown press, while every background service (GPS, mesh, recon) keeps running underneath.
+
+See [FEATURES.md](./FEATURES.md) for the full technical breakdown of every screen, setting, and radio parameter.
+
+## Hardware target
+
+This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_ultra` in `platformio.ini`), built on [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) (ESP32-S3, SX1262 LoRa, AXP2101 PMU, MIA-M10Q GNSS). The `platformio.ini` also carries environments for T-Watch-S3, T-LoRa-Pager, and the LilyGoLib emulator targets inherited from the base template, but LayerTime's own screens and services are written against the Ultra's hardware and are not verified on the other boards.
+
+## Build & flash (PlatformIO)
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/) and the `PlatformIO` extension (or use the PlatformIO Core CLI directly).
 2. Open this project folder in VS Code and let PlatformIO fetch dependencies.
@@ -38,15 +70,15 @@ This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_
 > See LilyGoLib's [T-Watch-Ultra download-mode notes](https://github.com/Xinyuan-LilyGO/LilyGoLib/blob/master/docs/lilygo-t-watch-ultra.md#t-watch-s3-ultra-enter-download-mode).
 > For hardware diagnosis, LilyGo also provides stock [factory firmware](https://github.com/Xinyuan-LilyGO/LilyGoLib/tree/master/firmware).
 
-# Project layout
+## Project layout
 
 - `src/app/WatchApp.*` — top-level app: wires every service and screen together, owns the settings-changed/mutual-exclusion logic.
-- `src/services/` — hardware/protocol logic (Battery, Clock, GPS, Recon, MeshService (MeshCore), MeshtasticService, SdCardService, SettingsService, WeatherBleService).
+- `src/services/` — hardware/protocol logic (Battery, Clock, GPS, Recon, MeshService (MeshCore), MeshtasticService, SdCardService, SettingsService).
 - `src/ui/` — LVGL screens (WatchFace, GpsScreen, MeshScreen, MeshtasticScreen, ReconScreen, SettingsScreen).
 - `src/model/` — shared state/settings structs (`AppSettings`, `WatchState`).
 - `variants/lilygo_twatch_ultra/` — board pin definitions.
 - `assets/` — source SVG assets (owl logo).
 
-# Attribution
+## Attribution
 
 Based on LilyGo's [LilyGoLib-PlatformIO](https://github.com/Xinyuan-LilyGO/LilyGoLib) starter template.
