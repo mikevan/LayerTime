@@ -12,11 +12,12 @@
 namespace {
 constexpr uint32_t kDisplayTimeoutMs = 15000;
 // Two background taps closer together than this put the display to sleep.
-constexpr uint32_t kDoubleTapWindowMs = 350;
-// How stale LVGL's activity timer has to be, relative to the moment sleep
-// was forced, before a fresh touch counts as a wake. Absorbs the release
-// edge of the double-tap itself and any bounce right after it.
-constexpr uint32_t kForcedSleepGraceMs = 250;
+// Widened from 350ms. With two hooks live, a genuinely fast double-tap had
+// its second press swallowed by the duplicate guard, which read as "the
+// watch needs a harder tap". One hook now, so the guard is pure contact
+// debounce and the window can be generous.
+constexpr uint32_t kDoubleTapWindowMs = 500;
+constexpr uint32_t kPressDebounceMs = 40;
 bool displayBlanked = false;
 }
 
@@ -60,6 +61,7 @@ void WatchApp::begin()
     _face.setMeshtasticRequestedCallback(meshtasticRequestedThunk, this);
     _face.setReconRequestedCallback(reconRequestedThunk, this);
     _face.setThreatsRequestedCallback(threatsRequestedThunk, this);
+    _face.setMappingRequestedCallback(mappingRequestedThunk, this);
     // Hook the touch device itself rather than the watch-face screen object.
     // LV_EVENT_PRESSED fires before the indev decides whether a press is a
     // drag, so unlike LV_EVENT_CLICKED it cannot be cancelled by scrolling,
@@ -74,6 +76,7 @@ void WatchApp::begin()
 
     // Create every secondary screen before the first render.
     _gpsScreen.create(gpsBackThunk, this);
+    _mappingScreen.create(mappingBackThunk, this);
     _meshScreen.create(&_mesh, meshBackThunk, this);
     _meshtasticScreen.create(&_meshtastic, meshtasticBackThunk, this);
     _reconScreen.create(&_recon, reconBackThunk, this);
@@ -101,15 +104,6 @@ void WatchApp::tick()
 
     const uint32_t inactiveMs = lv_display_get_inactive_time(nullptr);
 
-    // Release a forced sleep as soon as LVGL reports activity newer than the
-    // moment it was forced - i.e. a genuine new touch. Deliberately measured
-    // against the inactivity timer rather than hooking the tap itself, so a
-    // tap anywhere wakes the watch, including one that lands on a button
-    // rather than the background.
-    if (_forcedSleep && inactiveMs + kForcedSleepGraceMs < millis() - _forcedSleepAtMs) {
-        _forcedSleep = false;
-    }
-
     if (!displayBlanked && (_forcedSleep || inactiveMs >= kDisplayTimeoutMs)) {
         instance.setBrightness(0);
         displayBlanked = true;
@@ -134,6 +128,7 @@ void WatchApp::refreshState()
     _battery.update(_state);
     _face.render(_state, _settings, _recon.status());
     _gpsScreen.render(_state, _settings);
+    _mappingScreen.render(_state, _settings);
     _meshScreen.render(_mesh.status());
     _meshtasticScreen.render(_meshtastic.status());
     _reconScreen.render();
@@ -179,6 +174,16 @@ void WatchApp::reconRequestedThunk(void *userData)
     static_cast<WatchApp *>(userData)->openRecon();
 }
 
+void WatchApp::mappingRequestedThunk(void *userData)
+{
+    static_cast<WatchApp *>(userData)->openMapping();
+}
+
+void WatchApp::mappingBackThunk(void *userData)
+{
+    static_cast<WatchApp *>(userData)->closeMapping();
+}
+
 void WatchApp::threatsRequestedThunk(void *userData)
 {
     static_cast<WatchApp *>(userData)->openThreatsRecon();
@@ -218,6 +223,16 @@ void WatchApp::openSettings()
 void WatchApp::openGps()
 {
     _gpsScreen.show(_state, _settings);
+}
+
+void WatchApp::openMapping()
+{
+    _mappingScreen.show(_state, _settings);
+}
+
+void WatchApp::closeMapping()
+{
+    lv_screen_load(_face.screen());
 }
 
 void WatchApp::closeGps()
@@ -302,6 +317,7 @@ void WatchApp::settingsChanged()
     _settingsService.save(_settings);
     _face.render(_state, _settings, _recon.status());
     _gpsScreen.render(_state, _settings);
+    _mappingScreen.render(_state, _settings);
     _meshScreen.render(_mesh.status());
     _meshtasticScreen.render(_meshtastic.status());
     _reconScreen.render();
@@ -324,11 +340,13 @@ void WatchApp::logReconDetection(const ReconDetection &detection)
         return;
     }
 
-    char row[128];
+    // Worst case is ~107 bytes with the confidence column; sized well clear
+    // of that so a long detail string truncates the field, never the row.
+    char row[160];
     snprintf(
         row,
         sizeof(row),
-        "%04d-%02d-%02d %02d:%02d:%02d,%s,%s,%s,%d,%u",
+        "%04d-%02d-%02d %02d:%02d:%02d,%s,%s,%s,%d,%u,%s",
         _state.year,
         _state.month,
         _state.day,
@@ -339,11 +357,12 @@ void WatchApp::logReconDetection(const ReconDetection &detection)
         detection.detail,
         detection.address,
         detection.rssi,
-        static_cast<unsigned>(detection.channel));
+        static_cast<unsigned>(detection.channel),
+        ReconService::confidenceLabel(detection.confidence));
 
     _sdCard.appendCsvRow(
         "/recon_log.csv",
-        "timestamp,category,detail,address,rssi,channel",
+        "timestamp,category,detail,address,rssi,channel,confidence",
         row);
 }
 
@@ -362,26 +381,57 @@ void WatchApp::handleFaceBackgroundTap()
     // re-established here: right screen, and the press landed on the face
     // itself rather than one of its buttons or the GPS/THREATS labels.
     lv_obj_t *face = _face.screen();
-    if (face == nullptr || lv_screen_active() != face) return;
     lv_obj_t *hit = lv_indev_get_active_obj();
+
 #ifdef LAYERTIME_DEBUG_DOUBLETAP
-    // Logged before the hit test rejects anything, so the serial trace
-    // distinguishes "guard rejected this press" from "no event at all".
-    Serial.printf("[dtap] hit=%p face=%p %s blanked=%d forced=%d gap=%ld\n",
-                  static_cast<void *>(hit), static_cast<void *>(face),
-                  (hit == nullptr || hit == face) ? "BG" : "child",
-                  static_cast<int>(displayBlanked), static_cast<int>(_forcedSleep),
+    // Printed BEFORE any early return, and counted, so a press that gets
+    // rejected still shows up - the whole question is which stage drops it.
+    //   p    presses that reached this handler at all
+    //   scr  1 = the active screen really is the watch face
+    //   hit  F = face, c = a child widget, 0 = null
+    //   br   what getBrightness() actually reports
+    //   gap  ms since the last accepted tap, -1 if no pair is pending
+    ++_debugPressCount;
+    Serial.printf("[dtap] p=%lu scr=%d hit=%s br=%u gap=%ld\n",
+                  static_cast<unsigned long>(_debugPressCount),
+                  lv_screen_active() == face ? 1 : 0,
+                  (hit == nullptr) ? "0" : (hit == face ? "F" : "c"),
+                  static_cast<unsigned>(instance.getBrightness()),
                   _lastFaceTapMs ? static_cast<long>(millis() - _lastFaceTapMs) : -1L);
 #endif
+
+    const uint32_t pressNow = millis();
+    if (_lastPressHandledMs != 0 && pressNow - _lastPressHandledMs < kPressDebounceMs) return;
+    _lastPressHandledMs = pressNow;
+
+    // Any touch anywhere ends a forced sleep, and is consumed doing it. This
+    // runs before the watch-face scoping below on purpose: the indev hook
+    // sees every press, so tapping a button wakes the watch too. Waking used
+    // to be inferred from LVGL's inactivity timer, which Recon's alert path
+    // resets via lv_display_trigger_activity() - so any detection seconds
+    // after a double-tap yanked the screen straight back on.
+    if (_forcedSleep) {
+        _forcedSleep = false;
+        _lastFaceTapMs = 0;
+        return;
+    }
+
+    if (face == nullptr || lv_screen_active() != face) return;
     if (hit != nullptr && hit != face) return;
 
-    const uint32_t now = millis();
+    const uint32_t now = pressNow;
 
     // A tap that arrives while the screen is already dark only ever wakes it.
     // Waking is handled by the inactivity timer in tick(); all this has to do
     // is make sure that tap isn't also counted as the first half of a pair,
     // or waking with two quick taps would immediately sleep the watch again.
-    if (displayBlanked) {
+    //
+    // Read the panel's actual brightness rather than the cached displayBlanked
+    // flag. That flag getting stuck true was one of the two live suspects for
+    // this gesture dying - it is the handler's only early return, and if
+    // _forcedSleep were also stuck, tick() skips both the blank and un-blank
+    // branches and never clears it. A hardware read can't get stuck.
+    if (instance.getBrightness() == 0) {
         _lastFaceTapMs = 0;
         return;
     }
@@ -389,7 +439,6 @@ void WatchApp::handleFaceBackgroundTap()
     if (_lastFaceTapMs != 0 && now - _lastFaceTapMs <= kDoubleTapWindowMs) {
         _lastFaceTapMs = 0;
         _forcedSleep = true;
-        _forcedSleepAtMs = now;
         instance.setBrightness(0);
         displayBlanked = true;
         return;

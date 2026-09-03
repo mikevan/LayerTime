@@ -20,7 +20,7 @@ enum class ReconDetector : uint8_t {
     Trackers, CounterSurveil, CounterIntrusion,
     // Individual detectors.
     Deauth, Pwnagotchi, MultiSSID, Flock, Pineapple, AirTag, Flipper, Meta,
-    Tile, SamsungTag, GoogleTag,
+    Axon, Tile, SamsungTag, GoogleTag,
     // Not user-selectable from the menu - used internally to scope the
     // background early-warning BLE scan to Flipper + Meta only.
     EarlyWarning
@@ -37,6 +37,11 @@ struct ReconDetection {
     // since the log was last cleared. Wide on purpose - a real attack can
     // mean thousands of repeats of the same deauth frame.
     uint32_t encounterCount = 1;
+    // How much this particular match is worth trusting. Set per call site,
+    // and per signature row where the table knows better than the detector
+    // does - Meta on its own SIG-assigned 0xFD5F is High, the two unsourced
+    // Meta UUIDs are Low, and both report as META.
+    SignalConfidence confidence = SignalConfidence::High;
 };
 
 struct ReconStatus {
@@ -75,6 +80,7 @@ public:
     void acknowledgeAlert();
     const ReconStatus &status() const { return _status; }
     static const char *detectorName(ReconDetector detector);
+    static const char *confidenceLabel(SignalConfidence confidence);
     // Abbreviated label for the watch face's 110px-wide THREATS block, which
     // cannot fit the full group names. Menus and titles use detectorName().
     static const char *detectorShortName(ReconDetector detector);
@@ -131,8 +137,10 @@ private:
     void startWifiMonitoring();
     void stopWifiMonitoring();
     void startBleScan(ReconDetector detector, uint32_t durationMs);
+    // confidence is deliberately not defaulted - every call site states its
+    // own grade, so a new detector can't silently inherit High.
     void addDetection(ReconDetector detector, const char *detail, const char *address,
-                      int8_t rssi, uint8_t channel = 0);
+                      int8_t rssi, SignalConfidence confidence, uint8_t channel = 0);
     bool wants(ReconDetector detector) const;
     static bool groupContains(ReconDetector group, ReconDetector detector);
     // Which radios a selection needs. A group can need both (COUNTER-INTRUSION

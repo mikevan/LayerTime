@@ -65,6 +65,10 @@ void WatchFace::create()
     lv_obj_remove_flag(_screen, LV_OBJ_FLAG_SCROLLABLE);
 
     // Physical Ultra display: 410 x 502 portrait.
+    // Back at y=45. MESHCORE moved down to y=379, clear of the owl's box
+    // entirely, so the crowding that prompted raising it is gone. MTASTIC at
+    // y=300 still sits over the lower-left of the owl field, which is the
+    // original deliberate arrangement.
     _owl.create(_screen, 45, 45, 320, 320);
 
     _battery = lv_label_create(_screen);
@@ -76,7 +80,7 @@ void WatchFace::create()
     lv_obj_set_style_text_font(_battery, &lv_font_montserrat_20, 0);
 
     _leftTop = createDataLabel(_screen, 0, 82, 110, "ALT\n-- FT");
-    _rightTop = createDataLabel(_screen, 300, 82, 110, "COG\n---");
+    _rightTop = createDataLabel(_screen, 300, 82, 110, "TRAVEL\n---");
     _leftBottom = createDataLabel(_screen, 0, 205, 110, "THREATS\n--");
     _rightBottom = createDataLabel(_screen, 300, 205, 110, "GPS\nWAIT");
 
@@ -94,10 +98,14 @@ void WatchFace::create()
     lv_obj_add_flag(_leftBottom, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(_leftBottom, threatsEventThunk, LV_EVENT_CLICKED, this);
 
-    // Mesh shortcut: lower-left over the owl field, deliberately compact.
+    // MESHCORE sits bottom-left with its lower edge on the time's baseline
+    // box: the time is at y=360 in Montserrat 48, whose LVGL line height is
+    // ~57px, so it ends around y=417. 417 - 38 (button height) = 379.
+    // If it reads a pixel or two off, that line-height figure is the number
+    // to adjust.
     _meshButton = lv_button_create(_screen);
     lv_obj_set_size(_meshButton, 88, 38);
-    lv_obj_set_pos(_meshButton, 18, 300);
+    lv_obj_set_pos(_meshButton, 18, 379);
     lv_obj_set_style_bg_color(_meshButton, Theme::background(), 0);
     lv_obj_set_style_bg_opa(_meshButton, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(_meshButton, Theme::gold(), 0);
@@ -111,10 +119,10 @@ void WatchFace::create()
     lv_obj_set_style_text_font(meshLabel, &lv_font_montserrat_14, 0);
     lv_obj_center(meshLabel);
 
-    // Recon shortcut: lower-right, matching the Mesh button.
+    // MTASTIC sits in the left column, level with RECON on the right.
     _meshtasticButton = lv_button_create(_screen);
     lv_obj_set_size(_meshtasticButton, 88, 38);
-    lv_obj_set_pos(_meshtasticButton, 161, 300);
+    lv_obj_set_pos(_meshtasticButton, 18, 300);
     lv_obj_set_style_bg_color(_meshtasticButton, Theme::background(), 0);
     lv_obj_set_style_bg_opa(_meshtasticButton, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(_meshtasticButton, Theme::green(), 0);
@@ -142,6 +150,23 @@ void WatchFace::create()
     lv_obj_set_style_text_color(reconLabel, Theme::teal(), 0);
     lv_obj_set_style_text_font(reconLabel, &lv_font_montserrat_16, 0);
     lv_obj_center(reconLabel);
+
+    // MAPPING sits under RECON, completing a 2x2 of shortcuts: MTASTIC and
+    // RECON on the upper row, MESHCORE and MAPPING on the lower.
+    _mappingButton = lv_button_create(_screen);
+    lv_obj_set_size(_mappingButton, 88, 38);
+    lv_obj_set_pos(_mappingButton, 304, 379);
+    lv_obj_set_style_bg_color(_mappingButton, Theme::background(), 0);
+    lv_obj_set_style_bg_opa(_mappingButton, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(_mappingButton, Theme::blue(), 0);
+    lv_obj_set_style_border_width(_mappingButton, 2, 0);
+    lv_obj_set_style_radius(_mappingButton, 8, 0);
+    lv_obj_add_event_cb(_mappingButton, mappingEventThunk, LV_EVENT_CLICKED, this);
+    lv_obj_t *mappingLabel = lv_label_create(_mappingButton);
+    lv_label_set_text(mappingLabel, "MAPPING");
+    lv_obj_set_style_text_color(mappingLabel, Theme::blue(), 0);
+    lv_obj_set_style_text_font(mappingLabel, &lv_font_montserrat_14, 0);
+    lv_obj_center(mappingLabel);
 
     _time = lv_label_create(_screen);
     lv_label_set_text(_time, "00:00");
@@ -206,12 +231,13 @@ void WatchFace::render(const WatchState &state, const AppSettings &settings, con
 
     // No magnetometer on this board - there is no true (stationary) heading
     // source. Show GPS course-over-ground instead, same data/threshold as
-    // the GPS detail page's COG readout: direction of travel while moving,
-    // blank while stationary (COG is undefined at zero speed).
+    // the GPS page's direction-of-travel readout: the way you are actually
+    // moving, blank while stationary (it is undefined at zero speed). Short
+    // label here because the block is only 110px wide.
     if (state.gpsCourseValid && state.gpsSpeedMph > 0.5f) {
-        lv_label_set_text_fmt(_rightTop, "COG\n%03d DEG", static_cast<int>(state.gpsCourseDegrees + 0.5f));
+        lv_label_set_text_fmt(_rightTop, "TRAVEL\n%03d DEG", static_cast<int>(state.gpsCourseDegrees + 0.5f));
     } else {
-        lv_label_set_text(_rightTop, "COG\n--");
+        lv_label_set_text(_rightTop, "TRAVEL\n--");
     }
 
     if (!state.gpsEnabled) {
@@ -351,3 +377,16 @@ void WatchFace::threatsEventThunk(lv_event_t *event)
     self->_threatsRequestedCallback(self->_threatsRequestedUserData);
 }
 
+
+void WatchFace::setMappingRequestedCallback(MappingRequestedCallback callback, void *userData)
+{
+    _mappingRequestedCallback = callback;
+    _mappingRequestedUserData = userData;
+}
+
+void WatchFace::mappingEventThunk(lv_event_t *event)
+{
+    auto *self = static_cast<WatchFace *>(lv_event_get_user_data(event));
+    if (self == nullptr || self->_mappingRequestedCallback == nullptr) return;
+    self->_mappingRequestedCallback(self->_mappingRequestedUserData);
+}
