@@ -4,11 +4,6 @@
 #include <LilyGoLib.h>
 #include <LV_Helper.h>
 
-// Prints one line per qualifying press so a still-broken gesture can be
-// diagnosed from the serial monitor instead of guessed at. Comment out
-// once the gesture is confirmed working.
-#define LAYERTIME_DEBUG_DOUBLETAP
-
 namespace {
 constexpr uint32_t kDisplayTimeoutMs = 15000;
 // Two background taps closer together than this put the display to sleep.
@@ -382,23 +377,6 @@ void WatchApp::handleFaceBackgroundTap()
     // itself rather than one of its buttons or the GPS/THREATS labels.
     lv_obj_t *face = _face.screen();
     lv_obj_t *hit = lv_indev_get_active_obj();
-
-#ifdef LAYERTIME_DEBUG_DOUBLETAP
-    // Printed BEFORE any early return, and counted, so a press that gets
-    // rejected still shows up - the whole question is which stage drops it.
-    //   p    presses that reached this handler at all
-    //   scr  1 = the active screen really is the watch face
-    //   hit  F = face, c = a child widget, 0 = null
-    //   br   what getBrightness() actually reports
-    //   gap  ms since the last accepted tap, -1 if no pair is pending
-    ++_debugPressCount;
-    Serial.printf("[dtap] p=%lu scr=%d hit=%s br=%u gap=%ld\n",
-                  static_cast<unsigned long>(_debugPressCount),
-                  lv_screen_active() == face ? 1 : 0,
-                  (hit == nullptr) ? "0" : (hit == face ? "F" : "c"),
-                  static_cast<unsigned>(instance.getBrightness()),
-                  _lastFaceTapMs ? static_cast<long>(millis() - _lastFaceTapMs) : -1L);
-#endif
 
     const uint32_t pressNow = millis();
     if (_lastPressHandledMs != 0 && pressNow - _lastPressHandledMs < kPressDebounceMs) return;

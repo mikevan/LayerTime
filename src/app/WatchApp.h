@@ -105,6 +105,5 @@ private:
     // one physical press can arrive twice. Without this a single tap would
     // pair with its own duplicate and sleep the watch instantly.
     uint32_t _lastPressHandledMs = 0;
-    uint32_t _debugPressCount = 0;
     bool _forcedSleep = false;
 };
