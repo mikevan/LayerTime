@@ -35,6 +35,7 @@ private:
     static void reconRequestedThunk(void *userData);
     static void reconBackThunk(void *userData);
     static void threatsRequestedThunk(void *userData);
+    static void faceBackgroundTapThunk(void *userData);
     static void settingsBackThunk(void *userData);
     static void settingsChangedThunk(void *userData);
     static void reconDetectionSinkThunk(const ReconDetection &detection, void *userData);
@@ -61,6 +62,7 @@ private:
     void settingsChanged();
     void saveDateTime(int year, int month, int day, int hour, int minute);
     void logReconDetection(const ReconDetection &detection);
+    void handleFaceBackgroundTap();
 
     WatchState _state;
     AppSettings _settings;
@@ -82,4 +84,17 @@ private:
     SettingsScreen _settingsScreen;
 
     uint32_t _lastRefreshMs = 0;
+    // Tracks the previous sleepModeEnabled value so settingsChanged() can
+    // tell an off->on transition (force the backlight dark right away)
+    // apart from an unrelated settings change while sleep mode was already on.
+    bool _sleepModeActive = false;
+
+    // Double-tap-to-sleep, watch face only. _lastFaceTapMs is the first tap
+    // of a candidate pair (0 = no pair in progress). _forcedSleep holds the
+    // backlight off regardless of the inactivity timer, which the second tap
+    // itself just reset - without it tick() would re-light the screen on the
+    // very next pass.
+    uint32_t _lastFaceTapMs = 0;
+    bool _forcedSleep = false;
+    uint32_t _forcedSleepAtMs = 0;
 };

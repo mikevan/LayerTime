@@ -383,7 +383,11 @@ void ReconService::addDetection(ReconDetector detector, const char *detail, cons
     entry.channel = channel;
     entry.lastSeenMs = millis();
     ++_status.eventSerial;
-    _status.alertPending = true;
+    // Sleep mode still logs and counts the detection above - it just never
+    // arms the popup/vibration alert for it (see setSleepModeEnabled()).
+    if (!_sleepModeEnabled) {
+        _status.alertPending = true;
+    }
 
     if (_detectionSink != nullptr) {
         _detectionSink(entry, _detectionSinkUserData);

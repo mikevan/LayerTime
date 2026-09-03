@@ -79,6 +79,7 @@ Long-press the watch face (~1 second) to open. Scrollable; rows include:
 - **MESHTASTIC** / **MESHTASTIC ADVERTISE** / **MESHTASTIC NAME** — see Mesh radios above. `MESHTASTIC` itself is never persisted, same reasoning as MeshCore; `MESHTASTIC ADVERTISE` and `MESHTASTIC NAME` are persisted.
 - **EARLY WARNING** — Recon background sweep, persisted, defaults on.
 - **SD LOGGING** — Recon-to-SD-card CSV logging, persisted, defaults off.
+- **SLEEP MODE** — for overnight use: forces the backlight off immediately (instead of waiting out the normal 15s auto-blank), and silences Recon's vibration/popup alert. Detections are still logged and counted normally in the background - only the disruptive alert is muted, so nothing is missed while you're asleep. Tapping the screen still wakes it briefly, same as the normal auto-blank behavior, so you can check the time or come back here to turn it off. Persisted, defaults off.
 - **SD CARD** — opens the SD card status/format sub-page.
 
 ## Known cosmetic issue

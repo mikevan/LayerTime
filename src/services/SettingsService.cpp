@@ -22,6 +22,7 @@ void SettingsService::load(AppSettings &settings)
         settings.meshtasticNodeName[0] = '\0';
         settings.reconEarlyWarningEnabled = true;
         settings.reconSdLoggingEnabled = false;
+        settings.sleepModeEnabled = false;
         // settings.meshEnabled/meshtasticEnabled intentionally left at their
         // struct defaults (false) here and below - they are never read from
         // Preferences, so radio power always starts off, every boot.
@@ -39,6 +40,7 @@ void SettingsService::load(AppSettings &settings)
     settings.meshtasticNodeName[sizeof(settings.meshtasticNodeName) - 1] = '\0';
     settings.reconEarlyWarningEnabled = prefs.getBool("reconew", true);
     settings.reconSdLoggingEnabled = prefs.getBool("reconsd", false);
+    settings.sleepModeEnabled = prefs.getBool("sleepmode", false);
     prefs.end();
 
     if (settings.brightness < 20) {
@@ -62,6 +64,7 @@ void SettingsService::save(const AppSettings &settings)
     prefs.putString("mtname", settings.meshtasticNodeName);
     prefs.putBool("reconew", settings.reconEarlyWarningEnabled);
     prefs.putBool("reconsd", settings.reconSdLoggingEnabled);
+    prefs.putBool("sleepmode", settings.sleepModeEnabled);
     // meshEnabled/meshtasticEnabled are deliberately never written here -
     // they must not persist.
     prefs.end();

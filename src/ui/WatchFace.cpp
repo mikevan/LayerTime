@@ -56,6 +56,12 @@ void WatchFace::create()
     lv_obj_set_style_pad_all(_screen, 0, 0);
     lv_obj_add_flag(_screen, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(_screen, screenEventThunk, LV_EVENT_LONG_PRESSED, this);
+    // Short taps on the background only - LVGL delivers CLICKED to the
+    // screen object itself just for presses that miss every child, so the
+    // Mesh/Meshtastic/Recon buttons and the GPS/THREATS labels are
+    // unaffected. LONG_PRESSED above still opens Settings; the two gestures
+    // don't overlap.
+    lv_obj_add_event_cb(_screen, backgroundTapThunk, LV_EVENT_CLICKED, this);
 
     // Physical Ultra display: 410 x 502 portrait.
     _owl.create(_screen, 45, 45, 320, 320);
@@ -342,4 +348,20 @@ void WatchFace::threatsEventThunk(lv_event_t *event)
     }
 
     self->_threatsRequestedCallback(self->_threatsRequestedUserData);
+}
+
+void WatchFace::setBackgroundTapCallback(BackgroundTapCallback callback, void *userData)
+{
+    _backgroundTapCallback = callback;
+    _backgroundTapUserData = userData;
+}
+
+void WatchFace::backgroundTapThunk(lv_event_t *event)
+{
+    auto *self = static_cast<WatchFace *>(lv_event_get_user_data(event));
+    if (self == nullptr || self->_backgroundTapCallback == nullptr) {
+        return;
+    }
+
+    self->_backgroundTapCallback(self->_backgroundTapUserData);
 }
