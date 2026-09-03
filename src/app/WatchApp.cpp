@@ -121,6 +121,12 @@ void WatchApp::refreshState()
 {
     _clock.update(_state);
     _battery.update(_state);
+    // Meshtastic broadcasts our position and battery on its own schedule;
+    // it just needs to be told what they currently are.
+    _meshtastic.setOwnPosition(
+        _state.gpsFix, _state.latitude, _state.longitude,
+        _state.gpsAltitudeValid ? static_cast<int32_t>(_state.altitudeFt / 3.280839895f) : 0);
+    _meshtastic.setOwnBattery(_state.batteryPercent);
     _face.render(_state, _settings, _recon.status());
     _gpsScreen.render(_state, _settings);
     _mappingScreen.render(_state, _settings);
