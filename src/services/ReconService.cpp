@@ -29,17 +29,30 @@ constexpr uint32_t kBleScanMs = 1800;
 constexpr ReconDetector kTrackerMembers[] = {
     ReconDetector::AirTag, ReconDetector::Tile, ReconDetector::SamsungTag,
     ReconDetector::GoogleTag};
-constexpr ReconDetector kCounterSurveilMembers[] = {ReconDetector::Flock, ReconDetector::Meta};
+constexpr ReconDetector kCounterSurveilMembers[] = {
+    ReconDetector::Flock, ReconDetector::Axon, ReconDetector::Meta};
 constexpr ReconDetector kCounterIntrusionMembers[] = {
     ReconDetector::Deauth, ReconDetector::Pwnagotchi, ReconDetector::MultiSSID,
     ReconDetector::Pineapple, ReconDetector::Flipper};
 
+// Which radios a single detector can be found on. Deliberately two
+// independent predicates rather than one either/or: Flock is genuinely
+// both - a BLE manufacturer/OUI match AND a Wi-Fi beacon BSSID match - and
+// deriving Wi-Fi as "not BLE" would have silently disabled its beacon path
+// whenever FLOCK was selected on its own.
 bool isBleDetector(ReconDetector d)
 {
     return d == ReconDetector::Flock || d == ReconDetector::AirTag ||
            d == ReconDetector::Flipper || d == ReconDetector::Meta ||
            d == ReconDetector::Tile || d == ReconDetector::SamsungTag ||
            d == ReconDetector::GoogleTag;
+}
+
+bool isWifiDetector(ReconDetector d)
+{
+    return d == ReconDetector::Deauth || d == ReconDetector::Pwnagotchi ||
+           d == ReconDetector::MultiSSID || d == ReconDetector::Pineapple ||
+           d == ReconDetector::Flock || d == ReconDetector::Axon;
 }
 
 // ---- BLE signature tables ----------------------------------------------
@@ -149,14 +162,111 @@ bool isPineappleOui(const uint8_t *mac, bool openNetwork)
     }
 }
 
-bool isFlockOui(const uint8_t *mac)
+struct OuiSignature {
+    uint8_t oui[3];
+    ReconDetector detector;
+    SignalConfidence confidence;
+    const char *label;
+};
+
+// Flock: LayerTime's original 8 prefixes plus SquachWatch-CYD's set, which
+// were COMPLETELY DISJOINT from ours - zero overlap across 8 and 29.
+//
+// The split matters more than the merge. Over half of his entries are
+// generic Espressif MA-L blocks, and his own source labels them that way
+// (Flock-ESP32 / Flock-ESP-S3 / Flock-ESP-C6) even though his docs grade
+// the whole set "High confidence". Those match any ESP32 dev board, ESP
+// smart plug or hobby project in range - including, in principle, this
+// watch. They are kept because coverage is coverage, but graded Low, which
+// means they log without ever raising an alert (see addDetection).
+//
+// Deliberately NOT included: 82:6B:F2, which SquachWatch lists as
+// "Flock-DeFlk". Its first octet has the locally-administered bit set
+// (0x82 = 1000 0010), so it is a randomised address someone observed once,
+// not a registered vendor prefix at all.
+constexpr OuiSignature kOuiSignatures[] = {
+    // --- Flock, registered prefixes (LayerTime originals) ---
+    {{0x58,0x8E,0x81}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0xEC,0x1B,0xBD}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x90,0x35,0xEA}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x04,0x0D,0x84}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0xF0,0x82,0xC0}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x1C,0x34,0xF1}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x38,0x5B,0x44}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x94,0x34,0x69}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    // --- Flock, registered prefixes (from SquachWatch-CYD) ---
+    {{0xB4,0x1E,0x52}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x24,0xB2,0xB9}, ReconDetector::Flock, SignalConfidence::High, "Flock Liteon"},
+    {{0xD0,0x39,0x57}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x00,0xF4,0x8D}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x14,0x5A,0xFC}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x80,0x30,0x49}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0xE0,0x0A,0xF6}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x70,0xC9,0x4E}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x3C,0x91,0x80}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0xD8,0xF3,0xBC}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0xB8,0x35,0x32}, ReconDetector::Flock, SignalConfidence::High, "Flock"},
+    {{0x00,0xA0,0xD8}, ReconDetector::Flock, SignalConfidence::High, "Flock Sierra"},
+    // --- Axon / Taser body cameras ---
+    {{0x00,0x25,0xDF}, ReconDetector::Axon, SignalConfidence::High, "Axon (Taser)"},
+    {{0xE4,0x05,0x40}, ReconDetector::Axon, SignalConfidence::High, "Axon body cam"},
+    {{0x28,0x24,0xFF}, ReconDetector::Axon, SignalConfidence::High, "Axon Signal"},
+    // --- Flock, generic Espressif blocks: LOW, log-only, no alert ---
+    {{0x24,0x0A,0xC4}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0x30,0xAE,0xA4}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0x24,0x6F,0x28}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0xCC,0x50,0xE3}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0xDC,0x54,0x75}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0xE8,0x9F,0x6D}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0x8C,0xAA,0xB5}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP-S3)"},
+    {{0x34,0x85,0x18}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP-S3)"},
+    {{0xD4,0xAD,0xFC}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0xAC,0x67,0xB2}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0x84,0xF3,0xEB}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP-S3)"},
+    {{0xB4,0xE6,0x2D}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0xCC,0xDB,0xA7}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0x94,0xB9,0x7E}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP32)"},
+    {{0xA4,0xCF,0x12}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP-S2)"},
+    {{0xC0,0x49,0xEF}, ReconDetector::Flock, SignalConfidence::Low, "Flock? (ESP-C6)"},
+};
+
+const OuiSignature *lookupOui(const uint8_t *mac)
 {
-    static const uint8_t ouis[][3] = {
-        {0x58,0x8E,0x81},{0xEC,0x1B,0xBD},{0x90,0x35,0xEA},{0x04,0x0D,0x84},
-        {0xF0,0x82,0xC0},{0x1C,0x34,0xF1},{0x38,0x5B,0x44},{0x94,0x34,0x69}
-    };
-    for (const auto &oui : ouis) if (memcmp(mac, oui, 3) == 0) return true;
-    return false;
+    if (mac == nullptr) return nullptr;
+    for (const OuiSignature &sig : kOuiSignatures)
+        if (memcmp(mac, sig.oui, 3) == 0) return &sig;
+    return nullptr;
+}
+
+// Axon body cameras advertise these SSID prefixes while in pairing mode.
+// Source: Axon's own public device-management documentation.
+struct SsidPrefixSignature {
+    const char *prefix;
+    ReconDetector detector;
+    SignalConfidence confidence;
+};
+
+constexpr SsidPrefixSignature kSsidPrefixes[] = {
+    {"AB2-", ReconDetector::Axon, SignalConfidence::High},
+    {"AB3-", ReconDetector::Axon, SignalConfidence::High},
+    {"AB4-", ReconDetector::Axon, SignalConfidence::High},
+    {"AXON-", ReconDetector::Axon, SignalConfidence::High},
+};
+
+// The SSID in a beacon is not null-terminated, so this compares against the
+// raw bytes and length rather than reaching for strncasecmp.
+bool ssidHasPrefix(const uint8_t *ssid, uint8_t ssidLength, const char *prefix)
+{
+    const size_t n = strlen(prefix);
+    if (ssidLength < n) return false;
+    for (size_t i = 0; i < n; ++i) {
+        char a = static_cast<char>(ssid[i]);
+        char b = prefix[i];
+        if (a >= 'a' && a <= 'z') a = static_cast<char>(a - 32);
+        if (b >= 'a' && b <= 'z') b = static_cast<char>(b - 32);
+        if (a != b) return false;
+    }
+    return true;
 }
 
 // The single ReconService instance currently owning an in-flight async BLE
@@ -193,6 +303,7 @@ const char *ReconService::detectorName(ReconDetector detector)
     case ReconDetector::AirTag: return "AIRTAG";
     case ReconDetector::Flipper: return "FLIPPER";
     case ReconDetector::Meta: return "META";
+    case ReconDetector::Axon: return "AXON";
     case ReconDetector::Tile: return "TILE";
     case ReconDetector::SamsungTag: return "SMARTTAG";
     case ReconDetector::GoogleTag: return "GOOGLE TAG";
@@ -254,9 +365,9 @@ bool ReconService::needsWifi(ReconDetector detector)
     if (detector == ReconDetector::All) return true;
     size_t count = 0;
     const ReconDetector *members = groupMembers(detector, count);
-    if (members == nullptr) return !isBleDetector(detector);
+    if (members == nullptr) return isWifiDetector(detector);
     for (size_t i = 0; i < count; ++i)
-        if (!isBleDetector(members[i])) return true;
+        if (isWifiDetector(members[i])) return true;
     return false;
 }
 
@@ -267,6 +378,15 @@ bool ReconService::bleScanWants(ReconDetector scanDetector, ReconDetector target
         return target == ReconDetector::Flipper || target == ReconDetector::Meta;
     if (scanDetector == target) return true;
     return groupContains(scanDetector, target);
+}
+
+const char *ReconService::confidenceLabel(SignalConfidence confidence)
+{
+    switch (confidence) {
+    case SignalConfidence::High: return "HIGH";
+    case SignalConfidence::Medium: return "MED";
+    default: return "LOW";
+    }
 }
 
 void ReconService::begin()
@@ -521,7 +641,7 @@ bool ReconService::wants(ReconDetector detector) const
 }
 
 void ReconService::addDetection(ReconDetector detector, const char *detail, const char *address,
-                                int8_t rssi, uint8_t channel)
+                                int8_t rssi, SignalConfidence confidence, uint8_t channel)
 {
     const char *category = detectorName(detector);
     for (size_t i = 0; i < _status.detectionCount; ++i) {
@@ -530,6 +650,9 @@ void ReconService::addDetection(ReconDetector detector, const char *detail, cons
             existing.rssi = rssi;
             existing.channel = channel;
             existing.lastSeenMs = millis();
+            // Keep the strongest grade this device has ever matched at: a
+            // Low-confidence hit later shouldn't downgrade a High one.
+            if (confidence > existing.confidence) existing.confidence = confidence;
             ++existing.encounterCount;
             return;
         }
@@ -549,11 +672,17 @@ void ReconService::addDetection(ReconDetector detector, const char *detail, cons
     snprintf(entry.address, sizeof(entry.address), "%s", address ? address : "");
     entry.rssi = rssi;
     entry.channel = channel;
+    entry.confidence = confidence;
     entry.lastSeenMs = millis();
     ++_status.eventSerial;
     // Sleep mode still logs and counts the detection above - it just never
     // arms the popup/vibration alert for it (see setSleepModeEnabled()).
-    if (!_sleepModeEnabled) {
+    // Low-confidence matches are logged and counted like anything else but
+    // deliberately never raise the alert: the generic-Espressif Flock
+    // prefixes below would otherwise buzz the wrist for every ESP32 in
+    // range, which is how a detector gets ignored. Same mechanism sleep
+    // mode uses - nothing is missed, only the interruption is suppressed.
+    if (!_sleepModeEnabled && confidence != SignalConfidence::Low) {
         _status.alertPending = true;
     }
 
@@ -589,9 +718,12 @@ void ReconService::onPromiscuousPacket(void *buf, int type)
     // and it returns true only on a genuine burst.
     if (wants(ReconDetector::Deauth) && frameType == 0 && (subtype == 0x0C || subtype == 0x0A) &&
         noteDeauthFrame(packet->payload + 10, millis()))
+        // Medium: a real burst pattern, but the threshold and window are
+        // judgement calls rather than a signature match.
         addDetection(ReconDetector::Deauth,
                      subtype == 0x0C ? "Deauth flood" : "Disassoc flood",
-                     mac, packet->rx_ctrl.rssi, packet->rx_ctrl.channel);
+                     mac, packet->rx_ctrl.rssi, SignalConfidence::Medium,
+                     packet->rx_ctrl.channel);
     if (frameType == 0 && subtype == 0x08)
         inspectBeacon(packet->payload, length, packet->rx_ctrl.rssi, packet->rx_ctrl.channel);
 }
@@ -604,7 +736,9 @@ void ReconService::inspectBeacon(const uint8_t *payload, uint16_t length, int8_t
     formatMac(mac, sizeof(mac), bssid);
     static const uint8_t pwnMac[6] = {0xDE,0xAD,0xBE,0xEF,0xDE,0xAD};
     if (wants(ReconDetector::Pwnagotchi) && memcmp(bssid, pwnMac, 6) == 0)
-        addDetection(ReconDetector::Pwnagotchi, "Pwnagotchi beacon", mac, rssi, channel);
+        // High: an exact match on a fixed, published BSSID.
+        addDetection(ReconDetector::Pwnagotchi, "Pwnagotchi beacon", mac, rssi,
+                     SignalConfidence::High, channel);
 
     // The SSID is the first information element after the 24-byte header and
     // the 12 bytes of fixed parameters: tag ID at [36], length at [37], data
@@ -614,6 +748,27 @@ void ReconService::inspectBeacon(const uint8_t *payload, uint16_t length, int8_t
     const bool haveSsid = payload[36] == 0x00 && payload[37] <= 32 &&
                           38U + payload[37] <= length;
     const uint8_t ssidLength = haveSsid ? payload[37] : 0;
+
+    // Vendor OUI on the beacon's BSSID. The Flock and Axon prefixes are
+    // Wi-Fi MAC blocks, so this is their natural home - the BLE-address
+    // check in handleBleAdvertisement is the secondary path, not the main one.
+    const OuiSignature *ouiMatch = lookupOui(bssid);
+    if (ouiMatch != nullptr && wants(ouiMatch->detector))
+        addDetection(ouiMatch->detector, ouiMatch->label, mac, rssi,
+                     ouiMatch->confidence, channel);
+
+    if (haveSsid) {
+        for (const SsidPrefixSignature &sig : kSsidPrefixes) {
+            if (!ssidHasPrefix(payload + 38, ssidLength, sig.prefix)) continue;
+            if (!wants(sig.detector)) break;
+            char detail[40];
+            const int copied = ssidLength < 31 ? ssidLength : 31;
+            snprintf(detail, sizeof(detail), "SSID %.*s", copied,
+                     reinterpret_cast<const char *>(payload + 38));
+            addDetection(sig.detector, detail, mac, rssi, sig.confidence, channel);
+            break;
+        }
+    }
     if (wants(ReconDetector::MultiSSID) && haveSsid) {
         MultiSsidTracker *tracker = nullptr;
         for (size_t i = 0; i < _multiSsidCount; ++i)
@@ -628,13 +783,19 @@ void ReconService::inspectBeacon(const uint8_t *payload, uint16_t length, int8_t
             for (uint8_t i = 0; i < tracker->count; ++i) if (tracker->hashes[i] == hash) known = true;
             if (!known && tracker->count < 4) tracker->hashes[tracker->count++] = hash;
             if (tracker->count >= 2)
-                addDetection(ReconDetector::MultiSSID, "Multiple SSIDs from BSSID", mac, rssi, channel);
+                // Medium: some legitimate APs also serve several SSIDs from
+                // one BSSID, so this is a pattern rather than proof.
+                addDetection(ReconDetector::MultiSSID, "Multiple SSIDs from BSSID", mac, rssi,
+                             SignalConfidence::Medium, channel);
         }
     }
     if (wants(ReconDetector::Pineapple)) {
         const uint16_t capabilities = static_cast<uint16_t>(payload[34] | (payload[35] << 8));
         if (isPineappleOui(bssid, (capabilities & 0x10) == 0))
-            addDetection(ReconDetector::Pineapple, "Suspicious Pineapple OUI", mac, rssi, channel);
+            // Medium: an OUI list built from older Hak5 hardware, and some
+            // of those prefixes are shared with legitimate vendors.
+            addDetection(ReconDetector::Pineapple, "Suspicious Pineapple OUI", mac, rssi,
+                         SignalConfidence::Medium, channel);
     }
 }
 
@@ -686,19 +847,24 @@ void ReconService::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
 
         if (company == kAppleCompanyId && bleScanWants(scan, ReconDetector::AirTag) &&
             isFindMyBeacon(bytes, mfg.size())) {
-            addDetection(ReconDetector::AirTag, "Find My tracker beacon", address.c_str(), rssi);
+            // High: Apple company ID plus a Find My offline-finding subtype.
+            addDetection(ReconDetector::AirTag, "Find My tracker beacon", address.c_str(),
+                         rssi, SignalConfidence::High);
         }
         if (company == kXuntongCompanyId && bleScanWants(scan, ReconDetector::Flock) &&
             isFlockName(name)) {
+            // High: the XUNTONG company ID alone would be weak, but it is
+            // gated on a Flock-shaped device name.
             addDetection(ReconDetector::Flock, label ? label : "Flock BLE signature",
-                         address.c_str(), rssi);
+                         address.c_str(), rssi, SignalConfidence::High);
         }
     }
 
-    // Flock also matches on its own OUI, independent of any advertised data.
-    if (bleScanWants(scan, ReconDetector::Flock) && isFlockOui(mac)) {
-        addDetection(ReconDetector::Flock, label ? label : "Flock BLE signature",
-                     address.c_str(), rssi);
+    // Vendor OUI on the BLE address, independent of any advertised data.
+    const OuiSignature *ouiMatch = lookupOui(mac);
+    if (ouiMatch != nullptr && bleScanWants(scan, ouiMatch->detector)) {
+        addDetection(ouiMatch->detector, label ? label : ouiMatch->label,
+                     address.c_str(), rssi, ouiMatch->confidence);
     }
 
     // ---- 16-bit service UUIDs ----
@@ -711,7 +877,8 @@ void ReconService::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
         for (const BleUuidSignature &sig : kBleUuidSignatures) {
             if (!uuid.equals(NimBLEUUID(sig.uuid))) continue;
             if (!bleScanWants(scan, sig.detector)) break;
-            addDetection(sig.detector, label ? label : sig.label, address.c_str(), rssi);
+            addDetection(sig.detector, label ? label : sig.label, address.c_str(), rssi,
+                         sig.confidence);
             break;
         }
     }

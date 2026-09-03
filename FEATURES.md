@@ -5,11 +5,11 @@ Current-state feature documentation for the LayerTime firmware, targeting the Li
 ## Watch face
 
 - Time, date, and battery percentage.
-- Large, colored ALT / COG / THREATS / GPS data blocks, Montserrat 18.
+- Large, colored ALT / TRAVEL / THREATS / GPS data blocks, Montserrat 18.
 - **THREATS** (bottom-left, green/red): status text shows what's actively scanning right now - `ALL`, a single detector name (e.g. `DEAUTH`) when manually selected, `EARLY WARNING` when only the background sweep is running, or `OFF` when nothing is scanning at all. Color is separate from that text: red as long as the persistent threat log (see Recon below) holds anything, green when it's empty - so a threat found earlier stays flagged red even after monitoring stops, until the user clears the log. Tap it to jump straight into Recon's All-detectors monitor, skipping the detector-picker menu.
 - No seconds or AM/PM shown; the 12/24-hour setting still controls the hour format.
 - Long-press anywhere on the face to open **Settings**.
-- **Double-tap the watch face** (two taps inside 350 ms) to put the display to sleep immediately instead of waiting out the 15-second timeout. Only the face background counts: taps on the MESHCORE / MTASTIC / RECON buttons or the GPS / THREATS blocks still do their normal job, so the gesture can't fire while working a menu or the Mesh keyboard. The owl and the time/date/ALT/COG labels aren't touch targets, so taps pass through them to the background. A tap anywhere wakes the display again, and that waking tap is never counted as the first half of a new pair.
+- **Double-tap the watch face** (two taps inside 350 ms) to put the display to sleep immediately instead of waiting out the 15-second timeout. Only the face background counts: taps on the MESHCORE / MTASTIC / RECON buttons or the GPS / THREATS blocks still do their normal job, so the gesture can't fire while working a menu or the Mesh keyboard. The owl and the time/date/ALT/TRAVEL labels aren't touch targets, so taps pass through them to the background. A tap anywhere wakes the display again, and that waking tap is never counted as the first half of a new pair.
 - Tap the green GPS block to open the **GPS** page.
 - Quick-launch buttons along the bottom: **MESHCORE**, **MTASTIC** (Meshtastic), and **RECON**.
 - Footer reads `LAYERTIME | T-WATCH ULTRA`.
@@ -21,7 +21,7 @@ Current-state feature documentation for the LayerTime firmware, targeting the Li
 - Live latitude/longitude (6 decimal places), altitude in the selected unit system, satellite count, HDOP, speed, and course over ground when moving.
 - In-page WGS84-to-UTM conversion (zone/easting/northing), no map engine or SD dependency.
 - GPS can be toggled on/off in Settings; the Ultra's GNSS rail is powered down when off.
-- HDG is shown as GPS course-over-ground (COG), not a true compass heading - the Ultra's BHI260AP is a 6-axis IMU, not a magnetometer, so there's no stationary heading source on this board. COG only reflects direction of travel while moving (>0.5 mph); it reads blank while stationary, since course-over-ground is undefined at zero speed.
+- **DIRECTION OF TRAVEL** (shortened to TRAVEL on the watch face) is GPS course-over-ground, not a compass heading - the Ultra's BHI260AP is a 6-axis IMU with no magnetometer, so there is no stationary heading source on this board. It shows the direction you are actually moving, which is not necessarily the way the watch is pointed, and only while moving (>0.5 mph); it reads blank while stationary, since course over ground is undefined at zero speed. The label deliberately avoids the COG abbreviation, which is marine/aviation jargon.
 - Magnetic declination tool (DECLINATION button, new sub-page): computes the local declination fully offline using NOAA's World Magnetic Model (WMM2025, coefficients embedded in firmware, valid 2025.0-2030.0). No network/API call is made - the spherical-harmonic math runs on-device from a lat/lon and the RTC date. Location defaults to the live GPS fix; "ENTER LOCATION" lets the user override with a manually typed lat/lon (e.g. for planning a route to a location without a fix yet). The declination result also feeds a bearing converter sub-page ("CONVERT A COMPASS BEARING") that turns a magnetic (compass) bearing into a true (map) bearing and vice versa - useful for map-and-compass navigation. The WMM computation only runs while the declination page is actually visible, not on every render tick, to avoid unnecessary CPU work.
 
 ## Recon

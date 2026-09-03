@@ -285,14 +285,16 @@ void ReconScreen::renderMonitor()
     std::string text = s.detectionCount ? "" : "No activity detected.";
     for (size_t i = 0; i < s.detectionCount; ++i) {
         const ReconDetection &d = s.detections[i];
-        char line[170];
+        char line[190];
+        const char *conf = ReconService::confidenceLabel(d.confidence);
         if (d.channel)
-            snprintf(line, sizeof(line), "%s\n%s\n%s  %d dBm  CH %u  x%lu\n\n",
-                     d.category, d.detail, d.address, static_cast<int>(d.rssi), static_cast<unsigned>(d.channel),
+            snprintf(line, sizeof(line), "%s  [%s]\n%s\n%s  %d dBm  CH %u  x%lu\n\n",
+                     d.category, conf, d.detail, d.address, static_cast<int>(d.rssi),
+                     static_cast<unsigned>(d.channel),
                      static_cast<unsigned long>(d.encounterCount));
         else
-            snprintf(line, sizeof(line), "%s\n%s\n%s  %d dBm  x%lu\n\n",
-                     d.category, d.detail, d.address, static_cast<int>(d.rssi),
+            snprintf(line, sizeof(line), "%s  [%s]\n%s\n%s  %d dBm  x%lu\n\n",
+                     d.category, conf, d.detail, d.address, static_cast<int>(d.rssi),
                      static_cast<unsigned long>(d.encounterCount));
         text += line;
     }
@@ -304,8 +306,9 @@ void ReconScreen::renderAlert()
     const ReconStatus &s = _service->status();
     if (!s.detectionCount) return;
     const ReconDetection &d = s.detections[s.detectionCount - 1];
-    lv_label_set_text_fmt(_alertText, "%s\n%s\n%s\n%d dBm",
-                          d.category, d.detail, d.address, static_cast<int>(d.rssi));
+    lv_label_set_text_fmt(_alertText, "%s  [%s]\n%s\n%s\n%d dBm",
+                          d.category, ReconService::confidenceLabel(d.confidence),
+                          d.detail, d.address, static_cast<int>(d.rssi));
     _renderedEventSerial = s.eventSerial;
     lv_obj_clear_flag(_alert, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(_alert);

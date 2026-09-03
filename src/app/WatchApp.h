@@ -13,6 +13,7 @@
 #include "../services/SdCardService.h"
 #include "../services/SettingsService.h"
 #include "../ui/GpsScreen.h"
+#include "../ui/MappingScreen.h"
 #include "../ui/MeshScreen.h"
 #include "../ui/MeshtasticScreen.h"
 #include "../ui/ReconScreen.h"
@@ -35,6 +36,8 @@ private:
     static void reconRequestedThunk(void *userData);
     static void reconBackThunk(void *userData);
     static void threatsRequestedThunk(void *userData);
+    static void mappingRequestedThunk(void *userData);
+    static void mappingBackThunk(void *userData);
     static void touchPressedThunk(lv_event_t *event);
     static void settingsBackThunk(void *userData);
     static void settingsChangedThunk(void *userData);
@@ -55,6 +58,8 @@ private:
     void closeMesh();
     void openMeshtastic();
     void closeMeshtastic();
+    void openMapping();
+    void closeMapping();
     void openRecon();
     void openThreatsRecon();
     void closeRecon();
@@ -78,6 +83,7 @@ private:
 
     WatchFace _face;
     GpsScreen _gpsScreen;
+    MappingScreen _mappingScreen;
     MeshScreen _meshScreen;
     MeshtasticScreen _meshtasticScreen;
     ReconScreen _reconScreen;
@@ -95,6 +101,10 @@ private:
     // itself just reset - without it tick() would re-light the screen on the
     // very next pass.
     uint32_t _lastFaceTapMs = 0;
+    // Both the indev hook and the face-screen hook feed the same handler, so
+    // one physical press can arrive twice. Without this a single tap would
+    // pair with its own duplicate and sleep the watch instantly.
+    uint32_t _lastPressHandledMs = 0;
+    uint32_t _debugPressCount = 0;
     bool _forcedSleep = false;
-    uint32_t _forcedSleepAtMs = 0;
 };

@@ -32,6 +32,9 @@ public:
 
 private:
     static void backThunk(lv_event_t *event);
+    // Fixed BACK in the upper left, outside the scrolling pages - matches
+    // Recon's, and means leaving Settings never requires scrolling to find it.
+    static void topBackThunk(lv_event_t *event);
     static void dateTimeThunk(lv_event_t *event);
     static void brightnessThunk(lv_event_t *event);
     static void clockModeThunk(lv_event_t *event);

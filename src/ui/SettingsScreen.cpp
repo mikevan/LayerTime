@@ -56,6 +56,26 @@ void SettingsScreen::create(
     buildDateTimePage();
     buildSdPage();
     buildMeshtasticNamePage();
+
+    // Created last, and parented to _screen rather than to any page, so it
+    // stays put while the pages scroll underneath and always draws on top.
+    // Opaque background for the same reason - scrolled rows must not show
+    // through it. Geometry and colours deliberately match Recon's BACK.
+    lv_obj_t *back = lv_button_create(_screen);
+    lv_obj_set_size(back, 82, 40);
+    lv_obj_set_pos(back, 12, 12);
+    lv_obj_set_style_bg_color(back, Theme::background(), 0);
+    lv_obj_set_style_bg_opa(back, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(back, Theme::gold(), 0);
+    lv_obj_set_style_border_width(back, 2, 0);
+    lv_obj_set_style_radius(back, 8, 0);
+    lv_obj_add_event_cb(back, topBackThunk, LV_EVENT_CLICKED, this);
+    lv_obj_t *backLabel = lv_label_create(back);
+    lv_label_set_text(backLabel, "BACK");
+    lv_obj_set_style_text_color(backLabel, Theme::gold(), 0);
+    lv_obj_set_style_text_font(backLabel, &lv_font_montserrat_20, 0);
+    lv_obj_center(backLabel);
+
     showMainPage();
 }
 
@@ -191,7 +211,6 @@ void SettingsScreen::buildMainPage()
 
     makeButton(_mainPage, "SD CARD", 25, 798, 360, 42, sdCardThunk);
 
-    makeButton(_mainPage, "BACK", 25, 846, 360, 32, backThunk);
 }
 
 void SettingsScreen::buildDateTimePage()
@@ -450,6 +469,19 @@ void SettingsScreen::normalizeDate()
     } else if (_editDay > maxDay) {
         _editDay = 1;
     }
+}
+
+void SettingsScreen::topBackThunk(lv_event_t *event)
+{
+    auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
+    if (self == nullptr) return;
+    // Derived from what's visible rather than tracked in a flag, so the two
+    // can never disagree: main page hidden means a sub-page is open.
+    if (lv_obj_has_flag(self->_mainPage, LV_OBJ_FLAG_HIDDEN)) {
+        self->showMainPage();
+        return;
+    }
+    if (self->_backCallback != nullptr) self->_backCallback(self->_userData);
 }
 
 void SettingsScreen::backThunk(lv_event_t *event)
