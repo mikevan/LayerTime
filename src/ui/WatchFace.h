@@ -15,11 +15,6 @@ public:
     using MeshtasticRequestedCallback = void (*)(void *userData);
     using ReconRequestedCallback = void (*)(void *userData);
     using ThreatsRequestedCallback = void (*)(void *userData);
-    // Fires on a short tap that lands on the watch-face background itself,
-    // not on any of its buttons or data labels (those consume their own
-    // clicks). WatchApp uses it for double-tap-to-sleep; keeping the timing
-    // there rather than here means the face stays a pure view.
-    using BackgroundTapCallback = void (*)(void *userData);
 
     void create();
     void render(const WatchState &state, const AppSettings &settings, const ReconStatus &reconStatus);
@@ -29,7 +24,6 @@ public:
     void setMeshtasticRequestedCallback(MeshtasticRequestedCallback callback, void *userData);
     void setReconRequestedCallback(ReconRequestedCallback callback, void *userData);
     void setThreatsRequestedCallback(ThreatsRequestedCallback callback, void *userData);
-    void setBackgroundTapCallback(BackgroundTapCallback callback, void *userData);
     lv_obj_t *screen() const { return _screen; }
 
 private:
@@ -39,7 +33,6 @@ private:
     static void meshtasticEventThunk(lv_event_t *event);
     static void reconEventThunk(lv_event_t *event);
     static void threatsEventThunk(lv_event_t *event);
-    static void backgroundTapThunk(lv_event_t *event);
 
     OwlLogo _owl;
     lv_obj_t *_screen = nullptr;
@@ -68,8 +61,6 @@ private:
     void *_reconRequestedUserData = nullptr;
     ThreatsRequestedCallback _threatsRequestedCallback = nullptr;
     void *_threatsRequestedUserData = nullptr;
-    BackgroundTapCallback _backgroundTapCallback = nullptr;
-    void *_backgroundTapUserData = nullptr;
 
     lv_obj_t *createDataLabel(
         lv_obj_t *parent,

@@ -56,12 +56,13 @@ void WatchFace::create()
     lv_obj_set_style_pad_all(_screen, 0, 0);
     lv_obj_add_flag(_screen, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(_screen, screenEventThunk, LV_EVENT_LONG_PRESSED, this);
-    // Short taps on the background only - LVGL delivers CLICKED to the
-    // screen object itself just for presses that miss every child, so the
-    // Mesh/Meshtastic/Recon buttons and the GPS/THREATS labels are
-    // unaffected. LONG_PRESSED above still opens Settings; the two gestures
-    // don't overlap.
-    lv_obj_add_event_cb(_screen, backgroundTapThunk, LV_EVENT_CLICKED, this);
+    // Nothing on this face scrolls - the lowest element is the footer at
+    // y=466 on a 502px panel - but LVGL screens are scrollable by default,
+    // and a scrollable object makes the indev cancel LV_EVENT_CLICKED the
+    // moment it decides a press is a drag. That silently ate the
+    // double-tap gesture (long-press survived, because a press held still
+    // never trips the scroll decision). Turn it off.
+    lv_obj_remove_flag(_screen, LV_OBJ_FLAG_SCROLLABLE);
 
     // Physical Ultra display: 410 x 502 portrait.
     _owl.create(_screen, 45, 45, 320, 320);
@@ -226,9 +227,9 @@ void WatchFace::render(const WatchState &state, const AppSettings &settings, con
     // background sweep is running, or "OFF" when nothing is scanning at all.
     const char *reconStatusText;
     if (reconStatus.monitoring) {
-        reconStatusText = ReconService::detectorName(reconStatus.detector);
+        reconStatusText = ReconService::detectorShortName(reconStatus.detector);
     } else if (reconStatus.earlyWarningEnabled) {
-        reconStatusText = ReconService::detectorName(ReconDetector::EarlyWarning);
+        reconStatusText = ReconService::detectorShortName(ReconDetector::EarlyWarning);
     } else {
         reconStatusText = "OFF";
     }
@@ -350,18 +351,3 @@ void WatchFace::threatsEventThunk(lv_event_t *event)
     self->_threatsRequestedCallback(self->_threatsRequestedUserData);
 }
 
-void WatchFace::setBackgroundTapCallback(BackgroundTapCallback callback, void *userData)
-{
-    _backgroundTapCallback = callback;
-    _backgroundTapUserData = userData;
-}
-
-void WatchFace::backgroundTapThunk(lv_event_t *event)
-{
-    auto *self = static_cast<WatchFace *>(lv_event_get_user_data(event));
-    if (self == nullptr || self->_backgroundTapCallback == nullptr) {
-        return;
-    }
-
-    self->_backgroundTapCallback(self->_backgroundTapUserData);
-}

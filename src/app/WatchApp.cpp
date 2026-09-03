@@ -4,6 +4,11 @@
 #include <LilyGoLib.h>
 #include <LV_Helper.h>
 
+// Prints one line per qualifying press so a still-broken gesture can be
+// diagnosed from the serial monitor instead of guessed at. Comment out
+// once the gesture is confirmed working.
+#define LAYERTIME_DEBUG_DOUBLETAP
+
 namespace {
 constexpr uint32_t kDisplayTimeoutMs = 15000;
 // Two background taps closer together than this put the display to sleep.
@@ -55,7 +60,17 @@ void WatchApp::begin()
     _face.setMeshtasticRequestedCallback(meshtasticRequestedThunk, this);
     _face.setReconRequestedCallback(reconRequestedThunk, this);
     _face.setThreatsRequestedCallback(threatsRequestedThunk, this);
-    _face.setBackgroundTapCallback(faceBackgroundTapThunk, this);
+    // Hook the touch device itself rather than the watch-face screen object.
+    // LV_EVENT_PRESSED fires before the indev decides whether a press is a
+    // drag, so unlike LV_EVENT_CLICKED it cannot be cancelled by scrolling,
+    // and it survives lv_screen_load() swapping screens underneath it.
+    // Scope is re-established explicitly in handleFaceBackgroundTap().
+    for (lv_indev_t *indev = lv_indev_get_next(nullptr); indev != nullptr;
+         indev = lv_indev_get_next(indev)) {
+        if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER) {
+            lv_indev_add_event_cb(indev, touchPressedThunk, LV_EVENT_PRESSED, this);
+        }
+    }
 
     // Create every secondary screen before the first render.
     _gpsScreen.create(gpsBackThunk, this);
@@ -332,9 +347,9 @@ void WatchApp::logReconDetection(const ReconDetection &detection)
         row);
 }
 
-void WatchApp::faceBackgroundTapThunk(void *userData)
+void WatchApp::touchPressedThunk(lv_event_t *event)
 {
-    auto *self = static_cast<WatchApp *>(userData);
+    auto *self = static_cast<WatchApp *>(lv_event_get_user_data(event));
     if (self != nullptr) {
         self->handleFaceBackgroundTap();
     }
@@ -342,6 +357,24 @@ void WatchApp::faceBackgroundTapThunk(void *userData)
 
 void WatchApp::handleFaceBackgroundTap()
 {
+    // This now fires for every touch anywhere, so the watch-face-background
+    // scope that used to come free from the screen-object callback has to be
+    // re-established here: right screen, and the press landed on the face
+    // itself rather than one of its buttons or the GPS/THREATS labels.
+    lv_obj_t *face = _face.screen();
+    if (face == nullptr || lv_screen_active() != face) return;
+    lv_obj_t *hit = lv_indev_get_active_obj();
+#ifdef LAYERTIME_DEBUG_DOUBLETAP
+    // Logged before the hit test rejects anything, so the serial trace
+    // distinguishes "guard rejected this press" from "no event at all".
+    Serial.printf("[dtap] hit=%p face=%p %s blanked=%d forced=%d gap=%ld\n",
+                  static_cast<void *>(hit), static_cast<void *>(face),
+                  (hit == nullptr || hit == face) ? "BG" : "child",
+                  static_cast<int>(displayBlanked), static_cast<int>(_forcedSleep),
+                  _lastFaceTapMs ? static_cast<long>(millis() - _lastFaceTapMs) : -1L);
+#endif
+    if (hit != nullptr && hit != face) return;
+
     const uint32_t now = millis();
 
     // A tap that arrives while the screen is already dark only ever wakes it.
