@@ -57,7 +57,10 @@ private:
     // Which group's sub-page is open (None = top level). Kept across a scan
     // so BACK out of the monitor returns to the group you drilled in from.
     ReconDetector _openGroup = ReconDetector::None;
-    // 4 top-level rows + 2 + 3 + 6 group rows = 15 today; sized for headroom.
-    ButtonContext _buttonContexts[16];
+    // 4 top-level rows + 5 (TRACKERS) + 3 (COUNTER-SURVEIL) + 6
+    // (COUNTER-INTRUSION) = 18 today; sized for headroom. addMenuButton()
+    // drops buttons past the end rather than overrunning, so if rows go
+    // missing from a sub-page this is the number to raise.
+    ButtonContext _buttonContexts[24];
     uint32_t _renderedEventSerial = 0;
 };

@@ -26,7 +26,9 @@ constexpr uint32_t kBleScanMs = 1800;
 // Group membership. Single source of truth for both the radio scheduling
 // below and the Recon menu's sub-pages - add a new detector here and it is
 // picked up by the sweep and the UI at once.
-constexpr ReconDetector kTrackerMembers[] = {ReconDetector::AirTag};
+constexpr ReconDetector kTrackerMembers[] = {
+    ReconDetector::AirTag, ReconDetector::Tile, ReconDetector::SamsungTag,
+    ReconDetector::GoogleTag};
 constexpr ReconDetector kCounterSurveilMembers[] = {ReconDetector::Flock, ReconDetector::Meta};
 constexpr ReconDetector kCounterIntrusionMembers[] = {
     ReconDetector::Deauth, ReconDetector::Pwnagotchi, ReconDetector::MultiSSID,
@@ -35,7 +37,84 @@ constexpr ReconDetector kCounterIntrusionMembers[] = {
 bool isBleDetector(ReconDetector d)
 {
     return d == ReconDetector::Flock || d == ReconDetector::AirTag ||
-           d == ReconDetector::Flipper || d == ReconDetector::Meta;
+           d == ReconDetector::Flipper || d == ReconDetector::Meta ||
+           d == ReconDetector::Tile || d == ReconDetector::SamsungTag ||
+           d == ReconDetector::GoogleTag;
+}
+
+// ---- BLE signature tables ----------------------------------------------
+// Matching is done against PARSED advertisement fields - the manufacturer
+// record's company ID, and the 16-bit service UUIDs - never by searching
+// the raw payload for byte pairs. A two-byte pattern scanned across a
+// 31-byte advertisement matches by coincidence often enough to make a
+// wrist alert useless, which is what the previous implementation did.
+
+constexpr uint16_t kAppleCompanyId = 0x004C;
+constexpr uint16_t kXuntongCompanyId = 0x09C8;  // Flock's BLE radio supplier
+
+// Apple Find My offline-finding subtypes: 0x12 near owner, 0x1E separated.
+// SquachWatch-CYD additionally matches 0x07 ("proximity pairing"), which
+// catches a tag earlier but also fires on AirPods and other Apple
+// accessories. Off here on purpose: this drives a buzz on the wrist, and a
+// detector that trips on the owner's own earbuds gets ignored. Flip to
+// true to trade precision for earlier warning.
+constexpr bool kMatchProximityPairing = false;
+
+struct BleUuidSignature {
+    uint16_t uuid;
+    ReconDetector detector;
+    const char *label;
+    SignalConfidence confidence;
+};
+
+constexpr BleUuidSignature kBleUuidSignatures[] = {
+    // Bluetooth SIG assigned, exclusive to one product line.
+    {0xFD5F, ReconDetector::Meta, "Meta Ray-Ban glasses", SignalConfidence::High},
+    {0xFEED, ReconDetector::Tile, "Tile tracker", SignalConfidence::High},
+    {0xFEEC, ReconDetector::Tile, "Tile tracker", SignalConfidence::High},
+    {0xFD5A, ReconDetector::SamsungTag, "Samsung SmartTag", SignalConfidence::High},
+    // Flipper Zero case colours. Carried over from the previous byte
+    // patterns {0x81,0x30}/{0x82,0x30}/{0x83,0x30}, read as little-endian
+    // 16-bit UUIDs. UNVERIFIED against hardware - if Flipper detection
+    // regresses, this reading is the first thing to re-check.
+    {0x3081, ReconDetector::Flipper, "Flipper Zero", SignalConfidence::Medium},
+    {0x3082, ReconDetector::Flipper, "Flipper Zero", SignalConfidence::Medium},
+    {0x3083, ReconDetector::Flipper, "Flipper Zero", SignalConfidence::Medium},
+    // 0xFEAA is Google's general Eddystone UUID - shared with retail and
+    // asset beacons that are not trackers, so a match means "Google
+    // beacon-class device", not "Find My Device tracker".
+    {0xFEAA, ReconDetector::GoogleTag, "Google Find My Device", SignalConfidence::Medium},
+    // Meta/Facebook service UUIDs carried over from the old byte patterns.
+    // Unsourced, hence Low - the three remaining old patterns ({0xAB,0x01},
+    // {0x8E,0x05}, {0x53,0x0D}) were dropped outright: two bytes each, no
+    // provenance, and short enough to match noise constantly.
+    {0xFEB7, ReconDetector::Meta, "Meta service", SignalConfidence::Low},
+    {0xFEB8, ReconDetector::Meta, "Meta service", SignalConfidence::Low},
+};
+
+bool isFindMyBeacon(const uint8_t *mfg, size_t length)
+{
+    if (mfg == nullptr || length < 3) return false;
+    const uint8_t subtype = mfg[2];
+    if (subtype == 0x12 || subtype == 0x1E) return true;
+    return kMatchProximityPairing && subtype == 0x07;
+}
+
+bool allDigits(const std::string &value)
+{
+    if (value.empty()) return false;
+    for (char c : value) if (c < '0' || c > '9') return false;
+    return true;
+}
+
+// Flock's BLE radio is a generic XUNTONG module, so the company ID alone is
+// not enough - it is gated on a plausible device name. Kept from the
+// previous implementation, which is stricter than SquachWatch's bare
+// company-ID match and worth keeping.
+bool isFlockName(const std::string &name)
+{
+    return name.empty() || name.rfind("Penguin-", 0) == 0 ||
+           name == "FS Ext Battery" || (name.length() == 10 && allDigits(name));
 }
 
 constexpr uint32_t kDeauthWindowMs = 3000;
@@ -47,21 +126,6 @@ void formatMac(char *out, size_t outSize, const uint8_t *mac)
     if (!out || outSize < 18 || !mac) return;
     snprintf(out, outSize, "%02X:%02X:%02X:%02X:%02X:%02X",
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-}
-
-bool containsBytes(const uint8_t *data, size_t length, const uint8_t *needle, size_t needleLength)
-{
-    if (!data || !needle || !needleLength || length < needleLength) return false;
-    for (size_t i = 0; i <= length - needleLength; ++i)
-        if (memcmp(data + i, needle, needleLength) == 0) return true;
-    return false;
-}
-
-bool allDigits(const std::string &value)
-{
-    if (value.empty()) return false;
-    for (char c : value) if (c < '0' || c > '9') return false;
-    return true;
 }
 
 uint16_t hashSsid(const uint8_t *ssid, size_t length)
@@ -129,6 +193,9 @@ const char *ReconService::detectorName(ReconDetector detector)
     case ReconDetector::AirTag: return "AIRTAG";
     case ReconDetector::Flipper: return "FLIPPER";
     case ReconDetector::Meta: return "META";
+    case ReconDetector::Tile: return "TILE";
+    case ReconDetector::SamsungTag: return "SMARTTAG";
+    case ReconDetector::GoogleTag: return "GOOGLE TAG";
     case ReconDetector::EarlyWarning: return "EARLY WARNING";
     default: return "STOPPED";
     }
@@ -599,42 +666,54 @@ void ReconService::startBleScan(ReconDetector detector, uint32_t durationMs)
 void ReconService::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
 {
     if (!device) return;
-    const ReconDetector detector = _currentBleScanDetector;
-
-    const std::vector<uint8_t> &payload = device->getPayload();
-    const uint8_t *data = payload.data();
-    const size_t length = payload.size();
+    const ReconDetector scan = _currentBleScanDetector;
     const std::string name = device->haveName() ? device->getName() : std::string();
     const std::string address = device->getAddress().toString();
     const uint8_t *mac = device->getAddress().getVal();
+    const int8_t rssi = device->getRSSI();
+    const char *label = name.empty() ? nullptr : name.c_str();
 
-    if (bleScanWants(detector, ReconDetector::Flock)) {
-        const uint8_t xuntong[] = {0xFF,0xC8,0x09};
-        const bool flockName = name.rfind("Penguin-", 0) == 0 || name == "FS Ext Battery" ||
-                               (name.length() == 10 && allDigits(name));
-        if ((containsBytes(data, length, xuntong, 3) && (flockName || name.empty())) || isFlockOui(mac))
-            addDetection(ReconDetector::Flock, name.empty() ? "Flock BLE signature" : name.c_str(),
-                         address.c_str(), device->getRSSI());
+    // ---- manufacturer data ----
+    // An advertisement may carry more than one manufacturer record, so walk
+    // them all rather than assuming index 0.
+    const uint8_t mfgCount = device->haveManufacturerData() ? device->getManufacturerDataCount() : 0;
+    for (uint8_t i = 0; i < mfgCount; ++i) {
+        const std::string mfg = device->getManufacturerData(i);
+        if (mfg.size() < 2) continue;
+        const uint8_t *bytes = reinterpret_cast<const uint8_t *>(mfg.data());
+        const uint16_t company = static_cast<uint16_t>(bytes[0]) |
+                                 static_cast<uint16_t>(static_cast<uint16_t>(bytes[1]) << 8);
+
+        if (company == kAppleCompanyId && bleScanWants(scan, ReconDetector::AirTag) &&
+            isFindMyBeacon(bytes, mfg.size())) {
+            addDetection(ReconDetector::AirTag, "Find My tracker beacon", address.c_str(), rssi);
+        }
+        if (company == kXuntongCompanyId && bleScanWants(scan, ReconDetector::Flock) &&
+            isFlockName(name)) {
+            addDetection(ReconDetector::Flock, label ? label : "Flock BLE signature",
+                         address.c_str(), rssi);
+        }
     }
-    if (bleScanWants(detector, ReconDetector::AirTag)) {
-        const uint8_t apple1[] = {0x1E,0xFF,0x4C,0x00};
-        const uint8_t apple2[] = {0x4C,0x00,0x12};
-        if (containsBytes(data, length, apple1, 4) || containsBytes(data, length, apple2, 3))
-            addDetection(ReconDetector::AirTag, "Find My advertisement", address.c_str(), device->getRSSI());
+
+    // Flock also matches on its own OUI, independent of any advertised data.
+    if (bleScanWants(scan, ReconDetector::Flock) && isFlockOui(mac)) {
+        addDetection(ReconDetector::Flock, label ? label : "Flock BLE signature",
+                     address.c_str(), rssi);
     }
-    if (bleScanWants(detector, ReconDetector::Flipper)) {
-        const uint8_t black[] = {0x81,0x30}, white[] = {0x82,0x30}, clear[] = {0x83,0x30};
-        if (containsBytes(data, length, black, 2) || containsBytes(data, length, white, 2) ||
-            containsBytes(data, length, clear, 2))
-            addDetection(ReconDetector::Flipper, name.empty() ? "Flipper BLE signature" : name.c_str(),
-                         address.c_str(), device->getRSSI());
-    }
-    if (bleScanWants(detector, ReconDetector::Meta)) {
-        static const uint8_t meta[][2] = {{0x5F,0xFD},{0xB7,0xFE},{0xB8,0xFE},{0xAB,0x01},{0x8E,0x05},{0x53,0x0D}};
-        bool match = false;
-        for (const auto &id : meta) if (containsBytes(data, length, id, 2)) match = true;
-        if (match) addDetection(ReconDetector::Meta, name.empty() ? "Meta BLE identifier" : name.c_str(),
-                                address.c_str(), device->getRSSI());
+
+    // ---- 16-bit service UUIDs ----
+    const uint8_t uuidCount = device->haveServiceUUID() ? device->getServiceUUIDCount() : 0;
+    for (uint8_t i = 0; i < uuidCount; ++i) {
+        const NimBLEUUID uuid = device->getServiceUUID(i);
+        // Compare through NimBLEUUID::equals() rather than reaching into
+        // ble_uuid_t, whose layout has changed between NimBLE versions.
+        if (uuid.bitSize() != 16) continue;
+        for (const BleUuidSignature &sig : kBleUuidSignatures) {
+            if (!uuid.equals(NimBLEUUID(sig.uuid))) continue;
+            if (!bleScanWants(scan, sig.detector)) break;
+            addDetection(sig.detector, label ? label : sig.label, address.c_str(), rssi);
+            break;
+        }
     }
 }
 
