@@ -185,9 +185,13 @@ void SettingsScreen::buildMainPage()
     _reconSdLoggingValue = makeLabel(_mainPage, "OFF", 290, 714, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_reconSdLoggingValue, LV_TEXT_ALIGN_CENTER, 0);
 
-    makeButton(_mainPage, "SD CARD", 25, 750, 360, 42, sdCardThunk);
+    makeButton(_mainPage, "SLEEP MODE", 25, 750, 250, 42, sleepModeThunk);
+    _sleepModeValue = makeLabel(_mainPage, "OFF", 290, 762, 90, &lv_font_montserrat_20, Theme::teal());
+    lv_obj_set_style_text_align(_sleepModeValue, LV_TEXT_ALIGN_CENTER, 0);
 
-    makeButton(_mainPage, "BACK", 25, 798, 360, 32, backThunk);
+    makeButton(_mainPage, "SD CARD", 25, 798, 360, 42, sdCardThunk);
+
+    makeButton(_mainPage, "BACK", 25, 846, 360, 32, backThunk);
 }
 
 void SettingsScreen::buildDateTimePage()
@@ -388,6 +392,7 @@ void SettingsScreen::refreshMainValues()
     lv_label_set_text(_meshtasticNameValue, _settings->meshtasticNodeName[0] != '\0' ? _settings->meshtasticNodeName : "AUTO");
     lv_label_set_text(_earlyWarningValue, _settings->reconEarlyWarningEnabled ? "ON" : "OFF");
     lv_label_set_text(_reconSdLoggingValue, _settings->reconSdLoggingEnabled ? "ON" : "OFF");
+    lv_label_set_text(_sleepModeValue, _settings->sleepModeEnabled ? "ON" : "OFF");
 }
 
 void SettingsScreen::refreshSdValues()
@@ -598,6 +603,17 @@ void SettingsScreen::reconSdLoggingThunk(lv_event_t *event)
 {
     auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
     self->_settings->reconSdLoggingEnabled = !self->_settings->reconSdLoggingEnabled;
+    self->refreshMainValues();
+
+    if (self->_settingsChangedCallback != nullptr) {
+        self->_settingsChangedCallback(self->_userData);
+    }
+}
+
+void SettingsScreen::sleepModeThunk(lv_event_t *event)
+{
+    auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
+    self->_settings->sleepModeEnabled = !self->_settings->sleepModeEnabled;
     self->refreshMainValues();
 
     if (self->_settingsChangedCallback != nullptr) {

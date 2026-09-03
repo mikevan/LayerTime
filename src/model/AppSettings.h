@@ -40,4 +40,11 @@ struct AppSettings {
     // Append every new (non-duplicate) Recon detection to a CSV file on the
     // SD card. Persisted; defaults off (no card assumed present).
     bool reconSdLoggingEnabled = false;
+
+    // Sleep mode: forces the backlight off immediately (instead of waiting
+    // out the normal auto-blank timeout) and silences Recon's vibration/
+    // popup alert. Detections still get logged normally while it's on -
+    // only the disruptive alert is muted, so nothing is missed overnight.
+    // Persisted; defaults off.
+    bool sleepModeEnabled = false;
 };

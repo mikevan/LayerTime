@@ -68,6 +68,12 @@ public:
     // automatically paused while a manual detector is running.
     void setEarlyWarningEnabled(bool enabled);
 
+    // While true, new detections are still logged and counted normally,
+    // but do not set alertPending - so ReconScreen's popup never opens and
+    // poll() never vibrates or wakes the display for them. Meant for
+    // overnight use; acknowledgeAlert()/clearDetections() are unaffected.
+    void setSleepModeEnabled(bool enabled) { _sleepModeEnabled = enabled; }
+
     // Called by the NimBLEScanCallbacks handler for each device found during
     // an async scan (manual or background).
     void handleBleAdvertisement(const NimBLEAdvertisedDevice *device);
@@ -106,6 +112,7 @@ private:
     uint32_t _lastChannelHopMs = 0;
     uint32_t _lastBleCycleMs = 0;
     uint32_t _alertActuatedSerial = 0;
+    bool _sleepModeEnabled = false;
     MultiSsidTracker _multiSsid[8];
     size_t _multiSsidCount = 0;
     static ReconService *_activeInstance;

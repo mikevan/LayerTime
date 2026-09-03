@@ -6,6 +6,12 @@
 
 namespace {
 constexpr uint32_t kDisplayTimeoutMs = 15000;
+// Two background taps closer together than this put the display to sleep.
+constexpr uint32_t kDoubleTapWindowMs = 350;
+// How stale LVGL's activity timer has to be, relative to the moment sleep
+// was forced, before a fresh touch counts as a wake. Absorbs the release
+// edge of the double-tap itself and any bounce right after it.
+constexpr uint32_t kForcedSleepGraceMs = 250;
 bool displayBlanked = false;
 }
 
@@ -18,6 +24,14 @@ void WatchApp::begin()
 
     _settingsService.load(_settings);
     _settingsService.apply(_settings);
+    _sleepModeActive = _settings.sleepModeEnabled;
+    if (_sleepModeActive) {
+        // Loaded from a previous session with sleep mode already on -
+        // start dark immediately rather than lighting up for the normal
+        // 15s auto-blank window.
+        instance.setBrightness(0);
+        displayBlanked = true;
+    }
     _gps.begin(_settings.gpsEnabled);
     _mesh.begin();
     _mesh.setAdvertisingEnabled(_settings.meshAdvertiseEnabled);
@@ -31,6 +45,7 @@ void WatchApp::begin()
     _sdCard.begin();
     _recon.begin();
     _recon.setEarlyWarningEnabled(_settings.reconEarlyWarningEnabled);
+    _recon.setSleepModeEnabled(_settings.sleepModeEnabled);
     _recon.setDetectionSink(reconDetectionSinkThunk, this);
 
     _face.create();
@@ -40,6 +55,7 @@ void WatchApp::begin()
     _face.setMeshtasticRequestedCallback(meshtasticRequestedThunk, this);
     _face.setReconRequestedCallback(reconRequestedThunk, this);
     _face.setThreatsRequestedCallback(threatsRequestedThunk, this);
+    _face.setBackgroundTapCallback(faceBackgroundTapThunk, this);
 
     // Create every secondary screen before the first render.
     _gpsScreen.create(gpsBackThunk, this);
@@ -69,10 +85,20 @@ void WatchApp::tick()
     lv_timer_handler();
 
     const uint32_t inactiveMs = lv_display_get_inactive_time(nullptr);
-    if (!displayBlanked && inactiveMs >= kDisplayTimeoutMs) {
+
+    // Release a forced sleep as soon as LVGL reports activity newer than the
+    // moment it was forced - i.e. a genuine new touch. Deliberately measured
+    // against the inactivity timer rather than hooking the tap itself, so a
+    // tap anywhere wakes the watch, including one that lands on a button
+    // rather than the background.
+    if (_forcedSleep && inactiveMs + kForcedSleepGraceMs < millis() - _forcedSleepAtMs) {
+        _forcedSleep = false;
+    }
+
+    if (!displayBlanked && (_forcedSleep || inactiveMs >= kDisplayTimeoutMs)) {
         instance.setBrightness(0);
         displayBlanked = true;
-    } else if (displayBlanked && inactiveMs < kDisplayTimeoutMs) {
+    } else if (displayBlanked && !_forcedSleep && inactiveMs < kDisplayTimeoutMs) {
         instance.setBrightness(_settings.brightness);
         displayBlanked = false;
     }
@@ -228,6 +254,14 @@ void WatchApp::closeSettings()
 void WatchApp::settingsChanged()
 {
     _settingsService.apply(_settings);
+    if (_settings.sleepModeEnabled && !_sleepModeActive) {
+        // Just turned on - darken right away instead of waiting out the
+        // normal auto-blank timeout. Tapping the screen still wakes it
+        // normally afterward (e.g. to check the time or turn this back off).
+        instance.setBrightness(0);
+        displayBlanked = true;
+    }
+    _sleepModeActive = _settings.sleepModeEnabled;
     _gps.setEnabled(_settings.gpsEnabled);
     // MeshCore and Meshtastic share one physical SX1262 radio. The settings
     // screen already keeps meshEnabled/meshtasticEnabled mutually exclusive,
@@ -249,6 +283,7 @@ void WatchApp::settingsChanged()
     _meshtastic.setIdentity(_settings.meshtasticNodeName);
     _meshtastic.setAdvertisingEnabled(_settings.meshtasticAdvertiseEnabled);
     _recon.setEarlyWarningEnabled(_settings.reconEarlyWarningEnabled);
+    _recon.setSleepModeEnabled(_settings.sleepModeEnabled);
     _settingsService.save(_settings);
     _face.render(_state, _settings, _recon.status());
     _gpsScreen.render(_state, _settings);
@@ -295,4 +330,37 @@ void WatchApp::logReconDetection(const ReconDetection &detection)
         "/recon_log.csv",
         "timestamp,category,detail,address,rssi,channel",
         row);
+}
+
+void WatchApp::faceBackgroundTapThunk(void *userData)
+{
+    auto *self = static_cast<WatchApp *>(userData);
+    if (self != nullptr) {
+        self->handleFaceBackgroundTap();
+    }
+}
+
+void WatchApp::handleFaceBackgroundTap()
+{
+    const uint32_t now = millis();
+
+    // A tap that arrives while the screen is already dark only ever wakes it.
+    // Waking is handled by the inactivity timer in tick(); all this has to do
+    // is make sure that tap isn't also counted as the first half of a pair,
+    // or waking with two quick taps would immediately sleep the watch again.
+    if (displayBlanked) {
+        _lastFaceTapMs = 0;
+        return;
+    }
+
+    if (_lastFaceTapMs != 0 && now - _lastFaceTapMs <= kDoubleTapWindowMs) {
+        _lastFaceTapMs = 0;
+        _forcedSleep = true;
+        _forcedSleepAtMs = now;
+        instance.setBrightness(0);
+        displayBlanked = true;
+        return;
+    }
+
+    _lastFaceTapMs = now;
 }
