@@ -5,6 +5,11 @@
 
 class NimBLEAdvertisedDevice;
 
+// How much a match is worth trusting. Not surfaced in the UI yet - the
+// field exists on the signature tables now so adding the tier later is a
+// UI change rather than a re-edit of every signature row.
+enum class SignalConfidence : uint8_t { Low, Medium, High };
+
 enum class ReconDetector : uint8_t {
     None, All,
     // Group sweeps. These are what the Recon menu offers at its top level;
@@ -15,6 +20,7 @@ enum class ReconDetector : uint8_t {
     Trackers, CounterSurveil, CounterIntrusion,
     // Individual detectors.
     Deauth, Pwnagotchi, MultiSSID, Flock, Pineapple, AirTag, Flipper, Meta,
+    Tile, SamsungTag, GoogleTag,
     // Not user-selectable from the menu - used internally to scope the
     // background early-warning BLE scan to Flipper + Meta only.
     EarlyWarning
