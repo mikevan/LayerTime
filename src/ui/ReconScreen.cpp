@@ -6,14 +6,12 @@
 #include "Theme.h"
 
 namespace {
-struct DetectorButton { const char *title; ReconDetector detector; };
-constexpr DetectorButton kButtons[] = {
-    {"ALL", ReconDetector::All}, {"DEAUTH", ReconDetector::Deauth},
-    {"PWNAGOTCHI", ReconDetector::Pwnagotchi}, {"MULTISSID", ReconDetector::MultiSSID},
-    {"FLOCK", ReconDetector::Flock}, {"PINEAPPLE", ReconDetector::Pineapple},
-    {"AIRTAG", ReconDetector::AirTag}, {"FLIPPER", ReconDetector::Flipper},
-    {"META", ReconDetector::Meta}
-};
+// Top-level group rows, in menu order beneath ALL. Index-aligned with
+// ReconScreen::_groupPages. Membership itself lives in ReconService so the
+// menu and the radio scheduler can never disagree about it.
+constexpr ReconDetector kGroups[] = {
+    ReconDetector::Trackers, ReconDetector::CounterSurveil, ReconDetector::CounterIntrusion};
+constexpr size_t kGroupCount = sizeof(kGroups) / sizeof(kGroups[0]);
 }
 
 void ReconScreen::create(ReconService *service, BackCallback backCallback, void *userData)
@@ -40,39 +38,15 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
     lv_obj_set_style_text_font(backLabel, &lv_font_montserrat_20, 0);
     lv_obj_center(backLabel);
 
-    lv_obj_t *title = lv_label_create(_screen);
-    lv_label_set_text(title, "RECON");
-    lv_obj_set_width(title, 200);
-    lv_obj_set_pos(title, 105, 16);
-    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(title, Theme::gold(), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
+    _title = lv_label_create(_screen);
+    lv_label_set_text(_title, "RECON");
+    lv_obj_set_width(_title, 300);
+    lv_obj_set_pos(_title, 105, 16);
+    lv_obj_set_style_text_align(_title, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(_title, Theme::gold(), 0);
+    lv_obj_set_style_text_font(_title, &lv_font_montserrat_24, 0);
 
-    _menu = lv_obj_create(_screen);
-    lv_obj_set_size(_menu, 386, 390);
-    lv_obj_set_pos(_menu, 12, 62);
-    lv_obj_set_style_bg_opa(_menu, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(_menu, 0, 0);
-    lv_obj_set_style_pad_all(_menu, 4, 0);
-    lv_obj_set_flex_flow(_menu, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(_menu, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_scroll_dir(_menu, LV_DIR_VER);
-
-    for (size_t i = 0; i < sizeof(kButtons) / sizeof(kButtons[0]); ++i) {
-        _buttonContexts[i] = {this, kButtons[i].detector};
-        lv_obj_t *button = lv_button_create(_menu);
-        lv_obj_set_size(button, 350, 48);
-        lv_obj_set_style_bg_color(button, Theme::background(), 0);
-        lv_obj_set_style_border_color(button, i == 0 ? Theme::gold() : Theme::teal(), 0);
-        lv_obj_set_style_border_width(button, 2, 0);
-        lv_obj_set_style_radius(button, 8, 0);
-        lv_obj_add_event_cb(button, detectorThunk, LV_EVENT_CLICKED, &_buttonContexts[i]);
-        lv_obj_t *label = lv_label_create(button);
-        lv_label_set_text(label, kButtons[i].title);
-        lv_obj_set_style_text_color(label, i == 0 ? Theme::gold() : Theme::white(), 0);
-        lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
-        lv_obj_center(label);
-    }
+    buildMenuPages();
 
     _monitor = lv_obj_create(_screen);
     lv_obj_set_size(_monitor, 386, 390);
@@ -172,6 +146,7 @@ void ReconScreen::create(ReconService *service, BackCallback backCallback, void 
 void ReconScreen::show(ReconDetector detector)
 {
     if (detector == ReconDetector::None) {
+        _openGroup = ReconDetector::None;
         renderMenu();
     } else {
         selectDetector(detector);
@@ -191,18 +166,115 @@ void ReconScreen::selectDetector(ReconDetector detector)
     if (!_service) return;
     _service->startDetector(detector);
     lv_obj_add_flag(_menu, LV_OBJ_FLAG_HIDDEN);
+    for (size_t i = 0; i < kGroupCount; ++i)
+        if (_groupPages[i]) lv_obj_add_flag(_groupPages[i], LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(_monitor, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(_title, ReconService::detectorName(detector));
     renderMonitor();
+}
+
+void ReconScreen::openGroup(ReconDetector group)
+{
+    _openGroup = group;
+    showMenuLevel(group);
 }
 
 void ReconScreen::renderMenu()
 {
-    lv_obj_clear_flag(_menu, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_add_flag(_monitor, LV_OBJ_FLAG_HIDDEN);
-    // Note: does NOT touch _alert. It lives on the top layer now, independent
-    // of Recon's own menu/monitor sub-pages, so navigating within (or away
+    // Note: does NOT touch _alert. It lives on the top layer, independent of
+    // Recon's own menu/monitor sub-pages, so navigating within (or away
     // from) the Recon screen never dismisses a pending alert out from under
     // the user - only the DISMISS button does that.
+    showMenuLevel(_openGroup);
+}
+
+lv_obj_t *ReconScreen::createMenuPage()
+{
+    lv_obj_t *page = lv_obj_create(_screen);
+    lv_obj_set_size(page, 386, 390);
+    lv_obj_set_pos(page, 12, 62);
+    lv_obj_set_style_bg_opa(page, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(page, 0, 0);
+    lv_obj_set_style_pad_all(page, 4, 0);
+    lv_obj_set_flex_flow(page, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(page, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_scroll_dir(page, LV_DIR_VER);
+    return page;
+}
+
+void ReconScreen::addMenuButton(lv_obj_t *parent, size_t &index, ReconDetector detector,
+                                const char *title, lv_color_t border, lv_color_t text,
+                                bool opensGroup)
+{
+    // Hard stop rather than a silent overrun of _buttonContexts - the old
+    // flat menu sized that array to exactly the button count, which would
+    // have corrupted memory the first time a detector was added.
+    if (index >= sizeof(_buttonContexts) / sizeof(_buttonContexts[0])) return;
+    _buttonContexts[index] = {this, detector, opensGroup};
+    lv_obj_t *button = lv_button_create(parent);
+    lv_obj_set_size(button, 350, 48);
+    lv_obj_set_style_bg_color(button, Theme::background(), 0);
+    lv_obj_set_style_border_color(button, border, 0);
+    lv_obj_set_style_border_width(button, 2, 0);
+    lv_obj_set_style_radius(button, 8, 0);
+    lv_obj_add_event_cb(button, detectorThunk, LV_EVENT_CLICKED, &_buttonContexts[index]);
+    lv_obj_t *label = lv_label_create(button);
+    lv_label_set_text(label, title);
+    lv_obj_set_style_text_color(label, text, 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
+    lv_obj_center(label);
+    ++index;
+}
+
+void ReconScreen::buildMenuPages()
+{
+    size_t index = 0;
+
+    // Top level: ALL, then one blue row per group. Four rows at 48px in a
+    // 390px page, so the level you land on most never scrolls.
+    _menu = createMenuPage();
+    addMenuButton(_menu, index, ReconDetector::All, "ALL", Theme::gold(), Theme::gold(), false);
+    for (size_t i = 0; i < kGroupCount; ++i) {
+        addMenuButton(_menu, index, kGroups[i], ReconService::detectorName(kGroups[i]),
+                      Theme::blue(), Theme::blue(), true);
+    }
+
+    // One sub-page per group: ALL (the whole group sweep) plus each member.
+    for (size_t i = 0; i < kGroupCount; ++i) {
+        _groupPages[i] = createMenuPage();
+        lv_obj_add_flag(_groupPages[i], LV_OBJ_FLAG_HIDDEN);
+        addMenuButton(_groupPages[i], index, kGroups[i], "ALL",
+                      Theme::gold(), Theme::gold(), false);
+        size_t memberCount = 0;
+        const ReconDetector *members = ReconService::groupMembers(kGroups[i], memberCount);
+        for (size_t j = 0; j < memberCount; ++j) {
+            addMenuButton(_groupPages[i], index, members[j],
+                          ReconService::detectorName(members[j]),
+                          Theme::teal(), Theme::white(), false);
+        }
+    }
+}
+
+void ReconScreen::showMenuLevel(ReconDetector group)
+{
+    if (_monitor) lv_obj_add_flag(_monitor, LV_OBJ_FLAG_HIDDEN);
+    for (size_t i = 0; i < kGroupCount; ++i)
+        if (_groupPages[i]) lv_obj_add_flag(_groupPages[i], LV_OBJ_FLAG_HIDDEN);
+
+    for (size_t i = 0; i < kGroupCount; ++i) {
+        if (kGroups[i] == group && _groupPages[i]) {
+            lv_obj_add_flag(_menu, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(_groupPages[i], LV_OBJ_FLAG_HIDDEN);
+            lv_label_set_text(_title, ReconService::detectorName(group));
+            return;
+        }
+    }
+
+    // None, or a group with no page - show the top level rather than a
+    // blank screen.
+    _openGroup = ReconDetector::None;
+    lv_obj_clear_flag(_menu, LV_OBJ_FLAG_HIDDEN);
+    lv_label_set_text(_title, "RECON");
 }
 
 void ReconScreen::renderMonitor()
@@ -247,8 +319,17 @@ void ReconScreen::backThunk(lv_event_t *event)
 {
     auto *self = static_cast<ReconScreen *>(lv_event_get_user_data(event));
     if (!self) return;
+    // Three levels, one button: monitor -> the group it was started from
+    // -> the top menu -> out of Recon.
     if (self->_service && self->_service->status().monitoring) {
-        self->_service->exitManualMode(); self->renderMenu(); return;
+        self->_service->exitManualMode();
+        self->showMenuLevel(self->_openGroup);
+        return;
+    }
+    if (self->_openGroup != ReconDetector::None) {
+        self->_openGroup = ReconDetector::None;
+        self->showMenuLevel(ReconDetector::None);
+        return;
     }
     if (self->_backCallback) self->_backCallback(self->_userData);
 }
@@ -256,7 +337,9 @@ void ReconScreen::backThunk(lv_event_t *event)
 void ReconScreen::detectorThunk(lv_event_t *event)
 {
     auto *context = static_cast<ButtonContext *>(lv_event_get_user_data(event));
-    if (context && context->screen) context->screen->selectDetector(context->detector);
+    if (!context || !context->screen) return;
+    if (context->opensGroup) context->screen->openGroup(context->detector);
+    else context->screen->selectDetector(context->detector);
 }
 
 void ReconScreen::dismissThunk(lv_event_t *event)

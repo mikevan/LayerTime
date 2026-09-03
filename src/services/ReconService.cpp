@@ -19,6 +19,29 @@ constexpr uint32_t kChannelHopMs = 650;
 constexpr uint32_t kBleCycleMs = 12000;
 constexpr uint32_t kBleScanMs = 1800;
 
+// Deauth burst thresholds. Values follow SquachWatch-CYD's tuning (6 frames
+// / 3s / 15s cooldown), which is applied globally there; here the same
+// numbers are applied per transmitter, so crossing the threshold is a
+// stronger signal than it is in the original.
+// Group membership. Single source of truth for both the radio scheduling
+// below and the Recon menu's sub-pages - add a new detector here and it is
+// picked up by the sweep and the UI at once.
+constexpr ReconDetector kTrackerMembers[] = {ReconDetector::AirTag};
+constexpr ReconDetector kCounterSurveilMembers[] = {ReconDetector::Flock, ReconDetector::Meta};
+constexpr ReconDetector kCounterIntrusionMembers[] = {
+    ReconDetector::Deauth, ReconDetector::Pwnagotchi, ReconDetector::MultiSSID,
+    ReconDetector::Pineapple, ReconDetector::Flipper};
+
+bool isBleDetector(ReconDetector d)
+{
+    return d == ReconDetector::Flock || d == ReconDetector::AirTag ||
+           d == ReconDetector::Flipper || d == ReconDetector::Meta;
+}
+
+constexpr uint32_t kDeauthWindowMs = 3000;
+constexpr uint16_t kDeauthBurstFrames = 6;
+constexpr uint32_t kDeauthCooldownMs = 15000;
+
 void formatMac(char *out, size_t outSize, const uint8_t *mac)
 {
     if (!out || outSize < 18 || !mac) return;
@@ -95,6 +118,9 @@ const char *ReconService::detectorName(ReconDetector detector)
 {
     switch (detector) {
     case ReconDetector::All: return "ALL";
+    case ReconDetector::Trackers: return "TRACKERS";
+    case ReconDetector::CounterSurveil: return "COUNTER-SURVEIL";
+    case ReconDetector::CounterIntrusion: return "COUNTER-INTRUSION";
     case ReconDetector::Deauth: return "DEAUTH";
     case ReconDetector::Pwnagotchi: return "PWNAGOTCHI";
     case ReconDetector::MultiSSID: return "MULTISSID";
@@ -106,6 +132,74 @@ const char *ReconService::detectorName(ReconDetector detector)
     case ReconDetector::EarlyWarning: return "EARLY WARNING";
     default: return "STOPPED";
     }
+}
+
+const char *ReconService::detectorShortName(ReconDetector detector)
+{
+    switch (detector) {
+    case ReconDetector::CounterSurveil: return "SURVEIL";
+    case ReconDetector::CounterIntrusion: return "INTRUSION";
+    case ReconDetector::EarlyWarning: return "EARLY WARN";
+    default: return detectorName(detector);
+    }
+}
+
+const ReconDetector *ReconService::groupMembers(ReconDetector group, size_t &count)
+{
+    switch (group) {
+    case ReconDetector::Trackers:
+        count = sizeof(kTrackerMembers) / sizeof(kTrackerMembers[0]);
+        return kTrackerMembers;
+    case ReconDetector::CounterSurveil:
+        count = sizeof(kCounterSurveilMembers) / sizeof(kCounterSurveilMembers[0]);
+        return kCounterSurveilMembers;
+    case ReconDetector::CounterIntrusion:
+        count = sizeof(kCounterIntrusionMembers) / sizeof(kCounterIntrusionMembers[0]);
+        return kCounterIntrusionMembers;
+    default:
+        count = 0;
+        return nullptr;
+    }
+}
+
+bool ReconService::groupContains(ReconDetector group, ReconDetector detector)
+{
+    size_t count = 0;
+    const ReconDetector *members = groupMembers(group, count);
+    for (size_t i = 0; i < count; ++i)
+        if (members[i] == detector) return true;
+    return false;
+}
+
+bool ReconService::needsBle(ReconDetector detector)
+{
+    if (detector == ReconDetector::All) return true;
+    size_t count = 0;
+    const ReconDetector *members = groupMembers(detector, count);
+    if (members == nullptr) return isBleDetector(detector);
+    for (size_t i = 0; i < count; ++i)
+        if (isBleDetector(members[i])) return true;
+    return false;
+}
+
+bool ReconService::needsWifi(ReconDetector detector)
+{
+    if (detector == ReconDetector::All) return true;
+    size_t count = 0;
+    const ReconDetector *members = groupMembers(detector, count);
+    if (members == nullptr) return !isBleDetector(detector);
+    for (size_t i = 0; i < count; ++i)
+        if (!isBleDetector(members[i])) return true;
+    return false;
+}
+
+bool ReconService::bleScanWants(ReconDetector scanDetector, ReconDetector target)
+{
+    if (scanDetector == ReconDetector::All) return true;
+    if (scanDetector == ReconDetector::EarlyWarning)
+        return target == ReconDetector::Flipper || target == ReconDetector::Meta;
+    if (scanDetector == target) return true;
+    return groupContains(scanDetector, target);
 }
 
 void ReconService::begin()
@@ -126,13 +220,16 @@ void ReconService::startDetector(ReconDetector detector)
     _status.monitoring = detector != ReconDetector::None;
     if (!_status.monitoring) return;
 
-    if (detector == ReconDetector::Flock || detector == ReconDetector::AirTag ||
-        detector == ReconDetector::Flipper || detector == ReconDetector::Meta) {
+    _allBleBursting = false;
+    if (needsWifi(detector)) {
+        // Both radios needed (ALL, or a group mixing Wi-Fi and BLE members):
+        // start on Wi-Fi and let pollManual alternate into BLE bursts.
+        startWifiMonitoring();
+        _lastBleCycleMs = millis();
+        if (detector == ReconDetector::All) _status.activeDetector = ReconDetector::Deauth;
+    } else {
         startBleScan(detector, kBleScanMs);
         _lastBleCycleMs = millis();
-    } else {
-        startWifiMonitoring();
-        if (detector == ReconDetector::All) _status.activeDetector = ReconDetector::Deauth;
     }
 }
 
@@ -158,7 +255,8 @@ void ReconService::poll()
 
 void ReconService::pollManual(uint32_t now)
 {
-    if (_status.detector == ReconDetector::All) {
+    const bool mixedRadios = needsWifi(_status.detector) && needsBle(_status.detector);
+    if (mixedRadios) {
         NimBLEScan *scan = _bleInitialized ? NimBLEDevice::getScan() : nullptr;
         const bool bleBusy = scan && scan->isScanning();
 
@@ -166,7 +264,8 @@ void ReconService::pollManual(uint32_t now)
             if (bleBusy) return;
             // BLE burst finished - resume the Wi-Fi sweep.
             startWifiMonitoring();
-            _status.activeDetector = ReconDetector::Deauth;
+            if (_status.detector == ReconDetector::All)
+                _status.activeDetector = ReconDetector::Deauth;
             _allBleBursting = false;
             _lastBleCycleMs = now;
             return;
@@ -174,8 +273,9 @@ void ReconService::pollManual(uint32_t now)
 
         if (now - _lastBleCycleMs >= kBleCycleMs) {
             stopWifiMonitoring();
-            _status.activeDetector = ReconDetector::Flock;
-            startBleScan(ReconDetector::All, kBleScanMs);
+            if (_status.detector == ReconDetector::All)
+                _status.activeDetector = ReconDetector::Flock;
+            startBleScan(_status.detector, kBleScanMs);
             _allBleBursting = true;
             return;
         }
@@ -188,8 +288,7 @@ void ReconService::pollManual(uint32_t now)
         return;
     }
 
-    if (_status.detector == ReconDetector::Flock || _status.detector == ReconDetector::AirTag ||
-        _status.detector == ReconDetector::Flipper || _status.detector == ReconDetector::Meta) {
+    if (needsBle(_status.detector)) {
         NimBLEScan *scan = _bleInitialized ? NimBLEDevice::getScan() : nullptr;
         const bool bleBusy = scan && scan->isScanning();
         if (!bleBusy && now - _lastBleCycleMs >= 5000) {
@@ -341,13 +440,15 @@ void ReconService::clearDetections()
     _status.alertPending = false;
     _multiSsidCount = 0;
     memset(_multiSsid, 0, sizeof(_multiSsid));
+    for (DeauthTracker &tracker : _deauth) tracker = DeauthTracker{};
 }
 
 void ReconService::acknowledgeAlert() { _status.alertPending = false; }
 bool ReconService::wants(ReconDetector detector) const
 {
     if (_status.monitoring) {
-        return _status.detector == ReconDetector::All || _status.detector == detector;
+        return _status.detector == ReconDetector::All || _status.detector == detector ||
+               groupContains(_status.detector, detector);
     }
     return _earlyWarningEnabled && _earlyWarningSweeping && isBackgroundWifiDetector(detector);
 }
@@ -416,9 +517,13 @@ void ReconService::onPromiscuousPacket(void *buf, int type)
     char mac[18];
     formatMac(mac, sizeof(mac), packet->payload + 10);
 
-    if (wants(ReconDetector::Deauth) && frameType == 0 && (subtype == 0x0C || subtype == 0x0A))
+    // noteDeauthFrame() is last in the chain on purpose - it only runs for
+    // frames that are actually deauth/disassoc while the detector is live,
+    // and it returns true only on a genuine burst.
+    if (wants(ReconDetector::Deauth) && frameType == 0 && (subtype == 0x0C || subtype == 0x0A) &&
+        noteDeauthFrame(packet->payload + 10, millis()))
         addDetection(ReconDetector::Deauth,
-                     subtype == 0x0C ? "Deauthentication frame" : "Disassociation frame",
+                     subtype == 0x0C ? "Deauth flood" : "Disassoc flood",
                      mac, packet->rx_ctrl.rssi, packet->rx_ctrl.channel);
     if (frameType == 0 && subtype == 0x08)
         inspectBeacon(packet->payload, length, packet->rx_ctrl.rssi, packet->rx_ctrl.channel);
@@ -434,9 +539,15 @@ void ReconService::inspectBeacon(const uint8_t *payload, uint16_t length, int8_t
     if (wants(ReconDetector::Pwnagotchi) && memcmp(bssid, pwnMac, 6) == 0)
         addDetection(ReconDetector::Pwnagotchi, "Pwnagotchi beacon", mac, rssi, channel);
 
-    const uint8_t ssidLength = payload[37] <= 32 ? payload[37] : 0;
-    if (38U + ssidLength > length) return;
-    if (wants(ReconDetector::MultiSSID)) {
+    // The SSID is the first information element after the 24-byte header and
+    // the 12 bytes of fixed parameters: tag ID at [36], length at [37], data
+    // from [38]. 802.11 puts the SSID first, but verify the tag rather than
+    // assume it - otherwise a frame whose first element is something else
+    // has an unrelated byte read as an SSID length.
+    const bool haveSsid = payload[36] == 0x00 && payload[37] <= 32 &&
+                          38U + payload[37] <= length;
+    const uint8_t ssidLength = haveSsid ? payload[37] : 0;
+    if (wants(ReconDetector::MultiSSID) && haveSsid) {
         MultiSsidTracker *tracker = nullptr;
         for (size_t i = 0; i < _multiSsidCount; ++i)
             if (memcmp(_multiSsid[i].bssid, bssid, 6) == 0) { tracker = &_multiSsid[i]; break; }
@@ -497,7 +608,7 @@ void ReconService::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
     const std::string address = device->getAddress().toString();
     const uint8_t *mac = device->getAddress().getVal();
 
-    if (detector == ReconDetector::All || detector == ReconDetector::Flock) {
+    if (bleScanWants(detector, ReconDetector::Flock)) {
         const uint8_t xuntong[] = {0xFF,0xC8,0x09};
         const bool flockName = name.rfind("Penguin-", 0) == 0 || name == "FS Ext Battery" ||
                                (name.length() == 10 && allDigits(name));
@@ -505,24 +616,72 @@ void ReconService::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
             addDetection(ReconDetector::Flock, name.empty() ? "Flock BLE signature" : name.c_str(),
                          address.c_str(), device->getRSSI());
     }
-    if (detector == ReconDetector::All || detector == ReconDetector::AirTag) {
+    if (bleScanWants(detector, ReconDetector::AirTag)) {
         const uint8_t apple1[] = {0x1E,0xFF,0x4C,0x00};
         const uint8_t apple2[] = {0x4C,0x00,0x12};
         if (containsBytes(data, length, apple1, 4) || containsBytes(data, length, apple2, 3))
             addDetection(ReconDetector::AirTag, "Find My advertisement", address.c_str(), device->getRSSI());
     }
-    if (detector == ReconDetector::All || detector == ReconDetector::Flipper || detector == ReconDetector::EarlyWarning) {
+    if (bleScanWants(detector, ReconDetector::Flipper)) {
         const uint8_t black[] = {0x81,0x30}, white[] = {0x82,0x30}, clear[] = {0x83,0x30};
         if (containsBytes(data, length, black, 2) || containsBytes(data, length, white, 2) ||
             containsBytes(data, length, clear, 2))
             addDetection(ReconDetector::Flipper, name.empty() ? "Flipper BLE signature" : name.c_str(),
                          address.c_str(), device->getRSSI());
     }
-    if (detector == ReconDetector::All || detector == ReconDetector::Meta || detector == ReconDetector::EarlyWarning) {
+    if (bleScanWants(detector, ReconDetector::Meta)) {
         static const uint8_t meta[][2] = {{0x5F,0xFD},{0xB7,0xFE},{0xB8,0xFE},{0xAB,0x01},{0x8E,0x05},{0x53,0x0D}};
         bool match = false;
         for (const auto &id : meta) if (containsBytes(data, length, id, 2)) match = true;
         if (match) addDetection(ReconDetector::Meta, name.empty() ? "Meta BLE identifier" : name.c_str(),
                                 address.c_str(), device->getRSSI());
     }
+}
+
+bool ReconService::noteDeauthFrame(const uint8_t *mac, uint32_t now)
+{
+    DeauthTracker *tracker = nullptr;
+    for (DeauthTracker &candidate : _deauth) {
+        if (candidate.used && memcmp(candidate.mac, mac, 6) == 0) {
+            tracker = &candidate;
+            break;
+        }
+    }
+
+    if (tracker == nullptr) {
+        // Unseen transmitter: take a free slot, or evict whichever tracked
+        // transmitter has been quiet longest. The table is deliberately small
+        // - a real flood comes from one or two sources, and anything larger
+        // would just be remembering background noise.
+        tracker = &_deauth[0];
+        for (DeauthTracker &candidate : _deauth) {
+            if (!candidate.used) {
+                tracker = &candidate;
+                break;
+            }
+            if (now - candidate.windowStartMs > now - tracker->windowStartMs) tracker = &candidate;
+        }
+        *tracker = DeauthTracker{};
+        memcpy(tracker->mac, mac, 6);
+        tracker->used = true;
+        tracker->windowStartMs = now;
+    }
+
+    // Rolling window that restarts after a gap longer than itself, rather
+    // than a fixed repeating interval - so isolated frames minutes apart
+    // never accumulate into a burst, and a flood straddling a boundary is
+    // not split into two halves that each miss the threshold.
+    if (now - tracker->windowStartMs > kDeauthWindowMs) {
+        tracker->windowStartMs = now;
+        tracker->count = 0;
+    }
+    if (tracker->count < 0xFFFF) ++tracker->count;
+
+    if (tracker->count < kDeauthBurstFrames) return false;
+    // Cooldown throttles how fast a sustained flood drives the detection's
+    // encounterCount up. It does not gate the alert itself - addDetection()
+    // only raises alertPending for a genuinely new (category, address).
+    if (tracker->lastFiredMs != 0 && now - tracker->lastFiredMs < kDeauthCooldownMs) return false;
+    tracker->lastFiredMs = now;
+    return true;
 }

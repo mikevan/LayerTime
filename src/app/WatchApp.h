@@ -35,7 +35,7 @@ private:
     static void reconRequestedThunk(void *userData);
     static void reconBackThunk(void *userData);
     static void threatsRequestedThunk(void *userData);
-    static void faceBackgroundTapThunk(void *userData);
+    static void touchPressedThunk(lv_event_t *event);
     static void settingsBackThunk(void *userData);
     static void settingsChangedThunk(void *userData);
     static void reconDetectionSinkThunk(const ReconDetection &detection, void *userData);

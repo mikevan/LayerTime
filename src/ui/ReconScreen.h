@@ -17,6 +17,9 @@ private:
     struct ButtonContext {
         ReconScreen *screen = nullptr;
         ReconDetector detector = ReconDetector::None;
+        // True for the blue top-level group rows, which open a sub-page
+        // instead of starting a scan.
+        bool opensGroup = false;
     };
 
     static void backThunk(lv_event_t *event);
@@ -24,6 +27,16 @@ private:
     static void dismissThunk(lv_event_t *event);
     static void clearLogThunk(lv_event_t *event);
     void selectDetector(ReconDetector detector);
+    void openGroup(ReconDetector group);
+    // Every page is built once in create() and then shown/hidden - never
+    // rebuilt - because a group row rebuilding the list it lives in would
+    // delete the button whose click is still being dispatched.
+    void buildMenuPages();
+    lv_obj_t *createMenuPage();
+    void addMenuButton(lv_obj_t *parent, size_t &index, ReconDetector detector,
+                       const char *title, lv_color_t border, lv_color_t text,
+                       bool opensGroup);
+    void showMenuLevel(ReconDetector group);
     void renderMenu();
     void renderMonitor();
     void renderAlert();
@@ -38,6 +51,13 @@ private:
     lv_obj_t *_results = nullptr;
     lv_obj_t *_alert = nullptr;
     lv_obj_t *_alertText = nullptr;
-    ButtonContext _buttonContexts[9];
+    lv_obj_t *_title = nullptr;
+    // One page per group, index-aligned with kGroups in the .cpp.
+    lv_obj_t *_groupPages[3] = {nullptr, nullptr, nullptr};
+    // Which group's sub-page is open (None = top level). Kept across a scan
+    // so BACK out of the monitor returns to the group you drilled in from.
+    ReconDetector _openGroup = ReconDetector::None;
+    // 4 top-level rows + 2 + 3 + 6 group rows = 15 today; sized for headroom.
+    ButtonContext _buttonContexts[16];
     uint32_t _renderedEventSerial = 0;
 };
