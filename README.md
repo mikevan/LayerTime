@@ -69,6 +69,28 @@ A destructive, in-the-field format utility — available any time a card is inse
 
 See [FEATURES.md](./FEATURES.md) for the full technical breakdown of every screen, setting, and radio parameter.
 
+## Squatchify
+
+LayerTime wears the owl by default — but you can **Squatchify** it.
+
+<div align="center" markdown="1">
+  <img src="assets/squatchify-watch.jpg" alt="LayerTime watch face Squatchified" width="320"/>
+</div>
+
+Huge thanks to [The Talking Sasquach](https://talkingsasquach.com/) for the artwork, and for generously letting LayerTime ship it. His [SquachWatch-CYD](https://github.com/skizzophrenic/SquachWatch-CYD) project is also where a good deal of LayerTime's tracker and counter-surveillance research came from — the Flock, Axon, AirTag, Tile, SmartTag and drone signatures owe a lot to his work. Go look at what he builds.
+
+**To Squatchify your own watch:** drop the artwork on the SD card at `/assets/squatch.png`, then turn on **SQUATCHIFY?** in Settings. That's it.
+
+The image is read from the card rather than baked into the firmware, so you can swap it any time without reflashing. If the file isn't there, the Settings row reads `NO FILE` and the owl stays where it is — the default face never depends on removable storage.
+
+Artwork requirements, if you want to make your own:
+
+- **320 px tall** PNG (width is up to you; it is centred, not scaled).
+- **8-bit palette, non-interlaced.**
+- **No alpha channel.** Flatten it onto the background colour (`#050A0A`) first — an ARGB PNG composites to nothing on the RGB565 canvas and you will get a black box.
+
+LVGL is built here without an image cache, so the PNG is decoded once into a canvas when the setting is switched on, rather than on every redraw.
+
 ## Hardware target
 
 This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_ultra` in `platformio.ini`), built on [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) (ESP32-S3, SX1262 LoRa, AXP2101 PMU, MIA-M10Q GNSS). The `platformio.ini` also carries environments for T-Watch-S3, T-LoRa-Pager, and the LilyGoLib emulator targets inherited from the base template, but LayerTime's own screens and services are written against the Ultra's hardware and are not verified on the other boards.
@@ -93,8 +115,10 @@ This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_
 - `src/ui/` — LVGL screens (WatchFace, GpsScreen, MeshScreen, MeshtasticScreen, ReconScreen, SettingsScreen).
 - `src/model/` — shared state/settings structs (`AppSettings`, `WatchState`).
 - `variants/lilygo_twatch_ultra/` — board pin definitions.
-- `assets/` — source SVG assets (owl logo).
+- `assets/` — source SVG assets (owl logo) and README imagery.
 
 ## Attribution
 
 Based on LilyGo's [LilyGoLib-PlatformIO](https://github.com/Xinyuan-LilyGO/LilyGoLib) starter template.
+
+Squatchy artwork by [The Talking Sasquach](https://talkingsasquach.com/), used with permission. Detector signature research adapted from his [SquachWatch-CYD](https://github.com/skizzophrenic/SquachWatch-CYD) (GPL-3.0); signature data only, no code.

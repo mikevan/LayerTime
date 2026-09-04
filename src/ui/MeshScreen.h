@@ -16,6 +16,8 @@ private:
     static void composeEventThunk(lv_event_t *event);
     static void sendEventThunk(lv_event_t *event);
     static void cancelEventThunk(lv_event_t *event);
+    static void phraseEventThunk(lv_event_t *event);
+    static void clearEventThunk(lv_event_t *event);
     static const char *nodeTypeName(uint8_t type);
 
     void showComposer();
@@ -28,7 +30,7 @@ private:
     lv_obj_t *_messages = nullptr;
     lv_obj_t *_composer = nullptr;
     lv_obj_t *_textArea = nullptr;
-    lv_obj_t *_keyboard = nullptr;
+    lv_obj_t *_phraseList = nullptr;
 
     MeshService *_service = nullptr;
     BackCallback _backCallback = nullptr;

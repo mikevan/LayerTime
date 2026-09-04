@@ -50,6 +50,7 @@ private:
     static void earlyWarningThunk(lv_event_t *event);
     static void reconSdLoggingThunk(lv_event_t *event);
     static void sleepModeThunk(lv_event_t *event);
+    static void squatchifyThunk(lv_event_t *event);
     static void dateTimeControlThunk(lv_event_t *event);
     static void saveDateTimeThunk(lv_event_t *event);
     static void cancelDateTimeThunk(lv_event_t *event);
@@ -120,6 +121,7 @@ private:
     lv_obj_t *_earlyWarningValue = nullptr;
     lv_obj_t *_reconSdLoggingValue = nullptr;
     lv_obj_t *_sleepModeValue = nullptr;
+    lv_obj_t *_squatchifyValue = nullptr;
 
     lv_obj_t *_sdStatusValue = nullptr;
     lv_obj_t *_sdSpaceValue = nullptr;

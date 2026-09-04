@@ -6,6 +6,7 @@
 #include "../model/WatchState.h"
 #include "../services/ReconService.h"
 #include "OwlLogo.h"
+#include "SquatchLogo.h"
 
 class WatchFace {
 public:
@@ -38,6 +39,10 @@ private:
     static void mappingEventThunk(lv_event_t *event);
 
     OwlLogo _owl;
+    SquatchLogo _squatch;
+    // Tracks the toggle so the SD card is only touched on an off->on edge,
+    // not on every render tick.
+    bool _squatchifyWas = false;
     lv_obj_t *_screen = nullptr;
 
     lv_obj_t *_battery = nullptr;

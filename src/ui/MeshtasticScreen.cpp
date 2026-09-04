@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "QuickPhrases.h"
 #include "Theme.h"
 
 namespace {
@@ -56,6 +57,28 @@ lv_obj_t *makeList(lv_obj_t *parent)
     lv_obj_set_scroll_dir(list, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_AUTO);
     return list;
+}
+
+// Phrase strings are static literals, so stashing the pointer on the button
+// itself is safe for the life of the screen and avoids another context pool.
+lv_obj_t *makePhraseButton(lv_obj_t *parent, const char *phrase, lv_event_cb_t cb,
+                           void *userData)
+{
+    lv_obj_t *button = lv_button_create(parent);
+    lv_obj_set_size(button, 186, 40);
+    lv_obj_set_style_bg_color(button, Theme::background(), 0);
+    lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(button, Theme::green(), 0);
+    lv_obj_set_style_border_width(button, 2, 0);
+    lv_obj_set_style_radius(button, 8, 0);
+    lv_obj_set_user_data(button, const_cast<char *>(phrase));
+    lv_obj_add_event_cb(button, cb, LV_EVENT_CLICKED, userData);
+    lv_obj_t *label = lv_label_create(button);
+    lv_label_set_text(label, phrase);
+    lv_obj_set_style_text_color(label, Theme::white(), 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+    lv_obj_center(label);
+    return button;
 }
 
 void ageText(uint32_t ageMs, char *out, size_t outSize)
@@ -218,15 +241,29 @@ void MeshtasticScreen::buildComposer()
     lv_textarea_set_placeholder_text(_textArea, "Message...");
     lv_obj_set_style_text_font(_textArea, &lv_font_montserrat_20, 0);
 
-    makeButton(_composer, "CANCEL", 12, 190, 186, 44, Theme::muted(), Theme::white(),
+    makeButton(_composer, "CANCEL", 12, 190, 122, 44, Theme::muted(), Theme::white(),
                cancelThunk, this);
-    makeButton(_composer, "SEND", 212, 190, 186, 44, Theme::green(), Theme::green(),
+    makeButton(_composer, "CLEAR", 144, 190, 122, 44, Theme::gold(), Theme::gold(),
+               clearThunk, this);
+    makeButton(_composer, "SEND", 276, 190, 122, 44, Theme::green(), Theme::green(),
                sendThunk, this);
 
-    _keyboard = lv_keyboard_create(_composer);
-    lv_obj_set_size(_keyboard, 410, 256);
-    lv_obj_set_pos(_keyboard, 0, 246);
-    lv_keyboard_set_textarea(_keyboard, _textArea);
+    // Quick phrases instead of a keyboard: two columns of buttons in a
+    // wrapping flex row, filling exactly the rectangle the keyboard held.
+    _phraseList = lv_obj_create(_composer);
+    lv_obj_set_size(_phraseList, 410, 256);
+    lv_obj_set_pos(_phraseList, 0, 246);
+    lv_obj_set_style_bg_opa(_phraseList, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(_phraseList, 0, 0);
+    lv_obj_set_style_pad_all(_phraseList, 8, 0);
+    lv_obj_set_style_pad_row(_phraseList, 6, 0);
+    lv_obj_set_style_pad_column(_phraseList, 6, 0);
+    lv_obj_set_flex_flow(_phraseList, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_scroll_dir(_phraseList, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(_phraseList, LV_SCROLLBAR_MODE_AUTO);
+    for (size_t i = 0; i < QuickPhrases::kCount; ++i) {
+        makePhraseButton(_phraseList, QuickPhrases::kPhrases[i], phraseThunk, this);
+    }
 }
 
 void MeshtasticScreen::buildChannelsPage()
@@ -458,6 +495,26 @@ void MeshtasticScreen::sendThunk(lv_event_t *event)
         else self->_service->sendDirectMessage(self->_threadPeer, text);
     }
     self->showPage(Page::Thread);
+}
+
+void MeshtasticScreen::phraseThunk(lv_event_t *event)
+{
+    auto *self = static_cast<MeshtasticScreen *>(lv_event_get_user_data(event));
+    if (!self) return;
+    lv_obj_t *button = lv_event_get_target_obj(event);
+    if (!button) return;
+    const char *phrase = static_cast<const char *>(lv_obj_get_user_data(button));
+    if (!phrase) return;
+    const char *current = lv_textarea_get_text(self->_textArea);
+    if (current && current[0]) lv_textarea_add_text(self->_textArea, " ");
+    lv_textarea_add_text(self->_textArea, phrase);
+}
+
+void MeshtasticScreen::clearThunk(lv_event_t *event)
+{
+    auto *self = static_cast<MeshtasticScreen *>(lv_event_get_user_data(event));
+    if (!self) return;
+    lv_textarea_set_text(self->_textArea, "");
 }
 
 void MeshtasticScreen::cancelThunk(lv_event_t *event)

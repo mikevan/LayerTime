@@ -84,6 +84,8 @@ private:
     static void writeThunk(lv_event_t *event);
     static void sendThunk(lv_event_t *event);
     static void cancelThunk(lv_event_t *event);
+    static void phraseThunk(lv_event_t *event);
+    static void clearThunk(lv_event_t *event);
     static void channelsTileThunk(lv_event_t *event);
     static void channelRowThunk(lv_event_t *event);
     static void addChannelThunk(lv_event_t *event);
@@ -108,7 +110,7 @@ private:
     lv_obj_t *_composer = nullptr;
     lv_obj_t *_composeTitle = nullptr;
     lv_obj_t *_textArea = nullptr;
-    lv_obj_t *_keyboard = nullptr;
+    lv_obj_t *_phraseList = nullptr;
     lv_obj_t *_channelsValue = nullptr;
     lv_obj_t *_channelsPage = nullptr;
     lv_obj_t *_channelsList = nullptr;
