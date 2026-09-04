@@ -9,7 +9,7 @@ Current-state feature documentation for the LayerTime firmware, targeting the Li
 - **THREATS** (bottom-left, green/red): status text shows what's actively scanning right now - `ALL`, a single detector name (e.g. `DEAUTH`) when manually selected, `EARLY WARNING` when only the background sweep is running, or `OFF` when nothing is scanning at all. Color is separate from that text: red as long as the persistent threat log (see Recon below) holds anything, green when it's empty - so a threat found earlier stays flagged red even after monitoring stops, until the user clears the log. Tap it to jump straight into Recon's All-detectors monitor, skipping the detector-picker menu.
 - No seconds or AM/PM shown; the 12/24-hour setting still controls the hour format.
 - Long-press anywhere on the face to open **Settings**.
-- **Double-tap the watch face** (two taps inside 500 ms) to put the display to sleep immediately instead of waiting out the 15-second timeout. Only the face background counts: taps on the four shortcut buttons or the GPS / THREATS blocks still do their normal job, so the gesture can't fire while working a menu or the Mesh keyboard. The owl and the time/date/ALT/TRAVEL labels aren't touch targets, so taps pass through them to the background. A tap anywhere - including on a button - wakes the display again, and that waking tap is never counted as the first half of a new pair. A forced sleep is only ended by an actual touch; a Recon alert arriving while the screen is dark no longer switches it back on.
+- **Double-tap the watch face** (two taps inside 500 ms) to put the display to sleep immediately instead of waiting out the 15-second timeout. Only the face background counts: taps on the four shortcut buttons or the GPS / THREATS blocks still do their normal job, so the gesture can't fire while working a menu or picking mesh phrases. The owl and the time/date/ALT/TRAVEL labels aren't touch targets, so taps pass through them to the background. A tap anywhere - including on a button - wakes the display again, and that waking tap is never counted as the first half of a new pair. A forced sleep is only ended by an actual touch; a Recon alert arriving while the screen is dark no longer switches it back on.
 - Tap the green GPS block to open the **GPS** page.
 - Four shortcut buttons in a 2x2 over the lower face: **MTASTIC** (Meshtastic) and **RECON** on the upper row, **MESHCORE** and **MAPPING** on the lower, MESHCORE's bottom edge level with the time.
 - Footer reads `LAYERTIME | T-WATCH ULTRA`.
@@ -55,25 +55,36 @@ Passive Wi-Fi/BLE survey and monitoring — no active transmission, injection, o
 
 ## Mesh radios
 
-The T-Watch Ultra has one physical SX1262 LoRa radio. LayerTime implements two independent, non-interoperable mesh protocols against it — **MeshCore** and **Meshtastic** — kept mutually exclusive in software: enabling one in Settings automatically disables the other, since both would otherwise fight over the same radio.
+The T-Watch Ultra has one physical SX1262 LoRa radio. LayerTime implements two independent, non-interoperable mesh protocols against it — **MeshCore** and **Meshtastic**.
 
-### MeshCore (active)
+Carrying both is a deliberate, permanent feature, not a transitional state. Mesh coverage is local and uneven: the network that exists where you are is whichever one the people around you happened to build. Walk into a Meshtastic area and use Meshtastic; walk into a MeshCore area and use MeshCore — same watch, same interface, no second device. Because they share one radio they are kept mutually exclusive in software: enabling one automatically disables the other.
 
-The original mesh integration. Kept in the tree for reference and comparison, but no longer the primary/recommended protocol for this project.
+*Planned: a single abstracted mesh UI serving both protocols, so they look and behave identically and the duplicated screen code goes away; and selecting a protocol implicitly by tapping it on the watch face rather than toggling it in Settings.*
+
+### MeshCore
+
+Bring your own group — a smaller, simpler protocol with a signed identity.
 
 - Radio profile: USA/Canada preset, 910.525 MHz, BW 62.5 kHz, SF7, CR5.
 - Passive heard-node list (up to 8 nodes): name/type, RSSI/SNR, age, advertised GPS coordinates.
-- Public-channel chat: receives and decrypts the default MeshCore public channel; **CHAT** opens an on-watch keyboard to send.
+- Public-channel chat: receives and decrypts the default MeshCore public channel; **CHAT** opens the quick-phrase composer to send.
 - **MESHCORE ADVERTISE** (Settings toggle, persisted): transmits a signed node advert (name + GPS when available) immediately on enable and every 15 minutes thereafter. Identity is a persistent Ed25519 keypair generated once and stored in ESP32 NVS; the node name is auto-generated as `LayerTime-XXXX` from the watch's MAC.
 
-### Meshtastic (active)
+### Meshtastic
 
-A parallel, from-scratch implementation for the default US/LongFast public channel — deliberately not sharing code with MeshCore, so the two can be evaluated side by side. Built against the real `meshtastic/firmware`/`meshtastic/protobufs` wire format (hand-rolled protobuf parsing; no nanopb/protoc toolchain in this build environment).
+Reach the larger population — a from-scratch implementation of the real wire format. Built against the real `meshtastic/firmware`/`meshtastic/protobufs` wire format (hand-rolled protobuf parsing; no nanopb/protoc toolchain in this build environment).
 
 - Radio profile: US region, LongFast preset, 906.875 MHz, BW 250 kHz, SF11, CR5, default public-channel PSK, AES-128-CTR payload encryption.
 - Decodes and displays heard nodes: long/short name, hop count, RSSI/SNR, last-heard age, GPS position when present, and battery/voltage/channel-utilization telemetry when present.
-- Public-channel chat: receives and decrypts text messages; **CHAT** opens the same on-watch keyboard as MeshCore to send. Sent messages appear in the message list tagged TX, received ones RX.
-- **MESHTASTIC ADVERTISE** (Settings toggle, persisted): periodically transmits a NodeInfo packet announcing your name, so other users see a name instead of a raw node number, mirroring MeshCore's advertise behavior.
+- **MUI-style interface.** A home grid of tiles - NODES / CHATS, CHANNELS / MAP, INFO - laid out to match Meshtastic's own on-device UI, so anyone who has used a T-Deck is already oriented. One context-sensitive BACK in the top left.
+- **Nodes**: name, hop count, age, battery, RSSI and GPS per node. Tap one to open a direct-message thread with it.
+- **Chats**: channels and direct-message conversations in one list, unread ones outlined gold with a count.
+- **Delivery state on every message.** Bubbles are outlined by what actually happened to them - green acked, red failed, gold relayed, muted still pending. Direct messages request an ack and retry up to three times before being marked failed; broadcasts use the implicit ack, i.e. hearing another node rebroadcast your own packet.
+- **Direct messages with PKC encryption.** X25519 key agreement against the peer's published public key, SHA-256 to a 256-bit key, AES-256-CCM with an 8-byte tag - the same scheme as firmware 2.5 and later. Our keypair is generated once and kept in NVS, and our public key rides along in NodeInfo. Peers that publish no key fall back to the channel PSK.
+- **Up to eight channels.** Slot 0 is LongFast and fixed; slots 1-7 are user-defined with a name and a base64 PSK (or a bare 0-10 simple-index key), persisted, and shown with their encryption state and hash. Incoming packets decode against the first channel whose hash matches, which is what the firmware itself does.
+- **Map from SD-card tiles.** Standard XYZ tiles at `/maps/<style>/<z>/<x>/<y>.png`, drawn to a canvas with your own position in gold and heard nodes in teal. Drag to pan, zoom in and out, and a CENTER button that toggles between your fix and the centroid of heard nodes.
+- **Quick-phrase composer**: twenty tappable phrases instead of an on-screen keyboard, because typing on a watch while moving does not work. Tap to fill, tap again to add another, CLEAR to start over, SEND when it reads right.
+- **MESHTASTIC ADVERTISE** (Settings toggle, persisted): periodically transmits a NodeInfo packet announcing your name, so other users see a name instead of a raw node number, mirroring MeshCore's advertise behavior. Position and telemetry are also broadcast on a timer, so the watch shows up on other nodes' maps.
 - **MESHTASTIC NAME** (Settings, persisted): user-configurable identity via an on-watch keyboard. Leave it blank to fall back to an auto-generated name derived from the chip's MAC.
 - The watch's Meshtastic node number is synthesized from the ESP32's factory MAC — it is not a registered Meshtastic device, so this identity only matters for packets the watch itself originates.
 
@@ -98,6 +109,7 @@ Long-press the watch face (~1 second) to open. Scrollable, with a fixed BACK in 
 - **EARLY WARNING** — Recon background sweep, persisted, defaults on.
 - **SD LOGGING** — Recon-to-SD-card CSV logging, persisted, defaults off.
 - **SLEEP MODE** — for overnight use: forces the backlight off immediately (instead of waiting out the normal 15s auto-blank), and silences Recon's vibration/popup alert. Detections are still logged and counted normally in the background - only the disruptive alert is muted, so nothing is missed while you're asleep. Tapping the screen still wakes it briefly, same as the normal auto-blank behavior, so you can check the time or come back here to turn it off. Persisted, defaults off.
+- **SQUATCHIFY?** — swaps the owl watch-face logo for Squatchy, read from `/assets/squatch.png` on the SD card. Reads `NO FILE` when the artwork isn't there, and the owl stays put. Persisted, defaults off. Artwork by [The Talking Sasquach](https://talkingsasquach.com/), used with permission.
 - **SD CARD** — opens the SD card status/format sub-page.
 
 ## Known cosmetic issue

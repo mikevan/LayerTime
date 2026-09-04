@@ -15,17 +15,15 @@
 
 ## Why this exists
 
-A few years ago, I was reviewing my home security cameras when I discovered a camera feed from inside my bedroom. I had not installed it. No one in my household knew it existed.
+> **How would I know if someone were using wireless technology to watch the room I'm sleeping in — and if normal communications failed, how would I reach anyone?**
 
-That left me with two uncomfortable questions:
+A few years ago, while reviewing open camera feeds around the AirBNB I was staying at, I found a feed from its bedroom. If I hadn't been looking specifically for it, I wouldn't have known, and would've probably ended up as some jerk's fat-guy OnlyFans material.
 
-**How would I know if someone were using wireless technology to monitor or attack my home? And if normal communications failed, how would I reach anyone?**
+I should have had a tool to let me be aware of it, on my wrist, to warn me immediately. But all smartwatches do today is tell you how many steps you've walked. Gee. That's useful. What I needed was a field watch providing awareness, position, and a way to talk when the blackouts start.
 
-At the same time, I wanted a field watch without the health tracking, subscriptions, and lifestyle features built into most commercial smartwatches. I needed something focused on awareness, privacy, navigation, and resilient communications.
+LayerTime is that watch. It listens to the 2.4 GHz and BLE spectrum around you for the signatures of surveillance and intrusion hardware, fixes your position and hands you a grid reference you can read over a radio, and carries a LoRa mesh radio that doesn't care whether the internet still works.
 
-So I built LayerTime.
-
-LayerTime transforms the LILYGO T-Watch Ultra into a wearable counter-intrusion and field-communications platform. It passively monitors nearby Wi-Fi and Bluetooth activity for indicators associated with surveillance equipment, tracking devices, and common wireless attack tools.
+No health tracking, no subscription, no account, no cloud.
 
 Depending on the available radio data, LayerTime can flag:
 
@@ -43,12 +41,18 @@ When cellular and internet service are unavailable, LayerTime can also communica
 
 No active transmission, injection, or association — LayerTime only listens.
 
-- **Wi-Fi scan**: SSID, BSSID, RSSI, channel, security, sorted strongest-first.
-- **BLE scan**: name, address, RSSI.
-- **Activity monitoring**: passive channel-hopping across all US 2.4 GHz Wi-Fi channels, counting management/data/control frames and flagging deauth/disassociation activity in real time — source, RSSI, channel.
-- **Dedicated detectors** for the specific tools and devices most associated with surveillance or intrusion: Deauth attacks, Pwnagotchi, MultiSSID rogue-AP patterns (evil portal/Karma), and Pineapple over Wi-Fi; Flock cameras, Flipper Zero, AirTag, and Meta smart glasses over BLE.
-- **Early Warning**: an optional always-on background sweep across every detector above, running whether or not you have the Recon screen open, so a threat gets flagged the moment it appears rather than only when you go looking.
-- **SD logging**: every new detection can be appended to a CSV log on the SD card automatically — a running, timestamped record of what's been detected around you.
+- **Activity monitoring**: passive channel-hopping across all US 2.4 GHz Wi-Fi channels, counting management/data/control frames and flagging deauth/disassociation bursts — source, RSSI, channel.
+- **Twelve detectors**, grouped by what they tell you:
+  - **Trackers** — AirTag, Tile, Samsung SmartTag, Google Find My Device
+  - **Counter-surveillance** — Flock cameras, Axon body cameras, Meta smart glasses
+  - **Counter-intrusion** — Deauth bursts, Pwnagotchi, MultiSSID rogue-AP patterns (evil portal / Karma), Wi-Fi Pineapple, Flipper Zero
+- **Matching is on parsed fields**, not raw byte searches — BLE manufacturer company IDs and 16-bit service UUIDs. AirTag matches Apple's Find My subtypes rather than every Apple Continuity advertisement; Flock is name-gated on top of its company ID.
+- **Early Warning**: an optional duty-cycled background sweep, running whether or not the Recon screen is open, so something gets flagged when it appears rather than only when you go looking.
+- **A persistent session log**: detections are kept with an encounter count until you explicitly clear them, so a long session isn't overwritten by whatever was seen most recently.
+- **SD logging**: every new detection can be appended to a timestamped CSV on the SD card.
+
+> [!NOTE]
+> There is no general-purpose Wi-Fi or BLE scan list — Recon reports signature matches, not everything in earshot. A raw-scan mode is on the roadmap, mostly because it would make diagnosing a detector that *didn't* fire far easier.
 
 ### GPS
 
@@ -112,7 +116,7 @@ Installing erases the watch: a fresh bootloader, partition table and application
 
 ### The other way: build it yourself
 
-See [Build & flash (PlatformIO)](#build--flash-platformio) below. It is the only route that lets you change anything.
+See [Build & flash (pioarduino)](#build--flash-pioarduino) below. It is the only route that lets you change anything.
 
 ### Maintainer: cutting a new flashable build
 
@@ -137,10 +141,12 @@ The offsets it uses come from `boards/lilygo-t-watch-ultra.json` (qio, 80 MHz, 1
 
 This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_ultra` in `platformio.ini`), built on [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) (ESP32-S3, SX1262 LoRa, AXP2101 PMU, MIA-M10Q GNSS). The `platformio.ini` also carries environments for T-Watch-S3, T-LoRa-Pager, and the LilyGoLib emulator targets inherited from the base template, but LayerTime's own screens and services are written against the Ultra's hardware and are not verified on the other boards.
 
-## Build & flash (PlatformIO)
+## Build & flash (pioarduino)
 
-1. Install [Visual Studio Code](https://code.visualstudio.com/) and the `PlatformIO` extension (or use the PlatformIO Core CLI directly).
-2. Open this project folder in VS Code and let PlatformIO fetch dependencies.
+This project builds against **[pioarduino](https://github.com/pioarduino/platform-espressif32)**, the community fork of `platform-espressif32` — not the stock PlatformIO ESP32 platform. `platformio.ini` pins it directly, so the fork is used whether or not you notice.
+
+1. Install [Visual Studio Code](https://code.visualstudio.com/) and the **[pioarduino IDE](https://marketplace.visualstudio.com/items?itemName=pioarduino.pioarduino-ide)** extension (search the extension manager for "pioarduino ide").
+2. Open this project folder in VS Code and let it fetch the platform and dependencies. The first fetch is slow — it pulls the ESP32 toolchain plus about ten libraries.
 3. Confirm `default_envs = twatch_ultra` is uncommented in `platformio.ini` (it is, by default, in this repo).
 4. Build, then upload over USB. If the port won't open ("Access is denied" on Windows), make sure nothing else — most commonly an open Serial Monitor — has it locked.
 5. Use the Serial Monitor to watch boot/log output once flashed.
@@ -160,6 +166,10 @@ This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_
 - `assets/` — source SVG assets (owl logo) and README imagery.
 - `docs/` — the browser flasher published by GitHub Pages (`index.html`, `manifest.json`, `firmware/`).
 - `support/` — maintainer scripts, including `make_flasher_bin.ps1`.
+
+## License
+
+LayerTime is released under the **GNU General Public License v3.0**. See [LICENSE](LICENSE).
 
 ## Attribution
 

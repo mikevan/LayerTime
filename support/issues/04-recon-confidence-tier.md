@@ -1,13 +1,10 @@
-# Recon phase 3: render the signal confidence tier
+# Recon: raw scan mode
 
-**This gates every other Recon phase.** Nothing noisier ships before it.
+NOTE: this file previously held a "render the confidence tier" issue. That work is already shipped - `ReconService::confidenceLabel()` is rendered in `ReconScreen` and written to the SD log, and the phase-4 OUI merge is in too. Do not file that one. This is the real next Recon item after the ring buffer.
 
-`SignalConfidence` already exists as a field on every row in `kBleUuidSignatures` and nothing renders it. That was deliberate - phase 2 added the field so phase 3 becomes a UI change rather than a re-edit of every signature.
+There is no way to see what the watch is actually hearing - Recon reports signature matches only. When a detector does not fire, neither the user nor the maintainer can tell whether the signal was absent, was heard and not matched, or was matched and suppressed.
 
-- [ ] Carry the tier onto `ReconDetection`
-- [ ] Lookup function from signature to tier
-- [ ] One `ReconScreen` change to show it
+- [ ] A raw list of everything seen: Wi-Fi SSID / BSSID / RSSI / channel, BLE name / address / RSSI
+- [ ] Reachable from the Recon menu, off by default (it is noisy and costs power)
 
-Matters because some detectors are honestly low-confidence - Google FMDN (0xFEAA) shares its UUID with ordinary Eddystone beacons - and presenting those identically to a registered Flock OUI is misleading.
-
-Estimated ~2h.
+This is the single biggest diagnostic gap in the firmware. It is also what the README used to claim existed, and what would make every "it didn't detect my X" report answerable.
