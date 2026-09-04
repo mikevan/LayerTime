@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install LayerTime</title>
+<meta name="description" content="Flash LayerTime onto a LilyGo T-Watch Ultra from your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#E6E3D8; --surface:#F2F0E8; --ink:#1A1C18; --ink-2:#55584E; --ink-3:#7C7F73;
+  --rule:#C2BEAE; --rule-soft:#D3CFC1; --amber:#9C6608; --signal:#2C6B1B; --alert:#9C2F1D;
+  --display:"Saira Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Newsreader",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0B0C09; --surface:#14160F; --ink:#E9E7DC; --ink-2:#9A9D8F; --ink-3:#6E7165;
+  --rule:#2E3227; --rule-soft:#242820; --amber:#F2AB21; --signal:#78DE10; --alert:#E5654B;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.graticule{height:14px;background-image:repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 12px);border-bottom:1px solid var(--rule);opacity:.85}
+.page{max-width:760px;margin:0 auto;padding:0 24px 96px}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:clamp(40px,8vw,64px);text-transform:uppercase;line-height:.95;padding-top:44px}
+h1 .time{color:var(--amber)}
+h2{font-size:clamp(22px,4vw,30px);text-transform:uppercase;border-bottom:2px solid var(--ink);padding-bottom:8px;margin:56px 0 22px}
+h3{font-size:19px;margin:26px 0 6px}
+p{margin:0 0 1.1em}
+a{color:var(--amber);text-underline-offset:3px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-top:14px}
+.lede{font-family:var(--display);font-weight:500;font-size:clamp(19px,3vw,25px);line-height:1.2;margin:18px 0 0}
+.specstrip{display:flex;flex-wrap:wrap;gap:0 20px;font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.04em;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:9px 0;margin:26px 0 0}
+.flashbox{border:1px solid var(--rule);border-left:3px solid var(--signal);background:var(--surface);padding:26px 24px;margin:34px 0 0;text-align:center}
+.flashbox p{margin:14px 0 0;font-size:15.5px;color:var(--ink-2)}
+esp-web-install-button{--esp-tools-button-color:var(--bg);--esp-tools-button-text-color:var(--ink)}
+.nowebserial{display:none;border-left-color:var(--alert)}
+.note{border:1px solid var(--rule);border-left:3px solid var(--amber);background:var(--surface);padding:16px 20px;font-size:15.5px;color:var(--ink-2);margin:22px 0}
+.note b{color:var(--ink);font-weight:500}
+ol,ul{padding-left:22px;margin:0 0 1.1em}
+li{margin-bottom:7px;color:var(--ink-2)}
+li b{color:var(--ink);font-weight:500}
+code{font-family:var(--mono);font-size:.86em;background:var(--surface);border:1px solid var(--rule-soft);padding:1px 5px}
+pre{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:var(--surface);border:1px solid var(--rule);padding:14px 16px;overflow-x:auto}
+pre code{background:none;border:0;padding:0}
+footer{border-top:2px solid var(--ink);margin-top:64px;padding-top:18px;font-family:var(--mono);font-size:12.5px;color:var(--ink-3);line-height:1.8}
+</style>
+</head>
+<body>
+<div class="graticule" aria-hidden="true"></div>
+<div class="page">
+
+  <h1>Install <span class="time">LayerTime</span></h1>
+  <div class="lede">Counter-intrusion and resilient-communications firmware for the LilyGo T-Watch Ultra.</div>
+  <div class="eyebrow">Flash it from this page &middot; no toolchain, no account</div>
+
+  <div class="specstrip">
+    <span>T-WATCH ULTRA ONLY</span>
+    <span>ESP32-S3 &middot; 16 MB</span>
+    <span>CHROME OR EDGE</span>
+    <span>USB-C DATA CABLE</span>
+  </div>
+
+  <div class="flashbox" id="flashbox">
+    <esp-web-install-button manifest="manifest.json">
+      <button slot="activate" style="font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--amber);background:var(--amber);color:var(--bg);padding:14px 30px;cursor:pointer">Connect &amp; Install</button>
+      <span slot="unsupported"></span>
+      <span slot="not-allowed"></span>
+    </esp-web-install-button>
+    <p>Plug the watch in first. You'll be asked to pick its serial port.</p>
+  </div>
+
+  <div class="note nowebserial" id="nowebserial">
+    <b>This browser can't flash.</b> Installing over USB needs WebSerial, which only Chrome and Edge implement &mdash; Firefox and Safari have no equivalent, and neither does any browser on iOS. Open this page in Chrome or Edge on a desktop, or
+    <a href="https://github.com/mikevan/LayerTime">build from source</a> instead.
+  </div>
+
+  <div class="note">
+    <b>This erases the watch.</b> Installing writes a fresh bootloader, partition table and application, so anything already on the device &mdash; including another firmware's saved settings &mdash; is gone. Nothing on the SD card is touched.
+  </div>
+
+  <h2>If it won't connect</h2>
+
+  <p>The Ultra talks over the ESP32-S3's native USB rather than a separate serial chip, so the automatic reset-into-download-mode that works on most boards is unreliable here. If the port doesn't appear, or the install fails immediately, put the watch into download mode by hand and try again:</p>
+
+  <ol>
+    <li>Unplug the watch.</li>
+    <li><b>Hold the lower side button</b> while you plug the USB-C cable back in.</li>
+    <li>Keep holding for a couple of seconds after it's connected, then release.</li>
+    <li>Click <b>Connect &amp; Install</b> again and pick the port.</li>
+  </ol>
+
+  <p>The port shows up as USB ID <code>303A:8227</code>. If it still doesn't appear, it is almost always the cable &mdash; a great many USB-C cables carry power only. LilyGo's own
+  <a href="https://github.com/Xinyuan-LilyGO/LilyGoLib/blob/master/docs/lilygo-t-watch-ultra.md#t-watch-s3-ultra-enter-download-mode">download-mode notes</a> cover the stubborn cases.</p>
+
+  <h2>After it's flashed</h2>
+
+  <p>The watch reboots into the face on its own. A few things worth knowing before you go looking for them:</p>
+
+  <ul>
+    <li><b>Both radios start off, every boot.</b> That's deliberate, not a bug &mdash; LoRa is opt-in from Settings each session, and MeshCore and Meshtastic are mutually exclusive because there's one physical SX1262.</li>
+    <li><b>Mesh messaging is new and lightly tested.</b> The Meshtastic implementation is hand-rolled and the delivery-state, retry and PKC paths have not yet been exercised against a wide range of peers. Treat it as promising rather than proven, and please report what breaks.</li>
+    <li><b>Maps need an SD card.</b> Tiles go at <code>/maps/&lt;style&gt;/&lt;z&gt;/&lt;x&gt;/&lt;y&gt;.png</code> &mdash; 256 px, 8-bit palette, XYZ scheme. Prebuilt regional bundles come from
+      <a href="https://download.tiles.coalition.space/">Oxed's tile downloader</a>. The card must be <b>FAT32</b>; exFAT mounts on a computer and then silently fails on the watch.</li>
+    <li><b>Squatchify</b> swaps the owl for Squatchy, by <a href="https://talkingsasquach.com/">The Talking Sasquach</a>. Put a 320&nbsp;px-tall, 8-bit palette PNG with <b>no alpha channel</b> at <code>/assets/squatch.png</code> on the card and turn it on in Settings.</li>
+    <li><b>Recon only listens.</b> No injection, no association, no transmitting. Detections are indicators drawn from public radio traffic, not proof of anything.</li>
+  </ul>
+
+  <h2>Or build it yourself</h2>
+
+  <p>Everything is in the repo and builds with PlatformIO in VS Code &mdash; open the folder, let it fetch dependencies, and upload over USB. First build pulls about ten libraries and takes a while; after that it's quick.</p>
+
+  <pre><code>git clone https://github.com/mikevan/LayerTime.git
+cd LayerTime
+pio run -t upload</code></pre>
+
+  <p><code>default_envs = twatch_ultra</code> is already set, so there's nothing to configure.</p>
+
+  <footer>
+    <div><a href="https://github.com/mikevan/LayerTime">github.com/mikevan/LayerTime</a></div>
+    <div>Passive receive only &middot; radios off at every boot &middot; no cloud, no account, no telemetry</div>
+    <div>Not a security guarantee, an intrusion-prevention system, or a substitute for a professional sweep.</div>
+  </footer>
+
+</div>
+
+<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+<script>
+  if (!('serial' in navigator)) {
+    document.getElementById('nowebserial').style.display = 'block';
+    document.getElementById('flashbox').style.display = 'none';
+  }
+</script>
+</body>
+</html>
