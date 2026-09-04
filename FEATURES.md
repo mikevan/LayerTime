@@ -109,7 +109,7 @@ Long-press the watch face (~1 second) to open. Scrollable, with a fixed BACK in 
 - **EARLY WARNING** — Recon background sweep, persisted, defaults on.
 - **SD LOGGING** — Recon-to-SD-card CSV logging, persisted, defaults off.
 - **SLEEP MODE** — for overnight use: forces the backlight off immediately (instead of waiting out the normal 15s auto-blank), and silences Recon's vibration/popup alert. Detections are still logged and counted normally in the background - only the disruptive alert is muted, so nothing is missed while you're asleep. Tapping the screen still wakes it briefly, same as the normal auto-blank behavior, so you can check the time or come back here to turn it off. Persisted, defaults off.
-- **SQUATCHIFY?** — swaps the owl watch-face logo for Squatchy, read from `/assets/squatch.png` on the SD card. Reads `NO FILE` when the artwork isn't there, and the owl stays put. Persisted, defaults off. Artwork by [The Talking Sasquach](https://talkingsasquach.com/), used with permission.
+- **SQUACHIFY?** — swaps the owl watch-face logo for Squachy, read from `/assets/squach.png` on the SD card. Reads `NO FILE` when the artwork isn't there, and the owl stays put. Persisted, defaults off. Artwork by [The Talking Sasquach](https://talkingsasquach.com/), used with permission.
 - **SD CARD** — opens the SD card status/format sub-page.
 
 ## Known cosmetic issue

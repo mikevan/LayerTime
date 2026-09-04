@@ -79,17 +79,17 @@ A destructive, in-the-field format utility — available any time a card is inse
 
 See [FEATURES.md](./FEATURES.md) for the full technical breakdown of every screen, setting, and radio parameter.
 
-## Squatchify
+## Squachify
 
-LayerTime wears the owl by default — but you can **Squatchify** it.
+LayerTime wears the owl by default — but you can **Squachify** it.
 
 <div align="center" markdown="1">
-  <img src="assets/squatchify-watch.jpg" alt="LayerTime watch face Squatchified" width="320"/>
+  <img src="assets/squachify-watch.jpg" alt="LayerTime watch face Squachified" width="320"/>
 </div>
 
 Huge thanks to [The Talking Sasquach](https://talkingsasquach.com/) for the artwork, and for generously letting LayerTime ship it. His [SquachWatch-CYD](https://github.com/skizzophrenic/SquachWatch-CYD) project is also where a good deal of LayerTime's tracker and counter-surveillance research came from — the Flock, Axon, AirTag, Tile, SmartTag and drone signatures owe a lot to his work. Go look at what he builds.
 
-**To Squatchify your own watch:** drop the artwork on the SD card at `/assets/squatch.png`, then turn on **SQUATCHIFY?** in Settings. That's it.
+**To Squachify your own watch:** drop the artwork on the SD card at `/assets/squach.png`, then turn on **SQUACHIFY?** in Settings. That's it.
 
 The image is read from the card rather than baked into the firmware, so you can swap it any time without reflashing. If the file isn't there, the Settings row reads `NO FILE` and the owl stays where it is — the default face never depends on removable storage.
 
@@ -175,4 +175,4 @@ LayerTime is released under the **GNU General Public License v3.0**. See [LICENS
 
 Based on LilyGo's [LilyGoLib-PlatformIO](https://github.com/Xinyuan-LilyGO/LilyGoLib) starter template.
 
-Squatchy artwork by [The Talking Sasquach](https://talkingsasquach.com/), used with permission. Detector signature research adapted from his [SquachWatch-CYD](https://github.com/skizzophrenic/SquachWatch-CYD) (GPL-3.0); signature data only, no code.
+Squachy artwork by [The Talking Sasquach](https://talkingsasquach.com/), used with permission. Detector signature research adapted from his [SquachWatch-CYD](https://github.com/skizzophrenic/SquachWatch-CYD) (GPL-3.0); signature data only, no code.

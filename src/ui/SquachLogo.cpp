@@ -16,23 +16,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "SquatchLogo.h"
+#include "SquachLogo.h"
 
 #include "Theme.h"
 
 namespace {
 // 'A:' is LVGL's POSIX filesystem letter, which lv_fs_posix maps to "/sd".
-constexpr const char *kSquatchPath = "A:/assets/squatch.png";
+constexpr const char *kSquachPath = "A:/assets/squach.png";
 }
 
-bool SquatchLogo::create(lv_obj_t *parent, int x, int y, int width, int height)
+bool SquachLogo::create(lv_obj_t *parent, int x, int y, int width, int height)
 {
     if (_canvas != nullptr) return true;
 
     // Ask the decoder for the size first: this also tells us whether the card
     // is mounted and the file is readable, before allocating a canvas.
     lv_image_header_t header;
-    if (lv_image_decoder_get_info(kSquatchPath, &header) != LV_RESULT_OK) return false;
+    if (lv_image_decoder_get_info(kSquachPath, &header) != LV_RESULT_OK) return false;
 
     _buffer = lv_draw_buf_create(width, height, LV_COLOR_FORMAT_RGB565, LV_STRIDE_AUTO);
     if (_buffer == nullptr) return false;
@@ -62,7 +62,7 @@ bool SquatchLogo::create(lv_obj_t *parent, int x, int y, int width, int height)
     lv_draw_image_dsc_init(&image);
     // A string literal has static storage duration, so the draw task can hold
     // this pointer safely until lv_canvas_finish_layer().
-    image.src = kSquatchPath;
+    image.src = kSquachPath;
 
     lv_area_t area;
     area.x1 = (width - static_cast<int32_t>(header.w)) / 2;
@@ -77,7 +77,7 @@ bool SquatchLogo::create(lv_obj_t *parent, int x, int y, int width, int height)
     return true;
 }
 
-void SquatchLogo::setHidden(bool hidden)
+void SquachLogo::setHidden(bool hidden)
 {
     if (_canvas == nullptr) return;
     if (hidden) lv_obj_add_flag(_canvas, LV_OBJ_FLAG_HIDDEN);
