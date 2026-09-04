@@ -70,6 +70,8 @@ void WatchFace::create()
     // y=300 still sits over the lower-left of the owl field, which is the
     // original deliberate arrangement.
     _owl.create(_screen, 45, 45, 320, 320);
+    // Squatchy is created lazily in render(), on the first off->on edge of
+    // the setting: the SD card is not necessarily mounted yet at this point.
 
     _battery = lv_label_create(_screen);
     lv_label_set_text(_battery, "BAT --%");
@@ -195,6 +197,19 @@ void WatchFace::create()
 
 void WatchFace::render(const WatchState &state, const AppSettings &settings, const ReconStatus &reconStatus)
 {
+    // Watch-face logo: owl by default, Squatchy when the setting is on AND
+    // the card actually yielded a decodable image. A missing card or file
+    // silently leaves the owl up rather than blanking the face.
+    if (settings.squatchify != _squatchifyWas) {
+        _squatchifyWas = settings.squatchify;
+        if (settings.squatchify && !_squatch.ok()) {
+            _squatch.create(_screen, 45, 45, 320, 320);
+        }
+    }
+    const bool showSquatch = settings.squatchify && _squatch.ok();
+    _squatch.setHidden(!showSquatch);
+    _owl.setHidden(showSquatch);
+
     lv_label_set_text_fmt(
         _battery,
         state.batteryConnected ? "BAT %u%%" : "BAT --",

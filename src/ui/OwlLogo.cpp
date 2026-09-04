@@ -35,3 +35,10 @@ void OwlLogo::create(lv_obj_t *parent, int x, int y, int width, int height)
     lv_image_set_inner_align(_image, LV_IMAGE_ALIGN_CONTAIN);
     lv_image_set_antialias(_image, true);
 }
+
+void OwlLogo::setHidden(bool hidden)
+{
+    if (_image == nullptr) return;
+    if (hidden) lv_obj_add_flag(_image, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_remove_flag(_image, LV_OBJ_FLAG_HIDDEN);
+}

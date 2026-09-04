@@ -1,5 +1,30 @@
 #include "MeshScreen.h"
+#include "QuickPhrases.h"
 #include "Theme.h"
+
+namespace {
+// Phrase strings are static literals, so stashing the pointer on the button
+// itself is safe for the life of the screen and avoids another context pool.
+lv_obj_t *makePhraseButton(lv_obj_t *parent, const char *phrase, lv_event_cb_t cb,
+                           void *userData)
+{
+    lv_obj_t *button = lv_button_create(parent);
+    lv_obj_set_size(button, 178, 40);
+    lv_obj_set_style_bg_color(button, Theme::background(), 0);
+    lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(button, Theme::gold(), 0);
+    lv_obj_set_style_border_width(button, 2, 0);
+    lv_obj_set_style_radius(button, 8, 0);
+    lv_obj_set_user_data(button, const_cast<char *>(phrase));
+    lv_obj_add_event_cb(button, cb, LV_EVENT_CLICKED, userData);
+    lv_obj_t *label = lv_label_create(button);
+    lv_label_set_text(label, phrase);
+    lv_obj_set_style_text_color(label, Theme::white(), 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+    lv_obj_center(label);
+    return button;
+}
+} // namespace
 
 #include <Arduino.h>
 #include <stdio.h>
@@ -182,10 +207,34 @@ void MeshScreen::create(MeshService *service, BackCallback backCallback, void *u
     lv_obj_set_style_text_color(sendLabel, Theme::background(), 0);
     lv_obj_center(sendLabel);
 
-    _keyboard = lv_keyboard_create(_composer);
-    lv_obj_set_size(_keyboard, 390, 305);
-    lv_obj_set_pos(_keyboard, 0, 177);
-    lv_keyboard_set_textarea(_keyboard, _textArea);
+    lv_obj_t *clear = lv_button_create(_composer);
+    lv_obj_set_size(clear, 105, 42);
+    lv_obj_set_pos(clear, 147, 126);
+    lv_obj_set_style_bg_color(clear, Theme::background(), 0);
+    lv_obj_set_style_border_color(clear, Theme::gold(), 0);
+    lv_obj_set_style_border_width(clear, 2, 0);
+    lv_obj_add_event_cb(clear, clearEventThunk, LV_EVENT_CLICKED, this);
+    lv_obj_t *clearLabel = lv_label_create(clear);
+    lv_label_set_text(clearLabel, "CLEAR");
+    lv_obj_set_style_text_color(clearLabel, Theme::gold(), 0);
+    lv_obj_center(clearLabel);
+
+    // Quick phrases instead of a keyboard: two columns of buttons in a
+    // wrapping flex row, filling exactly the rectangle the keyboard held.
+    _phraseList = lv_obj_create(_composer);
+    lv_obj_set_size(_phraseList, 390, 305);
+    lv_obj_set_pos(_phraseList, 0, 177);
+    lv_obj_set_style_bg_opa(_phraseList, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(_phraseList, 0, 0);
+    lv_obj_set_style_pad_all(_phraseList, 8, 0);
+    lv_obj_set_style_pad_row(_phraseList, 6, 0);
+    lv_obj_set_style_pad_column(_phraseList, 6, 0);
+    lv_obj_set_flex_flow(_phraseList, LV_FLEX_FLOW_ROW_WRAP);
+    lv_obj_set_scroll_dir(_phraseList, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(_phraseList, LV_SCROLLBAR_MODE_AUTO);
+    for (size_t i = 0; i < QuickPhrases::kCount; ++i) {
+        makePhraseButton(_phraseList, QuickPhrases::kPhrases[i], phraseEventThunk, this);
+    }
 }
 
 void MeshScreen::show(const MeshStatus &status)
@@ -306,6 +355,25 @@ void MeshScreen::sendEventThunk(lv_event_t *event)
     if (text != nullptr && text[0] != '\0') self->_service->sendPublicMessage(text);
     self->hideComposer();
     self->render(self->_service->status());
+}
+
+void MeshScreen::phraseEventThunk(lv_event_t *event)
+{
+    auto *self = static_cast<MeshScreen *>(lv_event_get_user_data(event));
+    if (self == nullptr) return;
+    lv_obj_t *button = lv_event_get_target_obj(event);
+    if (button == nullptr) return;
+    const char *phrase = static_cast<const char *>(lv_obj_get_user_data(button));
+    if (phrase == nullptr) return;
+    const char *current = lv_textarea_get_text(self->_textArea);
+    if (current != nullptr && current[0] != '\0') lv_textarea_add_text(self->_textArea, " ");
+    lv_textarea_add_text(self->_textArea, phrase);
+}
+
+void MeshScreen::clearEventThunk(lv_event_t *event)
+{
+    auto *self = static_cast<MeshScreen *>(lv_event_get_user_data(event));
+    if (self != nullptr) lv_textarea_set_text(self->_textArea, "");
 }
 
 void MeshScreen::cancelEventThunk(lv_event_t *event)

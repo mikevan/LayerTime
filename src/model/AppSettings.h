@@ -47,4 +47,10 @@ struct AppSettings {
     // only the disruptive alert is muted, so nothing is missed overnight.
     // Persisted; defaults off.
     bool sleepModeEnabled = false;
+
+    // "Squatchify": swap the owl watch-face logo for Squatchy, read from
+    // A:/assets/squatch.png on the SD card. Persisted; defaults off. Falls
+    // back to the owl silently when the card or file is missing, so the
+    // default face never depends on removable storage.
+    bool squatchify = false;
 };

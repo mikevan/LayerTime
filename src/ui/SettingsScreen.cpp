@@ -26,6 +26,17 @@ int daysInMonth(int year, int month)
     }
     return days[month - 1];
 }
+
+// Squatchify needs art on the card. Probed here rather than cached so a
+// card inserted after boot is picked up the next time Settings refreshes;
+// this runs on page refresh, not on a render tick.
+bool squatchArtPresent()
+{
+    lv_fs_file_t file;
+    if (lv_fs_open(&file, "A:/assets/squatch.png", LV_FS_MODE_RD) != LV_FS_RES_OK) return false;
+    lv_fs_close(&file);
+    return true;
+}
 }
 
 void SettingsScreen::create(
@@ -209,7 +220,11 @@ void SettingsScreen::buildMainPage()
     _sleepModeValue = makeLabel(_mainPage, "OFF", 290, 762, 90, &lv_font_montserrat_20, Theme::teal());
     lv_obj_set_style_text_align(_sleepModeValue, LV_TEXT_ALIGN_CENTER, 0);
 
-    makeButton(_mainPage, "SD CARD", 25, 798, 360, 42, sdCardThunk);
+    makeButton(_mainPage, "SQUATCHIFY?", 25, 798, 250, 42, squatchifyThunk);
+    _squatchifyValue = makeLabel(_mainPage, "OFF", 290, 810, 90, &lv_font_montserrat_20, Theme::teal());
+    lv_obj_set_style_text_align(_squatchifyValue, LV_TEXT_ALIGN_CENTER, 0);
+
+    makeButton(_mainPage, "SD CARD", 25, 846, 360, 42, sdCardThunk);
 
 }
 
@@ -412,6 +427,11 @@ void SettingsScreen::refreshMainValues()
     lv_label_set_text(_earlyWarningValue, _settings->reconEarlyWarningEnabled ? "ON" : "OFF");
     lv_label_set_text(_reconSdLoggingValue, _settings->reconSdLoggingEnabled ? "ON" : "OFF");
     lv_label_set_text(_sleepModeValue, _settings->sleepModeEnabled ? "ON" : "OFF");
+    // Says NO FILE whether the toggle is on or off, so the art being absent
+    // is visible before the user wonders why nothing happened.
+    lv_label_set_text(_squatchifyValue,
+                      !squatchArtPresent() ? "NO FILE"
+                                           : (_settings->squatchify ? "ON" : "OFF"));
 }
 
 void SettingsScreen::refreshSdValues()
@@ -646,6 +666,17 @@ void SettingsScreen::sleepModeThunk(lv_event_t *event)
 {
     auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
     self->_settings->sleepModeEnabled = !self->_settings->sleepModeEnabled;
+    self->refreshMainValues();
+
+    if (self->_settingsChangedCallback != nullptr) {
+        self->_settingsChangedCallback(self->_userData);
+    }
+}
+
+void SettingsScreen::squatchifyThunk(lv_event_t *event)
+{
+    auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
+    self->_settings->squatchify = !self->_settings->squatchify;
     self->refreshMainValues();
 
     if (self->_settingsChangedCallback != nullptr) {
