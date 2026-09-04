@@ -46,6 +46,8 @@ li b{color:var(--ink);font-weight:500}
 code{font-family:var(--mono);font-size:.86em;background:var(--surface);border:1px solid var(--rule-soft);padding:1px 5px}
 pre{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:var(--surface);border:1px solid var(--rule);padding:14px 16px;overflow-x:auto}
 pre code{background:none;border:0;padding:0}
+.community{border:1px solid var(--rule);background:var(--surface);padding:16px 20px;margin:26px 0 0;text-align:center;font-size:15.5px;color:var(--ink-2)}
+.community a{font-weight:500}
 footer{border-top:2px solid var(--ink);margin-top:64px;padding-top:18px;font-family:var(--mono);font-size:12.5px;color:var(--ink-3);line-height:1.8}
 </style>
 </head>
@@ -71,6 +73,11 @@ footer{border-top:2px solid var(--ink);margin-top:64px;padding-top:18px;font-fam
       <span slot="not-allowed"></span>
     </esp-web-install-button>
     <p>Plug the watch in first. You'll be asked to pick its serial port.</p>
+  </div>
+
+  <div class="community">
+    Flashed it, stuck on something, or just want to show it off? The project lives in
+    <a href="https://discord.gg/3gBq4V2tA">LayerLand on Discord</a>.
   </div>
 
   <div class="note nowebserial" id="nowebserial">
@@ -120,7 +127,7 @@ pio run -t upload</code></pre>
   <p><code>default_envs = twatch_ultra</code> is already set, so there's nothing to configure.</p>
 
   <footer>
-    <div><a href="https://github.com/mikevan/LayerTime">github.com/mikevan/LayerTime</a></div>
+    <div><a href="https://github.com/mikevan/LayerTime">github.com/mikevan/LayerTime</a> &middot; <a href="https://discord.gg/3gBq4V2tA">LayerLand on Discord</a></div>
     <div>Passive receive only &middot; radios off at every boot &middot; no cloud, no account, no telemetry</div>
     <div>Not a security guarantee, an intrusion-prevention system, or a substitute for a professional sweep.</div>
   </footer>

@@ -5,6 +5,12 @@
 <h1 align="center">🌟 LayerTime 🌟</h1>
 <p align="center">Counter-intrusion field firmware for the LilyGo T-Watch Ultra</p>
 
+<p align="center">
+  <a href="https://discord.gg/3gBq4V2tA"><img src="https://img.shields.io/badge/Discord-LayerLand-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join LayerLand on Discord"/></a>
+</p>
+
+<p align="center"><b>Questions, bugs, or just built one?</b> Come say hello in <a href="https://discord.gg/3gBq4V2tA">LayerLand</a>.</p>
+
 **Counter-intrusion and resilient communications firmware for the LILYGO T-Watch Ultra**
 
 ## Why this exists
