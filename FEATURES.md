@@ -2,7 +2,7 @@
 
 Current-state feature documentation for the LayerTime firmware, targeting the LilyGo T-Watch Ultra. This replaces the earlier per-increment `README-*.md` files, which tracked development stage-by-stage and had gone stale relative to the current build.
 
-## Watch face
+## Watch face Test
 
 - Time, date, and battery percentage.
 - Large, colored ALT / TRAVEL / THREATS / GPS data blocks, Montserrat 18.
