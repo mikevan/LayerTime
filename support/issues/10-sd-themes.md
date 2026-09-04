@@ -1,6 +1,6 @@
 # SD-card themes
 
-Generalise Squatchify into full theming: `/themes/<name>/theme.txt` plus `logo.png`, with a THEME row in Settings cycling the directories under `/themes` plus a built-in DEFAULT. Squatchify then stops being a special case and becomes the theme named `squatchy`.
+Generalise Squachify into full theming: `/themes/<name>/theme.txt` plus `logo.png`, with a THEME row in Settings cycling the directories under `/themes` plus a built-in DEFAULT. Squachify then stops being a special case and becomes the theme named `squachy`.
 
 Cheaper than it sounds: every colour already goes through a `Theme::` accessor - 264 call sites, 8 colours, no raw hex outside `Theme.h`. Returning variables instead of literals changes zero call sites.
 

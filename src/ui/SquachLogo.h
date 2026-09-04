@@ -20,8 +20,8 @@
 
 #include <lvgl.h>
 
-// Optional "Squatchify" watch-face logo, read from the SD card at
-// A:/assets/squatch.png rather than baked into flash. The art is opt-in and
+// Optional "Squachify" watch-face logo, read from the SD card at
+// A:/assets/squach.png rather than baked into flash. The art is opt-in and
 // belongs to the SquachWatch author (used with permission), so keeping it on
 // the card means it can be swapped or removed without reflashing.
 //
@@ -33,7 +33,7 @@
 //
 // Export the PNG already sized to fit the box (320 px tall); nothing is
 // scaled at runtime, it is only centred.
-class SquatchLogo {
+class SquachLogo {
 public:
     // Returns false if the card is absent or the file will not decode, which
     // is the normal case - the caller then keeps showing the owl.
