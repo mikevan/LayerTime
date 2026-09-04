@@ -91,6 +91,42 @@ Artwork requirements, if you want to make your own:
 
 LVGL is built here without an image cache, so the PNG is decoded once into a canvas when the setting is switched on, rather than on every redraw.
 
+## Install
+
+### The easy way: flash it from your browser
+
+**[mikevan.github.io/LayerTime](https://mikevan.github.io/LayerTime/)**
+
+Plug the watch into a USB-C data cable, click Install, pick the serial port. No toolchain, no accounts, nothing to download. Chrome or Edge on a desktop only — flashing over USB needs WebSerial, which Firefox and Safari do not implement.
+
+Installing erases the watch: a fresh bootloader, partition table and application. Nothing on the SD card is touched.
+
+> [!TIP]
+> If the port never appears, the Ultra uses the ESP32-S3's native USB rather than a separate serial chip, so automatic reset into download mode is unreliable. Unplug it, hold the **lower side button**, plug the cable back in, keep holding a couple of seconds, then release and try again. Failing that it is almost always the cable — many USB-C cables carry power only.
+
+### The other way: build it yourself
+
+See [Build & flash (PlatformIO)](#build--flash-platformio) below. It is the only route that lets you change anything.
+
+### Maintainer: cutting a new flashable build
+
+The browser flasher serves one merged image, so the pieces PlatformIO produces have to be combined. From the repo root with the PlatformIO venv active:
+
+```powershell
+.\support\make_flasher_bin.ps1 -Build
+```
+
+That writes `docs/firmware/layertime.bin` (~2.4 MB). Bump `version` in `docs/manifest.json`, commit both, and push — GitHub Pages serves `/docs` from `main`, so the push is the release.
+
+The offsets it uses come from `boards/lilygo-t-watch-ultra.json` (qio, 80 MHz, 16 MB) and LilyGoLib's factory partition table:
+
+| Offset | Image |
+|---|---|
+| `0x0` | `bootloader.bin` |
+| `0x8000` | `partitions.bin` |
+| `0xe000` | `boot_app0.bin` (from the Arduino core) |
+| `0x10000` | `firmware.bin` (app0, 4 MB slot) |
+
 ## Hardware target
 
 This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_ultra` in `platformio.ini`), built on [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) (ESP32-S3, SX1262 LoRa, AXP2101 PMU, MIA-M10Q GNSS). The `platformio.ini` also carries environments for T-Watch-S3, T-LoRa-Pager, and the LilyGoLib emulator targets inherited from the base template, but LayerTime's own screens and services are written against the Ultra's hardware and are not verified on the other boards.
@@ -116,6 +152,8 @@ This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_
 - `src/model/` — shared state/settings structs (`AppSettings`, `WatchState`).
 - `variants/lilygo_twatch_ultra/` — board pin definitions.
 - `assets/` — source SVG assets (owl logo) and README imagery.
+- `docs/` — the browser flasher published by GitHub Pages (`index.html`, `manifest.json`, `firmware/`).
+- `support/` — maintainer scripts, including `make_flasher_bin.ps1`.
 
 ## Attribution
 
