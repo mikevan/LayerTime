@@ -40,12 +40,20 @@ int utmZoneFor(double latitudeDeg, double longitudeDeg)
         zone = 32;
     }
 
-    // UTM special-zone rules for Svalbard.
-    if (latitudeDeg >= 72.0 && latitudeDeg < 84.0) {
-        if (longitudeDeg >= 0.0 && longitudeDeg < 9.0) zone = 31;
+    // UTM special-zone rules for Svalbard. The longitude range belongs in the
+    // OUTER condition, the same way the Norway rule above carries both of its
+    // bounds. Written as an else-if chain with only upper bounds, every
+    // NEGATIVE longitude failed the first test and then satisfied
+    // "longitudeDeg < 21.0", so the whole arctic west of the prime meridian
+    // was assigned zone 33: Alaska, northern Canada, and Greenland included.
+    // At 72N 93W that was a 268 km east, 159 km north position error shown as
+    // a confident grid reference. Found 2026-09-05 by the first test run.
+    if (latitudeDeg >= 72.0 && latitudeDeg < 84.0 &&
+        longitudeDeg >= 0.0 && longitudeDeg < 42.0) {
+        if (longitudeDeg < 9.0) zone = 31;
         else if (longitudeDeg < 21.0) zone = 33;
         else if (longitudeDeg < 33.0) zone = 35;
-        else if (longitudeDeg < 42.0) zone = 37;
+        else zone = 37;
     }
 
     if (zone < 1) zone = 1;
