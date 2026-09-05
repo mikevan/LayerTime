@@ -18,7 +18,10 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include "../model/WatchState.h"
+#include "UbxParser.h"
 
 class GpsService {
 public:
@@ -30,5 +33,25 @@ public:
 private:
     void applyEnabled(bool enabled);
 
+    // Reads the GNSS UART once and hands every byte to BOTH parsers. The NMEA
+    // side is byte-for-byte what GPS::loop() did before; the UBX side is new.
+    // Doing it here rather than calling instance.gps.loop() is what stops the
+    // two parsers fighting over the same port.
+    void pumpSerial();
+
+    // Asks the receiver for one NAV-PVT, about once a second. A poll writes
+    // nothing to the receiver's configuration, so there is nothing to persist
+    // and nothing to undo.
+    void pollIfDue();
+
+    void resetFixTracking();
+
     bool _enabled = true; // LilyGoLib powers/initializes GNSS during instance.begin().
+
+    Ubx::Parser _ubx;
+    Ubx::NavPvt _lastPvt;
+    bool _havePvt = false;
+    bool _everHadFix = false;
+    uint32_t _lastUsableFixMs = 0;
+    uint32_t _lastPollMs = 0;
 };

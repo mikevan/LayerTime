@@ -24,6 +24,9 @@
 namespace {
 constexpr uint32_t kFreshFixAgeMs = 5000;
 constexpr float kMetersToFeet = 3.280839895f;
+// One NAV-PVT poll per second. The receiver's default navigation rate is 1 Hz,
+// so asking faster only adds traffic, not information.
+constexpr uint32_t kPollIntervalMs = 1000;
 }
 
 void GpsService::begin(bool enabled)
@@ -46,9 +49,23 @@ void GpsService::setEnabled(bool enabled)
     applyEnabled(enabled);
 }
 
+void GpsService::resetFixTracking()
+{
+    _ubx.reset();
+    _lastPvt = Ubx::NavPvt();
+    _havePvt = false;
+    _everHadFix = false;
+    _lastUsableFixMs = 0;
+    _lastPollMs = 0;
+}
+
 void GpsService::applyEnabled(bool enabled)
 {
     instance.powerControl(POWER_GPS, enabled);
+
+    // Powering the rail down throws away the fix. Anything remembered about it
+    // is now a claim we cannot support, so it goes too.
+    if (!enabled) resetFixTracking();
 
     if (enabled) {
         // The MIA-M10Q doesn't reliably come up with GGA enabled on its
@@ -76,12 +93,20 @@ void GpsService::poll(WatchState &state)
         state.gpsHdopValid = false;
         state.gpsSpeedValid = false;
         state.gpsCourseValid = false;
+        state.gpsFixType = 0;
+        state.gpsEverHadFix = false;
+        state.gpsFixAgeMs = 0;
+        state.gpsHorizontalAccuracyValid = false;
+        state.gpsVerticalAccuracyValid = false;
         return;
     }
 
     // LilyGoLib's GPS class derives from TinyGPSPlus and reads the Ultra's
-    // MIA-M10Q from Serial1. Poll frequently so the UART buffer cannot back up.
-    instance.gps.loop(false);
+    // MIA-M10Q from Serial1. We read the port ourselves instead of calling
+    // instance.gps.loop() so the same bytes can reach the UBX parser too.
+    // Call frequently so the UART buffer cannot back up.
+    pumpSerial();
+    pollIfDue();
 
     const bool locationFresh =
         instance.gps.location.isValid() &&
@@ -120,5 +145,67 @@ void GpsService::poll(WatchState &state)
     state.gpsCourseValid = instance.gps.course.isValid();
     if (state.gpsCourseValid) {
         state.gpsCourseDegrees = static_cast<float>(instance.gps.course.deg());
+    }
+
+    // Everything below comes from UBX, and nothing above depends on it. This
+    // block only ADDS information; it deliberately does not change gpsFix,
+    // latitude, or longitude, so this can be verified against the previous
+    // build by seeing no difference on screen.
+    state.gpsFixType = _havePvt ? _lastPvt.fixType : 0;
+    state.gpsEverHadFix = _everHadFix;
+    state.gpsFixAgeMs = _everHadFix ? (millis() - _lastUsableFixMs) : 0;
+
+    state.gpsHorizontalAccuracyValid = _havePvt && _lastPvt.horizontalAccuracyValid;
+    if (state.gpsHorizontalAccuracyValid) {
+        state.gpsHorizontalAccuracyM = _lastPvt.horizontalAccuracyM;
+    }
+
+    state.gpsVerticalAccuracyValid = _havePvt && _lastPvt.verticalAccuracyValid;
+    if (state.gpsVerticalAccuracyValid) {
+        state.gpsVerticalAccuracyM = _lastPvt.verticalAccuracyM;
+    }
+}
+
+void GpsService::pumpSerial()
+{
+    while (Serial1.available()) {
+        const uint8_t byte = static_cast<uint8_t>(Serial1.read());
+
+        // NMEA path. Identical to what GPS::loop() was doing with these bytes.
+        instance.gps.encode(static_cast<char>(byte));
+
+        // UBX path. Same bytes, different protocol. feed() returns true only
+        // for a frame whose checksum verified, so NMEA traffic that happens to
+        // contain the sync pair is rejected rather than misread.
+        if (!_ubx.feed(byte)) continue;
+        if (_ubx.messageClass() != Ubx::kClassNav) continue;
+        if (_ubx.messageId() != Ubx::kIdNavPvt) continue;
+
+        Ubx::NavPvt pvt;
+        if (!Ubx::decodeNavPvt(_ubx.payload(), _ubx.payloadLength(), pvt)) continue;
+
+        _lastPvt = pvt;
+        _havePvt = true;
+
+        // Only a solution the receiver itself calls usable resets the clock.
+        // A 2D or better fix with fixOk set is the bar; anything less leaves
+        // the age growing, which is the honest answer.
+        if (pvt.fixOk && pvt.fixType >= 2) {
+            _lastUsableFixMs = millis();
+            _everHadFix = true;
+        }
+    }
+}
+
+void GpsService::pollIfDue()
+{
+    const uint32_t now = millis();
+    if (now - _lastPollMs < kPollIntervalMs) return;
+    _lastPollMs = now;
+
+    uint8_t frame[8];
+    const size_t written = Ubx::buildPoll(Ubx::kClassNav, Ubx::kIdNavPvt, frame, sizeof(frame));
+    if (written > 0) {
+        Serial1.write(frame, written);
     }
 }

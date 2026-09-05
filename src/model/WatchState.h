@@ -55,4 +55,23 @@ struct WatchState {
 
     bool gpsCourseValid = false;
     float gpsCourseDegrees = 0.0f;
+
+    // Position confidence, taken from the receiver's own navigation solution
+    // (UBX-NAV-PVT) rather than inferred from NMEA. HDOP above is satellite
+    // geometry, not error, and the two disagree: measured on this watch,
+    // HDOP swung 1.49 to 3.04 while the receiver's own estimate never left
+    // 1.48 to 1.73 metres. Size confidence from these fields, never from HDOP.
+    uint8_t gpsFixType = 0;      // 0 none, 1 DR only, 2 2D, 3 3D
+    bool gpsEverHadFix = false;  // false until a usable fix has existed once
+
+    // Milliseconds since the last USABLE fix. Keeps growing while the receiver
+    // is blind, which is what lets a consumer show a position getting older
+    // instead of showing a stale one as if it were current.
+    uint32_t gpsFixAgeMs = 0;
+
+    bool gpsHorizontalAccuracyValid = false;
+    float gpsHorizontalAccuracyM = 0.0f;
+
+    bool gpsVerticalAccuracyValid = false;
+    float gpsVerticalAccuracyM = 0.0f;
 };
