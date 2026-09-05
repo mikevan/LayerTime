@@ -25,132 +25,6 @@
 #include "Theme.h"
 #include "../services/GeoGrid.h"
 
-namespace {
-struct UtmCoordinate {
-    bool valid = false;
-    int zone = 0;
-    char band = '-';
-    double easting = 0.0;
-    double northing = 0.0;
-};
-
-constexpr double kPi = 3.14159265358979323846;
-constexpr double kWgs84A = 6378137.0;
-constexpr double kWgs84EccSquared = 0.00669437999014;
-constexpr double kUtmScaleFactor = 0.9996;
-
-double degreesToRadians(double degrees)
-{
-    return degrees * kPi / 180.0;
-}
-
-char latitudeBand(double latitude)
-{
-    static const char bands[] = "CDEFGHJKLMNPQRSTUVWXX";
-    if (latitude < -80.0 || latitude > 84.0) {
-        return '-';
-    }
-
-    const int index = static_cast<int>((latitude + 80.0) / 8.0);
-    return bands[index];
-}
-
-UtmCoordinate toUtm(double latitude, double longitude)
-{
-    UtmCoordinate result;
-    if (latitude < -80.0 || latitude > 84.0 || longitude < -180.0 || longitude > 180.0) {
-        return result;
-    }
-
-    const int zone = GeoGrid::utmZoneFor(latitude, longitude);
-    const char band = latitudeBand(latitude);
-    if (band == '-') {
-        return result;
-    }
-
-    const double latRad = degreesToRadians(latitude);
-    const double lonRad = degreesToRadians(longitude);
-    const double lonOrigin = (zone - 1) * 6.0 - 180.0 + 3.0;
-    const double lonOriginRad = degreesToRadians(lonOrigin);
-
-    const double eccPrimeSquared =
-        kWgs84EccSquared / (1.0 - kWgs84EccSquared);
-    const double sinLat = sin(latRad);
-    const double cosLat = cos(latRad);
-    const double tanLat = tan(latRad);
-
-    const double n = kWgs84A / sqrt(1.0 - kWgs84EccSquared * sinLat * sinLat);
-    const double t = tanLat * tanLat;
-    const double c = eccPrimeSquared * cosLat * cosLat;
-    const double a = cosLat * (lonRad - lonOriginRad);
-
-    const double ecc2 = kWgs84EccSquared;
-    const double ecc3 = ecc2 * ecc2;
-    const double ecc4 = ecc3 * ecc2;
-
-    const double m = kWgs84A * (
-        (1.0 - ecc2 / 4.0 - 3.0 * ecc3 / 64.0 - 5.0 * ecc4 / 256.0) * latRad
-        - (3.0 * ecc2 / 8.0 + 3.0 * ecc3 / 32.0 + 45.0 * ecc4 / 1024.0) * sin(2.0 * latRad)
-        + (15.0 * ecc3 / 256.0 + 45.0 * ecc4 / 1024.0) * sin(4.0 * latRad)
-        - (35.0 * ecc4 / 3072.0) * sin(6.0 * latRad));
-
-    const double a2 = a * a;
-    const double a3 = a2 * a;
-    const double a4 = a2 * a2;
-    const double a5 = a4 * a;
-    const double a6 = a3 * a3;
-
-    double easting = kUtmScaleFactor * n * (
-        a
-        + (1.0 - t + c) * a3 / 6.0
-        + (5.0 - 18.0 * t + t * t + 72.0 * c - 58.0 * eccPrimeSquared) * a5 / 120.0)
-        + 500000.0;
-
-    double northing = kUtmScaleFactor * (
-        m
-        + n * tanLat * (
-            a2 / 2.0
-            + (5.0 - t + 9.0 * c + 4.0 * c * c) * a4 / 24.0
-            + (61.0 - 58.0 * t + t * t + 600.0 * c - 330.0 * eccPrimeSquared) * a6 / 720.0));
-
-    if (latitude < 0.0) {
-        northing += 10000000.0;
-    }
-
-    result.valid = true;
-    result.zone = zone;
-    result.band = band;
-    result.easting = easting;
-    result.northing = northing;
-    return result;
-}
-
-bool toMgrs(const UtmCoordinate &utm, char *out, size_t outSize)
-{
-    if (!utm.valid || out == nullptr) return false;
-
-    // 100km column letters repeat every three zones; row letters run A-V
-    // with I and O omitted, offset by half the set on even zones so
-    // neighbouring zones never show the same pair.
-    static const char *const kColumns[3] = {"ABCDEFGH", "JKLMNPQR", "STUVWXYZ"};
-    static const char kRowsOdd[] = "ABCDEFGHJKLMNPQRSTUV";
-    static const char kRowsEven[] = "FGHJKLMNPQRSTUVABCDE";
-
-    const int columnIndex = static_cast<int>(utm.easting / 100000.0) - 1;
-    if (columnIndex < 0 || columnIndex > 7) return false;
-    const char column = kColumns[(utm.zone - 1) % 3][columnIndex];
-
-    const int rowIndex = static_cast<int>(fmod(utm.northing / 100000.0, 20.0));
-    if (rowIndex < 0 || rowIndex > 19) return false;
-    const char row = (utm.zone % 2 == 1) ? kRowsOdd[rowIndex] : kRowsEven[rowIndex];
-
-    const long localEasting = static_cast<long>(fmod(utm.easting, 100000.0));
-    const long localNorthing = static_cast<long>(fmod(utm.northing, 100000.0));
-    snprintf(out, outSize, "%02d%c %c%c\n%05ld %05ld",
-             utm.zone, utm.band, column, row, localEasting, localNorthing);
-    return true;
-}
-}
 
 void GpsScreen::create(BackCallback backCallback, void *userData)
 {
@@ -257,9 +131,9 @@ void GpsScreen::render(const WatchState &state, const AppSettings &settings)
         lv_label_set_text_fmt(_latitude, "LAT  %.6f", state.latitude);
         lv_label_set_text_fmt(_longitude, "LON  %.6f", state.longitude);
 
-        const UtmCoordinate utm = toUtm(state.latitude, state.longitude);
+        const GeoGrid::UtmCoordinate utm = GeoGrid::toUtm(state.latitude, state.longitude);
         char mgrs[32];
-        if (toMgrs(utm, mgrs, sizeof(mgrs))) {
+        if (GeoGrid::toMgrs(utm, mgrs, sizeof(mgrs))) {
             lv_label_set_text(_utm, mgrs);
         } else {
             lv_label_set_text(_utm, "OUTSIDE\nGRID RANGE");

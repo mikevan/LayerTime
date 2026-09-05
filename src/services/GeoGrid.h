@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <stddef.h>
+
 // Shared UTM/MGRS grid geometry. Lives here rather than inside a screen
 // because two callers now need it: GpsScreen, to build the MGRS readout, and
 // MappingScreen, to correct compass bearings to GRID north rather than true
@@ -41,5 +43,27 @@ double centralMeridian(int zone);
 // This is what separates a UTM/MGRS map bearing from a true bearing. The
 // military G-M angle is declination minus this value.
 double convergenceDegrees(double latitudeDeg, double longitudeDeg);
+
+// A position expressed in UTM. `valid` is false outside the UTM latitude
+// range (-80 to 84 degrees), where the projection is not defined.
+struct UtmCoordinate {
+    bool valid = false;
+    int zone = 0;
+    char band = '-';
+    double easting = 0.0;
+    double northing = 0.0;
+};
+
+// MGRS latitude band letter, or '-' outside -80 to 84 degrees.
+char latitudeBand(double latitudeDeg);
+
+// Full ellipsoidal WGS84 forward projection to UTM. Lives here rather than in
+// a screen because the map needs it too: a grid overlay has to know where a
+// given easting and northing land, and it cannot reach into GpsScreen.
+UtmCoordinate toUtm(double latitudeDeg, double longitudeDeg);
+
+// Formats a UTM position as MGRS, zone and band on the first line, easting
+// and northing on the second.
+bool toMgrs(const UtmCoordinate &utm, char *out, size_t outSize);
 
 }
