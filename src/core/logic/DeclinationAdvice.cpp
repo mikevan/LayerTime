@@ -1,0 +1,54 @@
+// LayerTime - counter-intrusion and resilient-communications firmware
+// for the LilyGo T-Watch Ultra.
+//
+// Copyright (C) 2026 Michael Van Geertruy
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#include "DeclinationAdvice.h"
+
+namespace layertime {
+namespace declination {
+
+const char *const kNoLocationValue = "NO LOCATION";
+const char *const kNoLocationAdvice =
+    "Waiting for a GPS fix. Tap ELSEWHERE to enter a location instead.";
+
+double mapOffsetDegrees(double declinationDeg, double convergenceDeg, MapNorth north)
+{
+    return north == MapNorth::Grid ? (declinationDeg - convergenceDeg) : declinationDeg;
+}
+
+Instruction instructionFor(double offsetDeg, MapNorth north)
+{
+    // Stated as an action, in the direction the user is going, so nobody has
+    // to reason about the sign convention standing in a field.
+    Instruction out;
+    out.northName = north == MapNorth::Grid ? "grid" : "true";
+    if (offsetDeg >= 0.0) {
+        out.magnitude = offsetDeg;
+        out.valueFormat = "%.1f DEG EAST";
+        out.adviceFormat =
+            "Compass reads low. ADD %.1f deg to a compass bearing to get a %s bearing.";
+    } else {
+        out.magnitude = -offsetDeg;
+        out.valueFormat = "%.1f DEG WEST";
+        out.adviceFormat =
+            "Compass reads high. SUBTRACT %.1f deg from a compass bearing to get a %s bearing.";
+    }
+    return out;
+}
+
+} // namespace declination
+} // namespace layertime

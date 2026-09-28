@@ -17,6 +17,10 @@
 
 #include "services/ReconService.cpp"
 
+// Since Phase 0 Step 3 the classifiers and tables checked below live in
+// src/core/logic. The expectations are unchanged; only the namespace moved.
+using namespace layertime::recon;
+
 namespace {
 
 // ---------------------------------------------------------------- harness

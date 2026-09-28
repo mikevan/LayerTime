@@ -22,6 +22,8 @@
 #include <LilyGoLib.h>
 #include <LV_Helper.h>
 
+#include "../core/logic/DetectionCsv.h"
+
 namespace {
 constexpr uint32_t kDisplayTimeoutMs = 15000;
 // Two background taps closer together than this put the display to sleep.
@@ -359,30 +361,25 @@ void WatchApp::logReconDetection(const ReconDetection &detection)
         return;
     }
 
-    // Worst case is ~107 bytes with the confidence column; sized well clear
-    // of that so a long detail string truncates the field, never the row.
-    char row[160];
-    snprintf(
-        row,
-        sizeof(row),
-        "%04d-%02d-%02d %02d:%02d:%02d,%s,%s,%s,%d,%u,%s",
-        _state.year,
-        _state.month,
-        _state.day,
-        _state.hour,
-        _state.minute,
-        _state.second,
-        detection.category,
-        detection.detail,
-        detection.address,
-        detection.rssi,
-        static_cast<unsigned>(detection.channel),
-        ReconService::confidenceLabel(detection.confidence));
+    // The row format lives in core (src/core/logic/DetectionCsv).
+    layertime::detection_log::RowFields fields;
+    fields.year = _state.year;
+    fields.month = _state.month;
+    fields.day = _state.day;
+    fields.hour = _state.hour;
+    fields.minute = _state.minute;
+    fields.second = _state.second;
+    fields.category = detection.category;
+    fields.detail = detection.detail;
+    fields.address = detection.address;
+    fields.rssi = detection.rssi;
+    fields.channel = static_cast<unsigned>(detection.channel);
+    fields.confidence = ReconService::confidenceLabel(detection.confidence);
 
-    _sdCard.appendCsvRow(
-        "/recon_log.csv",
-        "timestamp,category,detail,address,rssi,channel,confidence",
-        row);
+    char row[layertime::detection_log::kRowBufferSize];
+    layertime::detection_log::formatRow(fields, row, sizeof(row));
+
+    _sdCard.appendCsvRow(layertime::detection_log::kPath, layertime::detection_log::kHeader, row);
 }
 
 void WatchApp::touchPressedThunk(lv_event_t *event)

@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "QuickPhrases.h"
+#include "../core/logic/MeshConversations.h"
 #include "Theme.h"
 
 namespace {
@@ -583,12 +584,29 @@ const char *MeshtasticScreen::channelTag(const MeshtasticChannel &channel)
     return "OPEN";
 }
 
+namespace {
+// The conversation rules live in core (src/core/logic/MeshConversations);
+// this describes a Meshtastic message to them.
+layertime::mesh::MessageFacts factsOf(const MeshtasticMessage &m)
+{
+    layertime::mesh::MessageFacts f;
+    f.fromSelf = m.isOurs;
+    f.toBroadcast = m.toNum == kMeshtasticBroadcast;
+    f.fromNum = m.fromNum;
+    f.toNum = m.toNum;
+    f.channel = m.channel;
+    return f;
+}
+}
+
 bool MeshtasticScreen::messageInConversation(const MeshtasticMessage &m, uint32_t peer, uint8_t channel) const
 {
     const uint32_t us = _service ? _service->nodeNum() : 0;
-    if (peer == kMeshtasticBroadcast) return m.toNum == kMeshtasticBroadcast && m.channel == channel;
-    if (m.isOurs) return m.toNum == peer;
-    return m.fromNum == peer && m.toNum == us;
+    layertime::mesh::ConversationKey key;
+    key.isChannel = peer == kMeshtasticBroadcast;
+    key.peer = peer;
+    key.channel = channel;
+    return layertime::mesh::messageInConversation(factsOf(m), key, us);
 }
 
 MeshtasticScreen::Conversation *MeshtasticScreen::findOrAddConversation(uint32_t peer, uint8_t channel)
@@ -618,9 +636,9 @@ void MeshtasticScreen::syncConversations(const MeshtasticStatus &status)
     }
     const uint32_t us = _service ? _service->nodeNum() : 0;
     for (const MeshtasticMessage &m : status.messages) {
-        if (!m.used || m.toNum == kMeshtasticBroadcast) continue;
-        if (m.isOurs) findOrAddConversation(m.toNum, 0);
-        else if (m.toNum == us) findOrAddConversation(m.fromNum, 0);
+        if (!m.used) continue;
+        uint32_t peer = 0;
+        if (layertime::mesh::directPeerFor(factsOf(m), us, peer)) findOrAddConversation(peer, 0);
     }
 }
 
@@ -628,7 +646,8 @@ uint32_t MeshtasticScreen::unreadFor(const Conversation &c, const MeshtasticStat
 {
     uint32_t n = 0;
     for (const MeshtasticMessage &m : status.messages) {
-        if (m.used && !m.isOurs && m.receivedMs > c.lastViewedMs && messageInConversation(m, c.peer, c.channel)) ++n;
+        if (m.used && layertime::mesh::isUnread(m.isOurs, m.receivedMs, c.lastViewedMs) &&
+            messageInConversation(m, c.peer, c.channel)) ++n;
     }
     return n;
 }

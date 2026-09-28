@@ -3,7 +3,7 @@
 No IDE, no framework, no platform. One compiler invocation.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests test_geogrid/test_geogrid.cpp ../src/services/GeoGrid.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests test_geogrid/test_geogrid.cpp ../src/core/logic/GeoGrid.cpp
 ./tests
 ```
 
@@ -16,7 +16,7 @@ One case in isolation, which is how the density tooling works:
 ## Coverage and density
 
 ```
-g++ -std=c++17 -O0 -g --coverage -I. -I../src -c ../src/services/GeoGrid.cpp -o GeoGrid.o
+g++ -std=c++17 -O0 -g --coverage -I. -I../src -c ../src/core/logic/GeoGrid.cpp -o GeoGrid.o
 g++ -std=c++17 -O0 -g --coverage -I. -I../src -c test_geogrid/test_geogrid.cpp -o tests.o
 g++ --coverage GeoGrid.o tests.o -o test_cov
 python3 density.py
@@ -58,19 +58,52 @@ commands do not use `-Werror`. Run each from `test/`.
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_ubx test_ubx/test_ubx.cpp ../src/services/UbxParser.cpp
 ./tests_ubx
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_recon test_recon/test_recon.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_recon test_recon/test_recon.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp
 ./tests_recon
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_chats test_meshtastic_chats/test_meshtastic_chats.cpp ../src/ui/MeshtasticScreen.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_chats test_meshtastic_chats/test_meshtastic_chats.cpp ../src/ui/MeshtasticScreen.cpp ../src/core/logic/MeshConversations.cpp
 ./tests_chats
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_decl test_declination_text/test_declination_text.cpp ../src/ui/MappingScreen.cpp ../src/services/DeclinationCalculator.cpp ../src/services/GeoGrid.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_decl test_declination_text/test_declination_text.cpp ../src/ui/MappingScreen.cpp ../src/core/logic/DeclinationAdvice.cpp ../src/core/logic/DeclinationCalculator.cpp ../src/core/logic/GeoGrid.cpp
 ./tests_decl
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/app/WatchApp.cpp ../src/services/ReconService.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/app/WatchApp.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp
 ./tests_log
 ```
 
-`test_recon.cpp` includes `ReconService.cpp` directly, so its file-local
-classifiers and tables can be checked. Do not also pass `ReconService.cpp` on
+`test_recon.cpp` includes `ReconService.cpp` directly, so it can reach the
+service's file-local pieces. Do not also pass `ReconService.cpp` on
 that command line.
+
+## Core logic unit suites
+
+Phase 0 Step 3 moved application and detection logic into `src/core/logic`.
+The characterization suites above still prove the moved code behaves as it
+did. These suites test each core module on its own, with no stubs, which is
+also the proof that core needs nothing from the platform. Run from `test/`.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_decl_advice test_declination_advice/test_declination_advice.cpp ../src/core/logic/DeclinationAdvice.cpp
+./tests_decl_advice
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_recon_selection test_recon_selection/test_recon_selection.cpp ../src/core/logic/ReconSelection.cpp
+./tests_recon_selection
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_recon_signatures test_recon_signatures/test_recon_signatures.cpp ../src/core/logic/ReconSignatures.cpp
+./tests_recon_signatures
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_wifi_classifier test_wifi_classifier/test_wifi_classifier.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/ReconSignatures.cpp
+./tests_wifi_classifier
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_ble_classifier test_ble_classifier/test_ble_classifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/ReconSelection.cpp
+./tests_ble_classifier
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_alert_policy test_alert_policy/test_alert_policy.cpp ../src/core/logic/AlertPolicy.cpp
+./tests_alert_policy
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_mesh_conversations test_mesh_conversations/test_mesh_conversations.cpp ../src/core/logic/MeshConversations.cpp
+./tests_mesh_conversations
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_detection_csv test_detection_csv/test_detection_csv.cpp ../src/core/logic/DetectionCsv.cpp
+./tests_detection_csv
+```

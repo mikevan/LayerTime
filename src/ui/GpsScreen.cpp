@@ -23,7 +23,7 @@
 #include <stdlib.h>
 
 #include "Theme.h"
-#include "../services/GeoGrid.h"
+#include "../core/logic/GeoGrid.h"
 
 
 void GpsScreen::create(BackCallback backCallback, void *userData)

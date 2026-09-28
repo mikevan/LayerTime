@@ -22,8 +22,9 @@
 #include <stdio.h>
 
 #include "Theme.h"
-#include "../services/DeclinationCalculator.h"
-#include "../services/GeoGrid.h"
+#include "../core/logic/DeclinationAdvice.h"
+#include "../core/logic/DeclinationCalculator.h"
+#include "../core/logic/GeoGrid.h"
 
 namespace {
 lv_obj_t *makeLabel(lv_obj_t *parent, const char *text, int x, int y, int width,
@@ -247,7 +248,10 @@ bool MappingScreen::mapOffsetDegrees(double &offsetOut) const
     // True north: the plain declination. Grid north: the military G-M angle,
     // declination minus grid convergence - which is what a UTM/MGRS map
     // needs, and differs from true north by up to about 3 degrees.
-    offsetOut = _useGridNorth ? (_declinationDeg - _convergenceDeg) : _declinationDeg;
+    offsetOut = layertime::declination::mapOffsetDegrees(
+        _declinationDeg, _convergenceDeg,
+        _useGridNorth ? layertime::declination::MapNorth::Grid
+                      : layertime::declination::MapNorth::True);
     return true;
 }
 
@@ -275,10 +279,9 @@ void MappingScreen::refresh()
 
     if (!_haveFix) {
         lv_label_set_text(_locationText, "-- , --");
-        lv_label_set_text(_declValue, "NO LOCATION");
+        lv_label_set_text(_declValue, layertime::declination::kNoLocationValue);
         lv_obj_set_style_text_color(_declValue, Theme::muted(), 0);
-        lv_label_set_text(_adviceText,
-                          "Waiting for a GPS fix. Tap ELSEWHERE to enter a location instead.");
+        lv_label_set_text(_adviceText, layertime::declination::kNoLocationAdvice);
             return;
     }
 
@@ -292,27 +295,15 @@ void MappingScreen::refresh()
     double offset = 0.0;
     mapOffsetDegrees(offset);
 
-    if (offset >= 0.0) {
-        lv_label_set_text_fmt(_declValue, "%.1f DEG EAST", offset);
-    } else {
-        lv_label_set_text_fmt(_declValue, "%.1f DEG WEST", -offset);
-    }
+    // The words and the choice between them live in core; the formatting
+    // stays here, through LVGL, exactly as before the move.
+    const layertime::declination::Instruction instruction = layertime::declination::instructionFor(
+        offset, _useGridNorth ? layertime::declination::MapNorth::Grid
+                              : layertime::declination::MapNorth::True);
+    lv_label_set_text_fmt(_declValue, instruction.valueFormat, instruction.magnitude);
     lv_obj_set_style_text_color(_declValue, Theme::white(), 0);
-
-    // Stated as an action, in the direction the user is going, so nobody has
-    // to reason about the sign convention standing in a field.
-    const char *northName = _useGridNorth ? "grid" : "true";
-    if (offset >= 0.0) {
-        lv_label_set_text_fmt(
-            _adviceText,
-            "Compass reads low. ADD %.1f deg to a compass bearing to get a %s bearing.",
-            offset, northName);
-    } else {
-        lv_label_set_text_fmt(
-            _adviceText,
-            "Compass reads high. SUBTRACT %.1f deg from a compass bearing to get a %s bearing.",
-            -offset, northName);
-    }
+    lv_label_set_text_fmt(_adviceText, instruction.adviceFormat, instruction.magnitude,
+                          instruction.northName);
 
 }
 

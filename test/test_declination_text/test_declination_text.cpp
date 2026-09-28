@@ -24,8 +24,8 @@
 
 #include <Arduino.h>
 
-#include "services/DeclinationCalculator.h"
-#include "services/GeoGrid.h"
+#include "core/logic/DeclinationCalculator.h"
+#include "core/logic/GeoGrid.h"
 #include "ui/MappingScreen.h"
 
 namespace {

@@ -1,5 +1,5 @@
 #include "check.h"
-#include "services/GeoGrid.h"
+#include "core/logic/GeoGrid.h"
 
 namespace {
 constexpr double kMm = 0.001;
