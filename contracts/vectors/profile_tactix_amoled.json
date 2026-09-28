@@ -1,0 +1,27 @@
+{
+  "contractVersion": "0.1",
+  "profileId": "tactix-amoled",
+  "note": "tactix 8 AMOLED (47 mm and 51 mm share one Connect IQ device entry). No LayerTime code runs on it yet, so nothing is verified and every effective value is the DeviceCapabilities default. target is the design intent. It is never read by the application. A field's effective value changes only when its status becomes verified on the watch.",
+  "capabilities": {
+    "displayClass":         { "effective": "MonochromeLowRes", "target": "ColorHighRes", "status": "documented", "evidence": "https://developer.garmin.com/connect-iq/compatible-devices/ (AMOLED, 454 x 454, API 6.0)" },
+    "displayShape":         { "effective": "Rectangle",        "target": "Round",        "status": "documented", "evidence": "https://developer.garmin.com/connect-iq/compatible-devices/ (round)" },
+    "displayWidth":         { "effective": 0,                  "target": 454,            "status": "documented", "evidence": "https://developer.garmin.com/connect-iq/compatible-devices/" },
+    "displayHeight":        { "effective": 0,                  "target": 454,            "status": "documented", "evidence": "https://developer.garmin.com/connect-iq/compatible-devices/" },
+    "touch":                { "effective": false,              "target": true,           "status": "documented", "evidence": "https://www.garmin.com.sg/products/outdoor/tactix-8-amoled/ (Touchscreen)" },
+    "buttons":              { "effective": false,              "target": true,           "status": "documented", "evidence": "https://www.garmin.com.sg/products/outdoor/tactix-8-amoled/ (Leakproof inductive buttons)" },
+    "vibration":            { "effective": false,              "target": true,           "status": "documented", "evidence": "https://www.garmin.com.sg/products/outdoor/tactix-8-amoled/ (Alerts & alarms, vibration only). Connect IQ access unverified." },
+    "gps":                  { "effective": false,              "target": true,           "status": "unverified", "evidence": "Watch has GNSS; Connect IQ Position access to be proven on the watch" },
+    "compass":              { "effective": false,              "target": true,           "status": "documented", "evidence": "https://www.garmin.com.sg/products/outdoor/tactix-8-amoled/ (Sensors: Compass). Connect IQ heading access unverified." },
+    "altitude":             { "effective": false,              "target": true,           "status": "documented", "evidence": "https://www.garmin.com.sg/products/outdoor/tactix-8-amoled/ (Sensors: Barometric altimeter)" },
+    "nativeMaps":           { "effective": false,              "target": true,           "status": "unverified", "evidence": "LT-ARCH-001 section 8.1: Toybox.WatchUi.MapView supports tactix 8. Physical test is Phase 6." },
+    "removableStorage":     { "effective": false,              "target": false,          "status": "documented", "evidence": "No card slot" },
+    "localWifiMonitor":     { "effective": false,              "target": false,          "status": "design",     "evidence": "LT-ARCH-001 section 4.1: Garmin is not responsible for raw 802.11 capture" },
+    "localBleMonitor":      { "effective": false,              "target": false,          "status": "design",     "evidence": "LT-ARCH-001 section 4.1: RF detection belongs to the C5" },
+    "externalRecon":        { "effective": false,              "target": true,           "status": "unverified", "evidence": "LayerTime Link over BLE to the C5. Proven or disproven in Phase 1." },
+    "meshUi":               { "effective": false,              "target": true,           "status": "design",     "evidence": "LT-ARCH-001 section 4.4: Garmin is the field mesh UI" },
+    "localMeshtasticRadio": { "effective": false,              "target": false,          "status": "design",     "evidence": "LT-ARCH-001 section 4.4: mesh reaches Garmin through Android" },
+    "localMeshCoreRadio":   { "effective": false,              "target": false,          "status": "design",     "evidence": "LT-ARCH-001 section 4.4" },
+    "meshRadioShared":      { "effective": false,              "target": false,          "status": "design",     "evidence": "No local mesh radio" },
+    "androidBridge":        { "effective": false,              "target": true,           "status": "unverified", "evidence": "LT-ARCH-001 section 4.3. Proven or disproven in Phase 7." }
+  }
+}

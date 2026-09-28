@@ -1,0 +1,39 @@
+{
+  "contractVersion": "0.1",
+  "note": "Fixed sizes. Text sizes are buffer sizes including the terminating zero, so the longest storable text is one less.",
+  "MonitorEvent": {
+    "sourceIdSize": 19,
+    "detailSize": 40
+  },
+  "ReconState": {
+    "maxEvents": 40
+  },
+  "MeshNode": {
+    "displayNameSize": 40,
+    "shortNameSize": 8
+  },
+  "MeshMessage": {
+    "textSize": 160
+  },
+  "MeshNetworkStatus": {
+    "ownNameSize": 24
+  },
+  "MeshNodeId": {
+    "maxBytes": 32,
+    "meshtasticNodeNumBytes": 4,
+    "meshCorePublicKeyBytes": 32,
+    "meshCorePublicKeyPrefixMinBytes": 1,
+    "meshCorePublicKeyPrefixMaxBytes": 31
+  },
+  "QuickMessage": {
+    "textSize": 32,
+    "maxMessages": 20
+  },
+  "MeshChannelArgs": {
+    "nameSize": 12,
+    "keySize": 48
+  },
+  "DeviceCapabilities": {
+    "profileIdSize": 24
+  }
+}

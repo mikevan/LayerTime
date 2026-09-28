@@ -1,0 +1,140 @@
+{
+  "contractVersion": "0.1",
+  "FixType": {
+    "None": 0,
+    "DeadReckoningOnly": 1,
+    "Fix2D": 2,
+    "Fix3D": 3
+  },
+  "ReconTarget": {
+    "None": 0,
+    "All": 1,
+    "Trackers": 2,
+    "CounterSurveil": 3,
+    "CounterIntrusion": 4,
+    "Deauth": 5,
+    "Pwnagotchi": 6,
+    "MultiSSID": 7,
+    "Flock": 8,
+    "Pineapple": 9,
+    "AirTag": 10,
+    "Flipper": 11,
+    "Meta": 12,
+    "Axon": 13,
+    "Tile": 14,
+    "SamsungTag": 15,
+    "GoogleTag": 16,
+    "EarlyWarning": 17
+  },
+  "Confidence": {
+    "Low": 0,
+    "Medium": 1,
+    "High": 2
+  },
+  "SourceKind": {
+    "Unknown": 0,
+    "Wifi": 1,
+    "Ble": 2,
+    "Ieee802154": 3
+  },
+  "Band": {
+    "Unknown": 0,
+    "Band2_4GHz": 1,
+    "Band5GHz": 2
+  },
+  "MeshNetwork": {
+    "Meshtastic": 0,
+    "MeshCore": 1
+  },
+  "MeshIdKind": {
+    "None": 0,
+    "MeshtasticNodeNum": 1,
+    "MeshCorePublicKey": 2,
+    "MeshCorePublicKeyPrefix": 3
+  },
+  "MeshDestinationKind": {
+    "Node": 0,
+    "Channel": 1
+  },
+  "DeliveryState": {
+    "None": 0,
+    "Pending": 1,
+    "Relayed": 2,
+    "Acked": 3,
+    "Failed": 4
+  },
+  "AlertKind": {
+    "ReconDetection": 0
+  },
+  "CommandType": {
+    "None": 0,
+    "ReconStart": 1,
+    "ReconStop": 2,
+    "ReconClearEvents": 3,
+    "ReconAcknowledgeAlert": 4,
+    "MeshSendText": 5,
+    "MeshSendQuickMessage": 6,
+    "MeshSetChannel": 7,
+    "MeshRemoveChannel": 8
+  },
+  "CommandResult": {
+    "Ok": 0,
+    "Unsupported": 1,
+    "InvalidArgument": 2,
+    "NotReady": 3,
+    "Failed": 4
+  },
+  "DisplayClass": {
+    "MonochromeLowRes": 0,
+    "ColorHighRes": 1
+  },
+  "DisplayShape": {
+    "Rectangle": 0,
+    "Round": 1
+  },
+  "reconTargetDisplayNames": {
+    "None": "STOPPED",
+    "All": "ALL",
+    "Trackers": "TRACKERS",
+    "CounterSurveil": "COUNTER-SURVEIL",
+    "CounterIntrusion": "COUNTER-INTRUSION",
+    "Deauth": "DEAUTH",
+    "Pwnagotchi": "PWNAGOTCHI",
+    "MultiSSID": "MULTISSID",
+    "Flock": "FLOCK",
+    "Pineapple": "PINEAPPLE",
+    "AirTag": "AIRTAG",
+    "Flipper": "FLIPPER",
+    "Meta": "META",
+    "Axon": "AXON",
+    "Tile": "TILE",
+    "SamsungTag": "SMARTTAG",
+    "GoogleTag": "GOOGLE TAG",
+    "EarlyWarning": "EARLY WARNING"
+  },
+  "reconTargetShortNames": {
+    "None": "STOPPED",
+    "All": "ALL",
+    "Trackers": "TRACKERS",
+    "CounterSurveil": "SURVEIL",
+    "CounterIntrusion": "INTRUSION",
+    "Deauth": "DEAUTH",
+    "Pwnagotchi": "PWNAGOTCHI",
+    "MultiSSID": "MULTISSID",
+    "Flock": "FLOCK",
+    "Pineapple": "PINEAPPLE",
+    "AirTag": "AIRTAG",
+    "Flipper": "FLIPPER",
+    "Meta": "META",
+    "Axon": "AXON",
+    "Tile": "TILE",
+    "SamsungTag": "SMARTTAG",
+    "GoogleTag": "GOOGLE TAG",
+    "EarlyWarning": "EARLY WARN"
+  },
+  "confidenceDisplayNames": {
+    "Low": "LOW",
+    "Medium": "MED",
+    "High": "HIGH"
+  }
+}

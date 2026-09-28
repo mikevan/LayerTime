@@ -28,3 +28,15 @@ for each, and reports how many distinct cases touched each line.
 The deployable firmware build never sees any of this. Nothing in
 `platformio.ini` references `test/`, and the test binary is built by a
 standalone g++ call that knows nothing about the device.
+
+## Core model conformance
+
+Checks `src/core/model` against `contracts/vectors`, the T-Ultra capability
+profile against its JSON, and the new model against the existing T-Ultra
+types it will be adapted from. Run from `test/`, because the vectors are read
+from `../contracts/vectors/`.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_core test_core_model/test_core_model.cpp
+./tests_core
+```

@@ -1,0 +1,27 @@
+{
+  "contractVersion": "0.1",
+  "profileId": "twatch-ultra",
+  "note": "effective is what DeviceCapabilities reports at runtime. Every field is verified on the watch or in the code, so effective is the declared value throughout.",
+  "capabilities": {
+    "displayClass":         { "effective": "ColorHighRes", "status": "verified", "evidence": "CO5300 QSPI AMOLED, LilyGoLib docs/hardware/lilygo-t-watch-ultra.md" },
+    "displayShape":         { "effective": "Rectangle",    "status": "verified", "evidence": "410 x 502 panel; screens laid out at that size in src/ui" },
+    "displayWidth":         { "effective": 410,            "status": "verified", "evidence": "LilyGoLib hardware doc; src/ui/MappingScreen.cpp" },
+    "displayHeight":        { "effective": 502,            "status": "verified", "evidence": "LilyGoLib hardware doc; src/ui/MappingScreen.cpp" },
+    "touch":                { "effective": true,           "status": "verified", "evidence": "CST9217 at I2C 0x1A, measured by tools/gpsdiag 2026-09-05" },
+    "buttons":              { "effective": false,          "status": "verified", "evidence": "No physical button input anywhere in src/" },
+    "vibration":            { "effective": true,           "status": "verified", "evidence": "DRV2605 at I2C 0x5A; instance.vibrator() in ReconService" },
+    "gps":                  { "effective": true,           "status": "verified", "evidence": "u-blox MIA-M10Q on UART1, measured 2026-09-05" },
+    "compass":              { "effective": false,          "status": "verified", "evidence": "No magnetometer: nothing at 0x0C/0x0D/0x1E/0x30, and none in LilyGo's feature table" },
+    "altitude":             { "effective": true,           "status": "verified", "evidence": "GNSS altitude, WatchState.gpsAltitudeValid" },
+    "nativeMaps":           { "effective": false,          "status": "verified", "evidence": "No platform cartography; MapView renders SD-card tiles" },
+    "removableStorage":     { "effective": true,           "status": "verified", "evidence": "SdCardService" },
+    "localWifiMonitor":     { "effective": true,           "status": "verified", "evidence": "ReconService promiscuous Wi-Fi, 2.4 GHz" },
+    "localBleMonitor":      { "effective": true,           "status": "verified", "evidence": "ReconService NimBLE scan" },
+    "externalRecon":        { "effective": false,          "status": "verified", "evidence": "No LayerTime Link client exists yet" },
+    "meshUi":               { "effective": true,           "status": "verified", "evidence": "MeshScreen, MeshtasticScreen" },
+    "localMeshtasticRadio": { "effective": true,           "status": "verified", "evidence": "MeshtasticService on the SX1262" },
+    "localMeshCoreRadio":   { "effective": true,           "status": "verified", "evidence": "MeshService (MeshCore) on the SX1262" },
+    "meshRadioShared":      { "effective": true,           "status": "verified", "evidence": "One SX1262; exclusivity enforced in WatchApp::settingsChanged and SettingsScreen" },
+    "androidBridge":        { "effective": false,          "status": "verified", "evidence": "No Android companion exists" }
+  }
+}

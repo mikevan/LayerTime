@@ -1,0 +1,26 @@
+{
+  "contractVersion": "0.1",
+  "note": "The T-Ultra's shipped library, taken unchanged from src/ui/QuickPhrases.h. id is the stable identifier a MeshSendQuickMessage command carries. Joined with '|' the texts are 199 bytes, inside Meshtastic's 200-byte canned-message limit.",
+  "messages": [
+    { "id": 0,  "text": "Yes" },
+    { "id": 1,  "text": "No" },
+    { "id": 2,  "text": "OK" },
+    { "id": 3,  "text": "On my way" },
+    { "id": 4,  "text": "Be there in 10" },
+    { "id": 5,  "text": "Almost there" },
+    { "id": 6,  "text": "Running late" },
+    { "id": 7,  "text": "Where are you?" },
+    { "id": 8,  "text": "Im here" },
+    { "id": 9,  "text": "Heading back" },
+    { "id": 10, "text": "Wait for me" },
+    { "id": 11, "text": "Need help" },
+    { "id": 12, "text": "All clear" },
+    { "id": 13, "text": "Copy that" },
+    { "id": 14, "text": "Standby" },
+    { "id": 15, "text": "Call me" },
+    { "id": 16, "text": "Cant talk" },
+    { "id": 17, "text": "Radio check" },
+    { "id": 18, "text": "Low battery" },
+    { "id": 19, "text": "Good night" }
+  ]
+}
