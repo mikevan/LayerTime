@@ -21,7 +21,7 @@
 // Which Meshtastic messages belong to which conversation, which messages
 // start a direct conversation, and what counts as unread. Moved unchanged
 // out of MeshtasticScreen in Phase 0 Step 3h. The conversation table itself
-// (its 24 slots and read times) stays with the screen for now.
+// (its 24 slots and read times) followed in Step 5, also unchanged.
 //
 // Messages are described by plain facts rather than the service's struct.
 // "Broadcast" is a fact about the message, not a special node number.
@@ -59,6 +59,52 @@ bool directPeerFor(const MessageFacts &message, uint32_t ourNodeNum, uint32_t &p
 // Unread: received from someone else strictly after the conversation was
 // last viewed. Our own messages are never unread.
 bool isUnread(bool fromSelf, uint32_t receivedMs, uint32_t lastViewedMs);
+
+// The conversations the wearer has, and when each was last opened. Owned by
+// the core. Keyed by Meshtastic node number: the only network with direct
+// conversations today.
+//
+// The messages themselves are not stored here. Whoever renders a
+// conversation passes its messages in (as MessageFacts) to decide which
+// conversations exist and what is unread.
+class ConversationTable {
+public:
+    // Every Meshtastic channel slot, plus 16 direct peers.
+    static constexpr uint8_t kCapacity = 24;
+
+    struct Entry {
+        bool used = false;
+        ConversationKey key;
+        // When the wearer last opened it. 0 until then.
+        uint32_t lastViewedMs = 0;
+    };
+
+    // The conversation, added in the first free slot if it is new. A
+    // direct conversation is per node, whichever channel carried it, so its
+    // channel is always 0. nullptr when the table is full.
+    Entry *findOrAdd(const ConversationKey &key);
+
+    // Every configured channel is a conversation, even with no messages.
+    void noteChannel(uint8_t channel);
+    // A direct conversation exists once any message passes either way.
+    void noteMessage(const MessageFacts &message, uint32_t ourNodeNum);
+
+    // Opening a conversation marks everything received so far as read.
+    void markViewed(const ConversationKey &key, uint32_t nowMs);
+
+    // A deleted channel stops being a conversation.
+    void removeChannel(uint8_t channel);
+
+    // Slot order, which is the order conversations were first seen.
+    const Entry &at(uint8_t slot) const { return _entries[slot]; }
+
+    // Whether one message counts toward this conversation's unread total.
+    static bool counts(const Entry &entry, const MessageFacts &message, uint32_t receivedMs,
+                       uint32_t ourNodeNum);
+
+private:
+    Entry _entries[kCapacity];
+};
 
 } // namespace mesh
 } // namespace layertime

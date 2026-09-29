@@ -92,10 +92,15 @@ void GpsService::poll(WatchState &) {}
 void GpsService::setEnabled(bool) {}
 void MeshService::begin() {}
 void MeshService::poll() {}
+bool MeshService::sendPublicMessage(const char *) { return false; }
 void MeshService::setAdvertisingEnabled(bool) {}
 bool MeshService::setRadioEnabled(bool) { return true; }
 void MeshtasticService::begin() {}
 void MeshtasticService::poll() {}
+bool MeshtasticService::sendChannelMessage(uint8_t, const char *) { return false; }
+bool MeshtasticService::sendDirectMessage(uint32_t, const char *) { return false; }
+bool MeshtasticService::setChannel(uint8_t, const char *, const char *) { return false; }
+bool MeshtasticService::removeChannel(uint8_t) { return false; }
 void MeshtasticService::setAdvertisingEnabled(bool) {}
 void MeshtasticService::setIdentity(const char *) {}
 void MeshtasticService::setOwnBattery(uint8_t) {}
@@ -125,10 +130,10 @@ void GpsScreen::render(const WatchState &, const AppSettings &) {}
 void MappingScreen::create(BackCallback, void *) {}
 void MappingScreen::show(const WatchState &, const AppSettings &) {}
 void MappingScreen::render(const WatchState &, const AppSettings &) {}
-void MeshScreen::create(MeshService *, BackCallback, void *) {}
+void MeshScreen::create(layertime::LayerTimeCore *, const MeshService *, BackCallback, void *) {}
 void MeshScreen::show(const MeshStatus &) {}
 void MeshScreen::render(const MeshStatus &) {}
-void MeshtasticScreen::create(MeshtasticService *, BackCallback, void *) {}
+void MeshtasticScreen::create(layertime::LayerTimeCore *, const MeshtasticService *, BackCallback, void *) {}
 void MeshtasticScreen::show(const MeshtasticStatus &) {}
 void MeshtasticScreen::render(const MeshtasticStatus &) {}
 void ReconScreen::create(layertime::LayerTimeCore *core, BackCallback, void *)

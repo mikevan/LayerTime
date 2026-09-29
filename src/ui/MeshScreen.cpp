@@ -17,12 +17,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "MeshScreen.h"
-#include "QuickPhrases.h"
 #include "Theme.h"
 
 namespace {
-// Phrase strings are static literals, so stashing the pointer on the button
-// itself is safe for the life of the screen and avoids another context pool.
+// Phrase strings live in the core's constant library, so stashing the pointer
+// on the button itself is safe for the life of the screen and avoids another
+// context pool.
 lv_obj_t *makePhraseButton(lv_obj_t *parent, const char *phrase, lv_event_cb_t cb,
                            void *userData)
 {
@@ -48,8 +48,10 @@ lv_obj_t *makePhraseButton(lv_obj_t *parent, const char *phrase, lv_event_cb_t c
 #include <stdio.h>
 #include <string.h>
 
-void MeshScreen::create(MeshService *service, BackCallback backCallback, void *userData)
+void MeshScreen::create(layertime::LayerTimeCore *core, const MeshService *service,
+                        BackCallback backCallback, void *userData)
 {
+    _core = core;
     _service = service;
     _backCallback = backCallback;
     _userData = userData;
@@ -250,8 +252,10 @@ void MeshScreen::create(MeshService *service, BackCallback backCallback, void *u
     lv_obj_set_flex_flow(_phraseList, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_scroll_dir(_phraseList, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(_phraseList, LV_SCROLLBAR_MODE_AUTO);
-    for (size_t i = 0; i < QuickPhrases::kCount; ++i) {
-        makePhraseButton(_phraseList, QuickPhrases::kPhrases[i], phraseEventThunk, this);
+    uint8_t phraseCount = 0;
+    const layertime::QuickMessage *phrases = _core ? _core->quickMessages(phraseCount) : nullptr;
+    for (uint8_t i = 0; i < phraseCount; ++i) {
+        makePhraseButton(_phraseList, phrases[i].text, phraseEventThunk, this);
     }
 }
 
@@ -303,7 +307,7 @@ void MeshScreen::render(const MeshStatus &status)
         size_t used = 0;
         const uint32_t now = millis();
         for (uint8_t i = 0; i < MeshStatus::kMaxNodes; ++i) {
-            const MeshNode &node = status.nodes[i];
+            const MeshCoreNode &node = status.nodes[i];
             if (!node.used) continue;
             const uint32_t ageSec = (now - node.lastSeenMs) / 1000;
             char line[110];
@@ -326,7 +330,7 @@ void MeshScreen::render(const MeshStatus &status)
         size_t used = 0;
         // Ring buffer is written sequentially; display every used slot for now.
         for (uint8_t i = 0; i < MeshStatus::kMaxMessages; ++i) {
-            const MeshMessage &msg = status.messages[i];
+            const MeshCoreMessage &msg = status.messages[i];
             if (!msg.used) continue;
             char line[145];
             snprintf(line, sizeof(line), "%s%s\n",
@@ -368,9 +372,18 @@ void MeshScreen::composeEventThunk(lv_event_t *event)
 void MeshScreen::sendEventThunk(lv_event_t *event)
 {
     auto *self = static_cast<MeshScreen *>(lv_event_get_user_data(event));
-    if (self == nullptr || self->_service == nullptr) return;
+    if (self == nullptr || self->_service == nullptr || self->_core == nullptr) return;
     const char *text = lv_textarea_get_text(self->_textArea);
-    if (text != nullptr && text[0] != '\0') self->_service->sendPublicMessage(text);
+    if (text != nullptr && text[0] != '\0') {
+        // MeshCore's public group is its channel 0.
+        layertime::LayerTimeCommand c;
+        c.type = layertime::CommandType::MeshSendText;
+        c.meshText.network = layertime::MeshNetwork::MeshCore;
+        c.meshText.destination.kind = layertime::MeshDestinationKind::Channel;
+        c.meshText.destination.channel = 0;
+        snprintf(c.meshText.text, sizeof(c.meshText.text), "%s", text);
+        self->_core->execute(c);
+    }
     self->hideComposer();
     self->render(self->_service->status());
 }

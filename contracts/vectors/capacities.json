@@ -29,9 +29,12 @@
     "textSize": 32,
     "maxMessages": 20
   },
+  "MeshSendTextArgs": {
+    "textSize": 161
+  },
   "MeshChannelArgs": {
     "nameSize": 12,
-    "keySize": 48
+    "keySize": 49
   },
   "DeviceCapabilities": {
     "profileIdSize": 24

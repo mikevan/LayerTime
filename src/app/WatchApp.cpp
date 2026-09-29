@@ -71,6 +71,8 @@ void WatchApp::begin()
     ports.alerts = &_alertSink;
     ports.eventLog = &_eventLog;
     ports.navigation = &_navigationSource;
+    ports.mesh[static_cast<uint8_t>(layertime::MeshNetwork::MeshCore)] = &_meshCoreTransport;
+    ports.mesh[static_cast<uint8_t>(layertime::MeshNetwork::Meshtastic)] = &_meshtasticTransport;
     _core.attach(ports);
     _recon.setEarlyWarningEnabled(_settings.reconEarlyWarningEnabled);
 
@@ -97,8 +99,8 @@ void WatchApp::begin()
     // Create every secondary screen before the first render.
     _gpsScreen.create(gpsBackThunk, this);
     _mappingScreen.create(mappingBackThunk, this);
-    _meshScreen.create(&_mesh, meshBackThunk, this);
-    _meshtasticScreen.create(&_meshtastic, meshtasticBackThunk, this);
+    _meshScreen.create(&_core, &_mesh, meshBackThunk, this);
+    _meshtasticScreen.create(&_core, &_meshtastic, meshtasticBackThunk, this);
     _reconScreen.create(&_core, reconBackThunk, this);
 
     _settingsScreen.create(
@@ -147,6 +149,7 @@ void WatchApp::refreshState()
     _clock.update(_state);
     _battery.update(_state);
     _core.refreshNavigation();
+    _core.refreshMesh();
     // Meshtastic broadcasts our position and battery on its own schedule;
     // it just needs to be told what they currently are.
     _meshtastic.setOwnPosition(

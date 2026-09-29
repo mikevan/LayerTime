@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-struct MeshNode {
+struct MeshCoreNode {
     bool used = false;
     uint8_t id[4] = {0, 0, 0, 0};
     char name[25] = {0};
@@ -34,7 +34,7 @@ struct MeshNode {
     uint32_t lastSeenMs = 0;
 };
 
-struct MeshMessage {
+struct MeshCoreMessage {
     bool used = false;
     char text[128] = {0};
     float rssi = 0.0f;
@@ -60,9 +60,9 @@ struct MeshStatus {
     float lastSnr = 0.0f;
     uint16_t lastPacketBytes = 0;
     char nodeName[24] = {0};
-    MeshNode nodes[kMaxNodes];
+    MeshCoreNode nodes[kMaxNodes];
     uint8_t nodeCount = 0;
-    MeshMessage messages[kMaxMessages];
+    MeshCoreMessage messages[kMaxMessages];
 };
 
 class MeshService {
@@ -85,7 +85,7 @@ private:
     void parsePacket(const uint8_t *data, size_t len, float rssi, float snr);
     void parseAdvert(const uint8_t *payload, size_t len, float rssi, float snr);
     void parseGroupText(const uint8_t *payload, size_t len, float rssi, uint8_t hops);
-    MeshNode *findOrAllocateNode(const uint8_t *pubKey);
+    MeshCoreNode *findOrAllocateNode(const uint8_t *pubKey);
     void storeMessage(const char *text, float rssi, uint8_t hops);
     bool transmitPacket(const uint8_t *data, size_t len);
     uint32_t unixTimestamp() const;

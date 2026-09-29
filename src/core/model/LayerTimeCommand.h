@@ -63,9 +63,14 @@ struct ReconStartArgs {
 };
 
 struct MeshSendTextArgs {
+    // Longest text a command carries: what the T-Ultra's Meshtastic composer
+    // allows. The buffer has room for the terminating zero on top.
+    static constexpr uint8_t kMaxTextChars = 160;
+    static constexpr uint8_t kTextSize = kMaxTextChars + 1;
+
     MeshNetwork network = MeshNetwork::Meshtastic;
     MeshDestination destination;
-    char text[MeshMessage::kTextSize] = {0};
+    char text[kTextSize] = {0};
 };
 
 struct MeshSendQuickArgs {
@@ -75,8 +80,9 @@ struct MeshSendQuickArgs {
 };
 
 struct MeshChannelArgs {
+    // Buffer sizes, including the terminating zero.
     static constexpr uint8_t kNameSize = 12; // Meshtastic: 11 characters max
-    static constexpr uint8_t kKeySize = 48;  // key as the user typed it
+    static constexpr uint8_t kKeySize = 49;  // key as the user typed it, up to 48 characters
 
     uint8_t index = 0;
     char name[kNameSize] = {0};

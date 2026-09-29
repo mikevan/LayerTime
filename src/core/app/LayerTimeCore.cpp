@@ -18,6 +18,10 @@
 
 #include "LayerTimeCore.h"
 
+#include <string.h>
+
+#include "../logic/QuickMessages.h"
+
 namespace layertime {
 
 void LayerTimeCore::attach(const CorePorts &ports)
@@ -58,12 +62,35 @@ CommandResult LayerTimeCore::execute(const LayerTimeCommand &command)
         return CommandResult::Ok;
 
     case CommandType::MeshSendText:
-    case CommandType::MeshSendQuickMessage:
-    case CommandType::MeshSetChannel:
-    case CommandType::MeshRemoveChannel:
-        // Mesh is not behind a port yet. The mesh screens still call their
-        // services directly.
-        return CommandResult::Unsupported;
+        return sendMeshText(command.meshText.network, command.meshText.destination,
+                            command.meshText.text, sizeof(command.meshText.text));
+
+    case CommandType::MeshSendQuickMessage: {
+        if (!meshTransport(command.meshQuick.network)) return CommandResult::Unsupported;
+        const QuickMessage *m = mesh::findQuickMessage(command.meshQuick.quickMessageId);
+        if (!m) return CommandResult::InvalidArgument;
+        return sendMeshText(command.meshQuick.network, command.meshQuick.destination, m->text,
+                            sizeof(m->text));
+    }
+
+    case CommandType::MeshSetChannel: {
+        MeshTransport *t = meshTransport(MeshNetwork::Meshtastic);
+        if (!t) return CommandResult::Unsupported;
+        const MeshChannelArgs &a = command.meshChannel;
+        if (!memchr(a.name, 0, sizeof(a.name)) || !memchr(a.key, 0, sizeof(a.key)))
+            return CommandResult::InvalidArgument;
+        return t->setChannel(a.index, a.name, a.key);
+    }
+
+    case CommandType::MeshRemoveChannel: {
+        MeshTransport *t = meshTransport(MeshNetwork::Meshtastic);
+        if (!t) return CommandResult::Unsupported;
+        const CommandResult r = t->removeChannel(command.meshChannel.index);
+        // The channel's conversation goes whatever the network answered, as
+        // it always has on the T-Ultra.
+        _conversations.removeChannel(command.meshChannel.index);
+        return r;
+    }
 
     case CommandType::None:
     default:
@@ -107,6 +134,51 @@ ReconState LayerTimeCore::reconState() const
 void LayerTimeCore::refreshNavigation()
 {
     if (_ports.navigation) _ports.navigation->read(_navigation);
+}
+
+MeshTransport *LayerTimeCore::meshTransport(MeshNetwork network) const
+{
+    const uint8_t i = static_cast<uint8_t>(network);
+    if (i >= kMeshNetworkCount) return nullptr;
+    MeshTransport *t = _ports.mesh[i];
+    return (t && t->network() == network) ? t : nullptr;
+}
+
+CommandResult LayerTimeCore::sendMeshText(MeshNetwork network, const MeshDestination &destination,
+                                          const char *text, size_t textBufferSize)
+{
+    MeshTransport *t = meshTransport(network);
+    if (!t) return CommandResult::Unsupported;
+
+    if (destination.kind == MeshDestinationKind::Node) {
+        MeshNetwork idNetwork;
+        if (!meshIdWellFormed(destination.node) || !meshIdNetwork(destination.node.kind, idNetwork) ||
+            idNetwork != network)
+            return CommandResult::InvalidArgument;
+    } else if (destination.kind != MeshDestinationKind::Channel) {
+        return CommandResult::InvalidArgument;
+    }
+
+    // Text must be present and end inside its buffer.
+    if (!text || text[0] == '\0' || !memchr(text, 0, textBufferSize)) return CommandResult::InvalidArgument;
+    if (strlen(text) > MeshSendTextArgs::kMaxTextChars) return CommandResult::InvalidArgument;
+
+    return t->sendText(destination, text);
+}
+
+void LayerTimeCore::refreshMesh()
+{
+    for (uint8_t i = 0; i < kMeshNetworkCount; ++i) {
+        MeshNetworkStatus &s = _mesh.networks[i];
+        MeshTransport *t = meshTransport(static_cast<MeshNetwork>(i));
+        if (t) t->observeStatus(s);
+        else s = MeshNetworkStatus{};
+    }
+}
+
+const QuickMessage *LayerTimeCore::quickMessages(uint8_t &count) const
+{
+    return mesh::defaultQuickMessages(count);
 }
 
 } // namespace layertime

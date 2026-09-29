@@ -196,11 +196,16 @@ target, so a command whose destination was never set is rejected as
 | radioError | int16 | Platform error code when enabled but not ready, else 0 |
 | advertisingEnabled | bool | Announcing this node |
 | ownName | text, 24 | This node's name on that network |
-| nodeCount, messageCount | uint8 | Sizes of the lists held by the network's service |
+| nodeCount, messageCount | uint8 | How many nodes and messages the network currently holds |
 
 `MeshState` holds one `MeshNetworkStatus` per network, indexed by
-`MeshNetwork` value. Node and message lists are read from the mesh transport,
-not copied into it.
+`MeshNetwork` value. It is application state, owned by the core. Each
+network's transport supplies observations to the core and carries its
+commands out; it does not own or serve the shared representation.
+
+The shared node and message lists are not built yet. In Phase 0 the T-Ultra
+screens still render from each network's own service; moving them onto the
+shared model is the unified mesh UI work.
 
 ## Alert
 

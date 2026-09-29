@@ -16,13 +16,15 @@
 #include <string>
 
 // Existing T-Ultra headers. All three are pure: no Arduino, no radio.
-// Including MeshService.h alongside core/model/Mesh.h is itself a test: both
-// declare a MeshNode and a MeshMessage, and this must still compile.
+// Including MeshService.h alongside core/model/Mesh.h is itself a test. The
+// MeshCore service's records were called MeshNode and MeshMessage, the same
+// names as the core model's, until Phase 0 Step 5 renamed them MeshCoreNode
+// and MeshCoreMessage; this must still compile with both in scope.
 #include "services/MeshService.h"
 #include "services/MeshtasticService.h"
 #include "core/logic/MonitorEventLog.h"
 #include "services/ReconService.h"
-#include "ui/QuickPhrases.h"
+#include "core/logic/QuickMessages.h"
 
 #include "core/model/Alert.h"
 #include "core/model/DeviceCapabilities.h"
@@ -35,10 +37,9 @@
 #include "core/model/Time.h"
 #include "platform/twatch_ultra/TUltraProfile.h"
 
-// With both headers in scope, a bare MeshNode or MeshMessage is ambiguous
-// under this using-directive. That is the collision the namespace exists to
-// contain, so this file names the core ones layertime::MeshNode and
-// layertime::MeshMessage, and the T-Ultra ones ::MeshNode and ::MeshMessage.
+// The core types are still named layertime::MeshNode and
+// layertime::MeshMessage here, and the MeshCore ones ::MeshCoreNode and
+// ::MeshCoreMessage, as they were written before the rename.
 using namespace layertime;
 
 namespace {
@@ -272,6 +273,7 @@ void capacities_match_vectors()
     CHECK_INT(QuickMessage::kTextSize, intValue(j, object(j, w, "QuickMessage"), "textSize"));
     CHECK_INT(QuickMessageLibrary::kMaxMessages,
               intValue(j, object(j, w, "QuickMessage"), "maxMessages"));
+    CHECK_INT(MeshSendTextArgs::kTextSize, intValue(j, object(j, w, "MeshSendTextArgs"), "textSize"));
     CHECK_INT(MeshChannelArgs::kNameSize, intValue(j, object(j, w, "MeshChannelArgs"), "nameSize"));
     CHECK_INT(MeshChannelArgs::kKeySize, intValue(j, object(j, w, "MeshChannelArgs"), "keySize"));
     CHECK_INT(DeviceCapabilities::kProfileIdSize,
@@ -281,7 +283,10 @@ void capacities_match_vectors()
     CHECK_INT(MonitorEvent::kSourceIdSize, sizeof(MonitorEvent{}.sourceId));
     CHECK_INT(MonitorEvent::kDetailSize, sizeof(MonitorEvent{}.detail));
     CHECK_INT(layertime::MeshMessage::kTextSize, sizeof(layertime::MeshMessage{}.text));
-    CHECK_INT(layertime::MeshMessage::kTextSize, sizeof(MeshSendTextArgs{}.text));
+    CHECK_INT(MeshSendTextArgs::kTextSize, sizeof(MeshSendTextArgs{}.text));
+    CHECK_INT(MeshSendTextArgs::kMaxTextChars + 1, MeshSendTextArgs::kTextSize);
+    CHECK_INT(MeshChannelArgs::kNameSize, sizeof(MeshChannelArgs{}.name));
+    CHECK_INT(MeshChannelArgs::kKeySize, sizeof(MeshChannelArgs{}.key));
     CHECK_INT(QuickMessage::kTextSize, sizeof(QuickMessage{}.text));
     CHECK_INT(QuickMessageLibrary::kMaxMessages,
               sizeof(QuickMessageLibrary{}.messages) / sizeof(QuickMessage));
@@ -613,10 +618,10 @@ void mesh_model_holds_every_tultra_mesh_record()
 
     // Nothing the T-Ultra stores today gets truncated by the unified model.
     CHECK_TRUE(sizeof(MeshtasticNode{}.longName) <= layertime::MeshNode::kDisplayNameSize);
-    CHECK_TRUE(sizeof(::MeshNode{}.name) <= layertime::MeshNode::kDisplayNameSize);
+    CHECK_TRUE(sizeof(::MeshCoreNode{}.name) <= layertime::MeshNode::kDisplayNameSize);
     CHECK_TRUE(sizeof(MeshtasticNode{}.shortName) <= layertime::MeshNode::kShortNameSize);
     CHECK_TRUE(sizeof(MeshtasticMessage{}.text) <= layertime::MeshMessage::kTextSize);
-    CHECK_TRUE(sizeof(::MeshMessage{}.text) <= layertime::MeshMessage::kTextSize);
+    CHECK_TRUE(sizeof(::MeshCoreMessage{}.text) <= layertime::MeshMessage::kTextSize);
     CHECK_TRUE(sizeof(MeshtasticStatus{}.longName) <= MeshNetworkStatus::kOwnNameSize);
     CHECK_TRUE(sizeof(MeshStatus{}.nodeName) <= MeshNetworkStatus::kOwnNameSize);
     CHECK_TRUE(sizeof(MeshtasticChannel{}.name) <= MeshChannelArgs::kNameSize);
@@ -625,11 +630,11 @@ void mesh_model_holds_every_tultra_mesh_record()
     // The T-Ultra's MeshCore service keeps a shorter slice of the key than
     // the full key, so its adapter can only ever report a prefix. The model
     // must hold that prefix without pretending it is a full identity.
-    CHECK_TRUE(sizeof(::MeshNode{}.id) >= 1);
-    CHECK_TRUE(sizeof(::MeshNode{}.id) < MeshNodeId::kMeshCorePublicKeyBytes);
+    CHECK_TRUE(sizeof(::MeshCoreNode{}.id) >= 1);
+    CHECK_TRUE(sizeof(::MeshCoreNode{}.id) < MeshNodeId::kMeshCorePublicKeyBytes);
     MeshNodeId tultraMeshCore;
     tultraMeshCore.kind = MeshIdKind::MeshCorePublicKeyPrefix;
-    tultraMeshCore.length = sizeof(::MeshNode{}.id);
+    tultraMeshCore.length = sizeof(::MeshCoreNode{}.id);
     CHECK_TRUE(meshIdWellFormed(tultraMeshCore));
     // Counts fit the uint8 fields in MeshNetworkStatus.
     CHECK_TRUE(MeshtasticStatus::kMaxNodes <= 255 && MeshtasticStatus::kMaxMessages <= 255);
@@ -641,25 +646,58 @@ void default_quick_messages_match_tultra_phrases()
     const size_t arr = j.find("\"messages\"");
     CHECK_TRUE(arr != std::string::npos);
 
-    CHECK_INT(QuickPhrases::kCount, QuickMessageLibrary::kMaxMessages);
+    // Since Phase 0 Step 5 the T-Ultra's phrases are the core's default
+    // library (src/core/logic/QuickMessages), no longer src/ui/QuickPhrases.h.
+    uint8_t count = 0;
+    const QuickMessage *lib = layertime::mesh::defaultQuickMessages(count);
+    CHECK_INT(count, QuickMessageLibrary::kMaxMessages);
 
     size_t pos = arr;
     size_t joined = 0;
-    for (size_t i = 0; i < QuickPhrases::kCount; ++i) {
+    for (size_t i = 0; i < count; ++i) {
         const size_t idAt = j.find("\"id\"", pos);
         CHECK_TRUE(idAt != std::string::npos);
         if (idAt == std::string::npos) return;
         Span rest{idAt, j.size(), true};
         CHECK_INT(static_cast<long>(i), intValue(j, rest, "id"));
-        CHECK_STR(QuickPhrases::kPhrases[i], stringValue(j, rest, "text").c_str());
-        CHECK_TRUE(std::strlen(QuickPhrases::kPhrases[i]) < QuickMessage::kTextSize);
-        joined += std::strlen(QuickPhrases::kPhrases[i]) + (i ? 1 : 0);
+        CHECK_INT(lib[i].id, intValue(j, rest, "id"));
+        CHECK_STR(lib[i].text, stringValue(j, rest, "text").c_str());
+        CHECK_TRUE(std::strlen(lib[i].text) < QuickMessage::kTextSize);
+        joined += std::strlen(lib[i].text) + (i ? 1 : 0);
         pos = idAt + 1;
     }
     // No 21st entry in the vector.
     CHECK_TRUE(j.find("\"id\"", pos) == std::string::npos);
     // Meshtastic's canned-message limit.
     CHECK_TRUE(joined <= 200);
+}
+
+// Added in Phase 0 Step 5: the NodeNum encoding the contract gives for
+// MeshtasticNodeNum (4 bytes, big-endian), in both directions.
+void meshtastic_node_numbers_encode_big_endian()
+{
+    const MeshNodeId id = meshtasticNodeId(0x12345678u);
+    CHECK_INT(static_cast<int>(MeshIdKind::MeshtasticNodeNum), static_cast<int>(id.kind));
+    CHECK_INT(4, id.length);
+    CHECK_INT(0x12, id.bytes[0]);
+    CHECK_INT(0x34, id.bytes[1]);
+    CHECK_INT(0x56, id.bytes[2]);
+    CHECK_INT(0x78, id.bytes[3]);
+    CHECK_TRUE(meshIdWellFormed(id));
+    for (uint32_t n : {0u, 1u, 0x7FFFFFFFu, 0xFFFFFFFEu, 0xFFFFFFFFu, 0xDEADBEEFu}) {
+        uint32_t back = 0;
+        CHECK_TRUE(meshtasticNodeNum(meshtasticNodeId(n), back));
+        CHECK_TRUE(back == n);
+    }
+    MeshNodeId other;
+    other.kind = MeshIdKind::MeshCorePublicKeyPrefix;
+    other.length = 4;
+    uint32_t out = 7;
+    CHECK_FALSE(meshtasticNodeNum(other, out));
+    MeshNodeId shortId = meshtasticNodeId(5);
+    shortId.length = 3;
+    CHECK_FALSE(meshtasticNodeNum(shortId, out));
+    CHECK_INT(7, out);
 }
 
 int main(int argc, char **argv)
@@ -681,5 +719,6 @@ int main(int argc, char **argv)
     CASE(monitor_event_holds_every_tultra_detection);
     CASE(mesh_model_holds_every_tultra_mesh_record);
     CASE(default_quick_messages_match_tultra_phrases);
+    CASE(meshtastic_node_numbers_encode_big_endian);
     CHECK_SUMMARY();
 }

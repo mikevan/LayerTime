@@ -19,13 +19,20 @@
 #pragma once
 
 #include <lvgl.h>
+#include "../core/app/LayerTimeCore.h"
 #include "../services/MeshService.h"
+
+// The MeshCore screen. Since Phase 0 Step 5 it sends through the core as a
+// command and takes its phrase list from the core. It still reads the
+// service's status for display, through a const pointer, so it cannot ask
+// the service to do anything.
 
 class MeshScreen {
 public:
     using BackCallback = void (*)(void *userData);
 
-    void create(MeshService *service, BackCallback backCallback, void *userData);
+    void create(layertime::LayerTimeCore *core, const MeshService *service, BackCallback backCallback,
+                void *userData);
     void show(const MeshStatus &status);
     void render(const MeshStatus &status);
 
@@ -50,7 +57,8 @@ private:
     lv_obj_t *_textArea = nullptr;
     lv_obj_t *_phraseList = nullptr;
 
-    MeshService *_service = nullptr;
+    layertime::LayerTimeCore *_core = nullptr;
+    const MeshService *_service = nullptr;
     BackCallback _backCallback = nullptr;
     void *_userData = nullptr;
 };

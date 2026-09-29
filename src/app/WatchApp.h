@@ -34,6 +34,7 @@
 #include "../platform/twatch_ultra/TUltraAlertSink.h"
 #include "../platform/twatch_ultra/TUltraEventLog.h"
 #include "../platform/twatch_ultra/TUltraMonitorSource.h"
+#include "../platform/twatch_ultra/TUltraMeshTransports.h"
 #include "../platform/twatch_ultra/TUltraNavigationSource.h"
 #include "../ui/GpsScreen.h"
 #include "../ui/MappingScreen.h"
@@ -109,6 +110,8 @@ private:
     layertime::twatch_ultra::TUltraAlertSink _alertSink;
     layertime::twatch_ultra::TUltraEventLog _eventLog{_settings, _state, _sdCard};
     layertime::twatch_ultra::TUltraNavigationSource _navigationSource{_state};
+    layertime::twatch_ultra::TUltraMeshCoreTransport _meshCoreTransport{_mesh};
+    layertime::twatch_ultra::TUltraMeshtasticTransport _meshtasticTransport{_meshtastic};
     layertime::LayerTimeCore _core;
 
     WatchFace _face;

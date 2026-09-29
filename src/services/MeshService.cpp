@@ -286,8 +286,8 @@ void MeshService::parseGroupText(const uint8_t *payload, size_t len, float rssi,
 
 void MeshService::storeMessage(const char *text, float rssi, uint8_t hops)
 {
-    MeshMessage &msg = _status.messages[_messageWrite];
-    msg = MeshMessage{};
+    MeshCoreMessage &msg = _status.messages[_messageWrite];
+    msg = MeshCoreMessage{};
     msg.used = true;
     strncpy(msg.text, text, sizeof(msg.text) - 1);
     msg.rssi = rssi;
@@ -472,7 +472,7 @@ void MeshService::parseAdvert(const uint8_t *payload, size_t len, float rssi, fl
     size_t offset = 32 + 4 + 64;
     const uint8_t flags = payload[offset++];
 
-    MeshNode *node = findOrAllocateNode(pubKey);
+    MeshCoreNode *node = findOrAllocateNode(pubKey);
     if (node == nullptr) return;
 
     node->type = flags & 0x0F;
@@ -514,15 +514,15 @@ void MeshService::parseAdvert(const uint8_t *payload, size_t len, float rssi, fl
     ++_status.advertCount;
 }
 
-MeshNode *MeshService::findOrAllocateNode(const uint8_t *pubKey)
+MeshCoreNode *MeshService::findOrAllocateNode(const uint8_t *pubKey)
 {
     for (uint8_t i = 0; i < MeshStatus::kMaxNodes; ++i) {
-        MeshNode &node = _status.nodes[i];
+        MeshCoreNode &node = _status.nodes[i];
         if (node.used && memcmp(node.id, pubKey, sizeof(node.id)) == 0) return &node;
     }
 
     for (uint8_t i = 0; i < MeshStatus::kMaxNodes; ++i) {
-        MeshNode &node = _status.nodes[i];
+        MeshCoreNode &node = _status.nodes[i];
         if (!node.used) {
             node.used = true;
             memcpy(node.id, pubKey, sizeof(node.id));
@@ -535,8 +535,8 @@ MeshNode *MeshService::findOrAllocateNode(const uint8_t *pubKey)
     for (uint8_t i = 1; i < MeshStatus::kMaxNodes; ++i) {
         if (_status.nodes[i].lastSeenMs < _status.nodes[stalest].lastSeenMs) stalest = i;
     }
-    MeshNode &node = _status.nodes[stalest];
-    node = MeshNode{};
+    MeshCoreNode &node = _status.nodes[stalest];
+    node = MeshCoreNode{};
     node.used = true;
     memcpy(node.id, pubKey, sizeof(node.id));
     return &node;

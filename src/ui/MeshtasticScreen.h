@@ -19,6 +19,7 @@
 #pragma once
 
 #include <lvgl.h>
+#include "../core/app/LayerTimeCore.h"
 #include "../services/MeshtasticService.h"
 #include "MapView.h"
 
@@ -35,22 +36,24 @@ class MeshtasticScreen {
 public:
     using BackCallback = void (*)(void *userData);
 
-    void create(MeshtasticService *service, BackCallback backCallback, void *userData);
+    // Since Phase 0 Step 5 the screen sends and configures channels through
+    // the core as commands, takes its phrase list from the core, and keeps
+    // its conversations and read times in the core. It still reads the
+    // service's status for display, through a const pointer, so it cannot
+    // ask the service to do anything.
+    void create(layertime::LayerTimeCore *core, const MeshtasticService *service,
+                BackCallback backCallback, void *userData);
     void show(const MeshtasticStatus &status);
     void render(const MeshtasticStatus &status);
 
 private:
     enum class Page : uint8_t { Home, Nodes, Chats, Thread, Info, Compose, Channels, ChannelEdit, Map };
 
-    // A conversation is either a channel (peer == kMeshtasticBroadcast, one
-    // per channel slot) or a direct-message exchange with one node.
-    struct Conversation {
-        bool used = false;
-        uint32_t peer = kMeshtasticBroadcast;
-        uint8_t channel = 0;
-        uint32_t lastViewedMs = 0;
-    };
-    static constexpr uint8_t kMaxConversations = MeshtasticStatus::kMaxChannels + 16; // channels + DM peers
+    // Conversations live in the core. On this screen a channel conversation
+    // is still named by peer == kMeshtasticBroadcast plus its channel slot,
+    // and a direct one by the peer's node number.
+    using Conversation = layertime::mesh::ConversationTable::Entry;
+    static constexpr uint8_t kMaxConversations = layertime::mesh::ConversationTable::kCapacity;
 
     struct RowContext {
         MeshtasticScreen *screen = nullptr;
@@ -84,8 +87,9 @@ private:
     void renderHome(const MeshtasticStatus &status);
     void renderInfo(const MeshtasticStatus &status);
     void openThread(uint32_t peer, uint8_t channel);
-    Conversation *findOrAddConversation(uint32_t peer, uint8_t channel);
     void syncConversations(const MeshtasticStatus &status);
+    static layertime::mesh::ConversationKey conversationKey(uint32_t peer, uint8_t channel);
+    static uint32_t peerOf(const Conversation &c);
     uint32_t unreadFor(const Conversation &c, const MeshtasticStatus &status) const;
     bool messageInConversation(const MeshtasticMessage &m, uint32_t peer, uint8_t channel) const;
     static const char *channelTag(const MeshtasticChannel &channel);
@@ -153,12 +157,12 @@ private:
     uint32_t _lastListRebuildMs = 0;
     bool _listDirty = true;
 
-    Conversation _conversations[kMaxConversations];
     // One context per possible row across the nodes and chats lists.
     RowContext _rowContexts[MeshtasticStatus::kMaxNodes + kMaxConversations];
     RowContext _channelContexts[MeshtasticStatus::kMaxChannels];
 
-    MeshtasticService *_service = nullptr;
+    layertime::LayerTimeCore *_core = nullptr;
+    const MeshtasticService *_service = nullptr;
     BackCallback _backCallback = nullptr;
     void *_userData = nullptr;
 };

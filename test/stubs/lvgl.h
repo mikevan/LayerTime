@@ -42,6 +42,7 @@ inline const lv_font_t lv_font_montserrat_20{20};
 inline const lv_font_t lv_font_montserrat_24{24};
 inline const lv_font_t lv_font_montserrat_28{28};
 inline const lv_font_t lv_font_montserrat_32{32};
+inline const lv_font_t lv_font_montserrat_36{36};
 inline const lv_font_t lv_font_montserrat_48{48};
 
 using lv_text_align_t = uint8_t;
@@ -70,7 +71,8 @@ constexpr int32_t LV_SIZE_CONTENT = 2001;
 constexpr int32_t LV_COORD_MAX = 536870911;
 #define LV_H(x) (x)
 
-enum lv_event_code_t { LV_EVENT_ALL = 0, LV_EVENT_PRESSED = 1, LV_EVENT_LONG_PRESSED = 5, LV_EVENT_CLICKED = 10 };
+enum lv_event_code_t { LV_EVENT_ALL = 0, LV_EVENT_PRESSED = 1, LV_EVENT_LONG_PRESSED = 5, LV_EVENT_CLICKED = 10,
+                       LV_EVENT_VALUE_CHANGED = 35 };
 
 enum lv_indev_type_t { LV_INDEV_TYPE_NONE = 0, LV_INDEV_TYPE_POINTER = 1 };
 
@@ -89,6 +91,13 @@ struct lv_obj_t {
     void *userData = nullptr;
     // Last text colour set, so tests can read status colouring.
     uint32_t textColor = 0;
+    // Textarea character limit as the screen configured it; 0 means none.
+    // Recorded, not enforced: enforcing it is LVGL's job.
+    uint32_t maxLength = 0;
+    // Slider value and range.
+    int32_t value = 0;
+    int32_t rangeMin = 0;
+    int32_t rangeMax = 100;
     struct Callback {
         lv_event_cb_t cb;
         lv_event_code_t code;
@@ -263,6 +272,20 @@ inline void lv_textarea_add_text(lv_obj_t *o, const char *text)
     if (o && text) o->text += text;
 }
 inline const char *lv_textarea_get_text(const lv_obj_t *o) { return o ? o->text.c_str() : nullptr; }
+inline void lv_textarea_set_max_length(lv_obj_t *o, uint32_t n) { if (o) o->maxLength = n; }
+
+inline lv_obj_t *lv_slider_create(lv_obj_t *parent) { return fake_lv::make(parent, FakeKind::Object); }
+inline void lv_slider_set_range(lv_obj_t *o, int32_t lo, int32_t hi) { if (o) { o->rangeMin = lo; o->rangeMax = hi; } }
+template <class... A> inline void lv_slider_set_value(lv_obj_t *o, int32_t v, A...) { if (o) o->value = v; }
+inline int32_t lv_slider_get_value(const lv_obj_t *o) { return o ? o->value : 0; }
+inline lv_obj_t *lv_obj_get_parent(const lv_obj_t *o) { return o ? o->parent : nullptr; }
+
+// File system: no drive is ever present, so every open fails.
+struct lv_fs_file_t { int unused = 0; };
+enum lv_fs_res_t { LV_FS_RES_OK = 0, LV_FS_RES_NOT_EX = 3 };
+enum lv_fs_mode_t { LV_FS_MODE_WR = 1, LV_FS_MODE_RD = 2 };
+inline lv_fs_res_t lv_fs_open(lv_fs_file_t *, const char *, lv_fs_mode_t) { return LV_FS_RES_NOT_EX; }
+inline lv_fs_res_t lv_fs_close(lv_fs_file_t *) { return LV_FS_RES_OK; }
 
 inline lv_obj_t *lv_layer_top()
 {
@@ -320,8 +343,8 @@ FAKE_LV_IGNORE(lv_obj_set_scroll_dir)
 FAKE_LV_IGNORE(lv_obj_set_scrollbar_mode)
 FAKE_LV_IGNORE(lv_obj_scroll_to_y)
 FAKE_LV_IGNORE(lv_label_set_long_mode)
+FAKE_LV_IGNORE(lv_obj_set_style_text_line_space)
 FAKE_LV_IGNORE(lv_textarea_set_one_line)
-FAKE_LV_IGNORE(lv_textarea_set_max_length)
 FAKE_LV_IGNORE(lv_textarea_set_placeholder_text)
 FAKE_LV_IGNORE(lv_keyboard_set_textarea)
 FAKE_LV_IGNORE(lv_display_trigger_activity)

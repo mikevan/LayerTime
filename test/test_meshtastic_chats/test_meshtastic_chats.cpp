@@ -24,6 +24,8 @@
 
 #include <Arduino.h>
 
+#include "core/app/LayerTimeCore.h"
+#include "platform/twatch_ultra/TUltraMeshTransports.h"
 #include "ui/MeshtasticScreen.h"
 
 // ---------------------------------------------------------------- link seams (test only)
@@ -65,8 +67,13 @@ namespace {
 
 constexpr uint32_t kUs = 0;
 
+// The core wired to the T-Ultra Meshtastic transport, as WatchApp wires it.
+// Since Phase 0 Step 5 the conversation table and the screen's actions live
+// in the core; only this Harness changed for that.
 struct Harness {
     MeshtasticService service;
+    layertime::twatch_ultra::TUltraMeshtasticTransport transport{service};
+    layertime::LayerTimeCore core;
     MeshtasticScreen screen;
     std::unique_ptr<MeshtasticStatus> status{new MeshtasticStatus()};
 
@@ -75,7 +82,10 @@ struct Harness {
         fake_lv::reset();
         fake_arduino::g_millis = 100000;
         fake_mesh::g_sent.clear();
-        screen.create(&service, nullptr, nullptr);
+        layertime::CorePorts p;
+        p.mesh[static_cast<uint8_t>(layertime::MeshNetwork::Meshtastic)] = &transport;
+        core.attach(p);
+        screen.create(&core, &service, nullptr, nullptr);
     }
     ~Harness() { fake_lv::reset(); }
 

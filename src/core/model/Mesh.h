@@ -20,10 +20,9 @@
 
 // Canonical definition: contracts/models.md, "Mesh".
 //
-// These types live in namespace layertime on purpose. The T-Ultra's
-// MeshCore service already declares global MeshNode and MeshMessage
-// structs. The namespace lets both exist side by side until the MeshCore
-// structs are renamed, so this file changes nothing that already builds.
+// These types live in namespace layertime, as all core types do. The
+// T-Ultra's MeshCore service used to declare global MeshNode and MeshMessage
+// structs; Phase 0 Step 5 renamed those MeshCoreNode and MeshCoreMessage.
 
 #include <stdint.h>
 #include <string.h>
@@ -97,6 +96,29 @@ inline bool sameMeshNode(const MeshNodeId &a, const MeshNodeId &b)
 {
     return a.kind != MeshIdKind::None && a.kind == b.kind && a.length == b.length &&
            meshIdWellFormed(a) && memcmp(a.bytes, b.bytes, a.length) == 0;
+}
+
+// A Meshtastic NodeNum as an identity: 4 bytes, big-endian.
+inline MeshNodeId meshtasticNodeId(uint32_t nodeNum)
+{
+    MeshNodeId id;
+    id.kind = MeshIdKind::MeshtasticNodeNum;
+    id.length = MeshNodeId::kMeshtasticNodeNumBytes;
+    id.bytes[0] = static_cast<uint8_t>(nodeNum >> 24);
+    id.bytes[1] = static_cast<uint8_t>(nodeNum >> 16);
+    id.bytes[2] = static_cast<uint8_t>(nodeNum >> 8);
+    id.bytes[3] = static_cast<uint8_t>(nodeNum);
+    return id;
+}
+
+// The NodeNum back out of an identity. False unless it is a well-formed
+// Meshtastic NodeNum.
+inline bool meshtasticNodeNum(const MeshNodeId &id, uint32_t &out)
+{
+    if (id.kind != MeshIdKind::MeshtasticNodeNum || !meshIdWellFormed(id)) return false;
+    out = (static_cast<uint32_t>(id.bytes[0]) << 24) | (static_cast<uint32_t>(id.bytes[1]) << 16) |
+          (static_cast<uint32_t>(id.bytes[2]) << 8) | static_cast<uint32_t>(id.bytes[3]);
+    return true;
 }
 
 // Where a message goes, stated as what it means rather than as a special
@@ -206,9 +228,10 @@ struct MeshNetworkStatus {
     uint8_t messageCount = 0;
 };
 
-// Both networks. As with ReconState, the node and message lists are not
-// embedded: each network's service owns that storage (on the T-Ultra about
-// 26 KB for Meshtastic alone) and it is read through the mesh transport.
+// Both networks. Application state, owned by the core and filled from what
+// each network's transport observes. The shared node and message lists are
+// not built yet: in Phase 0 the T-Ultra's own screens still render from each
+// network's service, and nothing else reads them.
 struct MeshState {
     MeshNetworkStatus networks[kMeshNetworkCount];
 

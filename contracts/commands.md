@@ -17,9 +17,9 @@ The set is exactly what the T-Ultra screens do today, plus
 | ReconStop | none | Leave manual monitoring. Early warning resumes if enabled. | ReconService::exitManualMode |
 | ReconClearEvents | none | Empty the event list | ReconService::clearDetections |
 | ReconAcknowledgeAlert | none | Clear the pending alert | ReconService::acknowledgeAlert |
-| MeshSendText | network, destination, text (160) | Send typed or composed text | MeshService::sendPublicMessage, MeshtasticService::sendChannelMessage, MeshtasticService::sendDirectMessage |
+| MeshSendText | network, destination, text (up to 160 characters) | Send typed or composed text | MeshService::sendPublicMessage, MeshtasticService::sendChannelMessage, MeshtasticService::sendDirectMessage |
 | MeshSendQuickMessage | network, destination, quickMessageId | Send a library message by id | None yet |
-| MeshSetChannel | index, name (12), key (48) | Create or replace a channel | MeshtasticService::setChannel |
+| MeshSetChannel | index, name (up to 11 characters), key (up to 48 characters) | Create or replace a channel | MeshtasticService::setChannel |
 | MeshRemoveChannel | index | Remove a channel | MeshtasticService::removeChannel |
 
 For the two send commands, `network` selects the mesh and `destination` is a

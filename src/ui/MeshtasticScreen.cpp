@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "QuickPhrases.h"
 #include "../core/logic/MeshConversations.h"
 #include "Theme.h"
 
@@ -111,8 +110,10 @@ void ageText(uint32_t ageMs, char *out, size_t outSize)
 
 // ---------------------------------------------------------------- build
 
-void MeshtasticScreen::create(MeshtasticService *service, BackCallback backCallback, void *userData)
+void MeshtasticScreen::create(layertime::LayerTimeCore *core, const MeshtasticService *service,
+                              BackCallback backCallback, void *userData)
 {
+    _core = core;
     _service = service;
     _backCallback = backCallback;
     _userData = userData;
@@ -280,8 +281,10 @@ void MeshtasticScreen::buildComposer()
     lv_obj_set_flex_flow(_phraseList, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_scroll_dir(_phraseList, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(_phraseList, LV_SCROLLBAR_MODE_AUTO);
-    for (size_t i = 0; i < QuickPhrases::kCount; ++i) {
-        makePhraseButton(_phraseList, QuickPhrases::kPhrases[i], phraseThunk, this);
+    uint8_t phraseCount = 0;
+    const layertime::QuickMessage *phrases = _core ? _core->quickMessages(phraseCount) : nullptr;
+    for (uint8_t i = 0; i < phraseCount; ++i) {
+        makePhraseButton(_phraseList, phrases[i].text, phraseThunk, this);
     }
 }
 
@@ -380,8 +383,7 @@ void MeshtasticScreen::openThread(uint32_t peer, uint8_t channel)
 {
     _threadPeer = peer;
     _threadChannel = channel;
-    Conversation *c = findOrAddConversation(peer, channel);
-    if (c) c->lastViewedMs = millis();
+    if (_core) _core->conversations().markViewed(conversationKey(peer, channel), millis());
     showPage(Page::Thread);
 }
 
@@ -463,10 +465,15 @@ void MeshtasticScreen::channelFieldThunk(lv_event_t *event)
 void MeshtasticScreen::channelSaveThunk(lv_event_t *event)
 {
     auto *self = static_cast<MeshtasticScreen *>(lv_event_get_user_data(event));
-    if (!self || !self->_service) return;
+    if (!self || !self->_service || !self->_core) return;
     const char *name = lv_textarea_get_text(self->_channelNameInput);
     const char *key = lv_textarea_get_text(self->_channelKeyInput);
-    if (!self->_service->setChannel(self->_editSlot, name, key)) {
+    layertime::LayerTimeCommand c;
+    c.type = layertime::CommandType::MeshSetChannel;
+    c.meshChannel.index = self->_editSlot;
+    snprintf(c.meshChannel.name, sizeof(c.meshChannel.name), "%s", name ? name : "");
+    snprintf(c.meshChannel.key, sizeof(c.meshChannel.key), "%s", key ? key : "");
+    if (self->_core->execute(c) != layertime::CommandResult::Ok) {
         lv_label_set_text(self->_channelError, "Need a name (1-11 chars) and a base64 key or 0-10");
         return;
     }
@@ -476,12 +483,12 @@ void MeshtasticScreen::channelSaveThunk(lv_event_t *event)
 void MeshtasticScreen::channelDeleteThunk(lv_event_t *event)
 {
     auto *self = static_cast<MeshtasticScreen *>(lv_event_get_user_data(event));
-    if (!self || !self->_service) return;
-    self->_service->removeChannel(self->_editSlot);
-    // Drop the conversation so Chats stops listing it.
-    for (Conversation &c : self->_conversations) {
-        if (c.used && c.peer == kMeshtasticBroadcast && c.channel == self->_editSlot) c.used = false;
-    }
+    if (!self || !self->_service || !self->_core) return;
+    // The core also drops the channel's conversation, so Chats stops listing it.
+    layertime::LayerTimeCommand c;
+    c.type = layertime::CommandType::MeshRemoveChannel;
+    c.meshChannel.index = self->_editSlot;
+    self->_core->execute(c);
     self->showPage(Page::Channels);
 }
 
@@ -507,11 +514,21 @@ void MeshtasticScreen::writeThunk(lv_event_t *event)
 void MeshtasticScreen::sendThunk(lv_event_t *event)
 {
     auto *self = static_cast<MeshtasticScreen *>(lv_event_get_user_data(event));
-    if (!self || !self->_service) return;
+    if (!self || !self->_service || !self->_core) return;
     const char *text = lv_textarea_get_text(self->_textArea);
     if (text && text[0]) {
-        if (self->_threadPeer == kMeshtasticBroadcast) self->_service->sendChannelMessage(self->_threadChannel, text);
-        else self->_service->sendDirectMessage(self->_threadPeer, text);
+        layertime::LayerTimeCommand c;
+        c.type = layertime::CommandType::MeshSendText;
+        c.meshText.network = layertime::MeshNetwork::Meshtastic;
+        if (self->_threadPeer == kMeshtasticBroadcast) {
+            c.meshText.destination.kind = layertime::MeshDestinationKind::Channel;
+            c.meshText.destination.channel = self->_threadChannel;
+        } else {
+            c.meshText.destination.kind = layertime::MeshDestinationKind::Node;
+            c.meshText.destination.node = layertime::meshtasticNodeId(self->_threadPeer);
+        }
+        snprintf(c.meshText.text, sizeof(c.meshText.text), "%s", text);
+        self->_core->execute(c);
     }
     self->showPage(Page::Thread);
 }
@@ -599,55 +616,48 @@ layertime::mesh::MessageFacts factsOf(const MeshtasticMessage &m)
 }
 }
 
-bool MeshtasticScreen::messageInConversation(const MeshtasticMessage &m, uint32_t peer, uint8_t channel) const
+layertime::mesh::ConversationKey MeshtasticScreen::conversationKey(uint32_t peer, uint8_t channel)
 {
-    const uint32_t us = _service ? _service->nodeNum() : 0;
     layertime::mesh::ConversationKey key;
     key.isChannel = peer == kMeshtasticBroadcast;
     key.peer = peer;
     key.channel = channel;
-    return layertime::mesh::messageInConversation(factsOf(m), key, us);
+    return key;
 }
 
-MeshtasticScreen::Conversation *MeshtasticScreen::findOrAddConversation(uint32_t peer, uint8_t channel)
+uint32_t MeshtasticScreen::peerOf(const Conversation &c)
 {
-    if (peer != kMeshtasticBroadcast) channel = 0; // a DM thread is per node, whatever carried it
-    for (Conversation &c : _conversations) {
-        if (c.used && c.peer == peer && c.channel == channel) return &c;
-    }
-    for (Conversation &c : _conversations) {
-        if (!c.used) {
-            c.used = true;
-            c.peer = peer;
-            c.channel = channel;
-            c.lastViewedMs = 0;
-            return &c;
-        }
-    }
-    return nullptr;
+    return c.key.isChannel ? kMeshtasticBroadcast : c.key.peer;
+}
+
+bool MeshtasticScreen::messageInConversation(const MeshtasticMessage &m, uint32_t peer, uint8_t channel) const
+{
+    const uint32_t us = _service ? _service->nodeNum() : 0;
+    return layertime::mesh::messageInConversation(factsOf(m), conversationKey(peer, channel), us);
 }
 
 void MeshtasticScreen::syncConversations(const MeshtasticStatus &status)
 {
+    if (!_core) return;
     // Every configured channel is a conversation; a DM conversation exists
     // once any message has passed either way with that node.
+    layertime::mesh::ConversationTable &table = _core->conversations();
     for (uint8_t i = 0; i < MeshtasticStatus::kMaxChannels; ++i) {
-        if (status.channels[i].used) findOrAddConversation(kMeshtasticBroadcast, i);
+        if (status.channels[i].used) table.noteChannel(i);
     }
     const uint32_t us = _service ? _service->nodeNum() : 0;
     for (const MeshtasticMessage &m : status.messages) {
         if (!m.used) continue;
-        uint32_t peer = 0;
-        if (layertime::mesh::directPeerFor(factsOf(m), us, peer)) findOrAddConversation(peer, 0);
+        table.noteMessage(factsOf(m), us);
     }
 }
 
 uint32_t MeshtasticScreen::unreadFor(const Conversation &c, const MeshtasticStatus &status) const
 {
+    const uint32_t us = _service ? _service->nodeNum() : 0;
     uint32_t n = 0;
     for (const MeshtasticMessage &m : status.messages) {
-        if (m.used && layertime::mesh::isUnread(m.isOurs, m.receivedMs, c.lastViewedMs) &&
-            messageInConversation(m, c.peer, c.channel)) ++n;
+        if (m.used && layertime::mesh::ConversationTable::counts(c, factsOf(m), m.receivedMs, us)) ++n;
     }
     return n;
 }
@@ -701,7 +711,11 @@ void MeshtasticScreen::renderHome(const MeshtasticStatus &status)
     lv_label_set_text_fmt(_channelsValue, "%u", channels);
 
     uint32_t unread = 0;
-    for (const Conversation &c : _conversations) if (c.used) unread += unreadFor(c, status);
+    if (_core) {
+        const layertime::mesh::ConversationTable &table = _core->conversations();
+        for (uint8_t i = 0; i < kMaxConversations; ++i)
+            if (table.at(i).used) unread += unreadFor(table.at(i), status);
+    }
     if (unread > 0) {
         lv_label_set_text_fmt(_chatsValue, "%lu new", static_cast<unsigned long>(unread));
         lv_obj_set_style_text_color(_chatsValue, Theme::gold(), 0);
@@ -780,16 +794,21 @@ void MeshtasticScreen::rebuildChats(const MeshtasticStatus &status)
 {
     lv_obj_clean(_chatsList);
     size_t ctx = MeshtasticStatus::kMaxNodes; // chats rows use the tail of the context pool
-    for (const Conversation &c : _conversations) {
+    if (!_core) return;
+    const layertime::mesh::ConversationTable &table = _core->conversations();
+    for (uint8_t slot = 0; slot < kMaxConversations; ++slot) {
+        const Conversation &c = table.at(slot);
         if (!c.used || ctx >= sizeof(_rowContexts) / sizeof(_rowContexts[0])) continue;
+        const uint32_t peer = peerOf(c);
+        const uint8_t channel = c.key.channel;
 
         RowContext &rc = _rowContexts[ctx++];
         rc.screen = this;
-        rc.peer = c.peer;
-        rc.channel = c.channel;
+        rc.peer = peer;
+        rc.channel = channel;
 
         const uint32_t unread = unreadFor(c, status);
-        const bool isChannel = (c.peer == kMeshtasticBroadcast);
+        const bool isChannel = (peer == kMeshtasticBroadcast);
 
         lv_obj_t *row = lv_button_create(_chatsList);
         lv_obj_set_size(row, 386, 64);
@@ -805,22 +824,22 @@ void MeshtasticScreen::rebuildChats(const MeshtasticStatus &status)
         char nameBuf[40];
         char title[56];
         if (isChannel) {
-            snprintf(title, sizeof(title), "# %s", status.channels[c.channel].name);
+            snprintf(title, sizeof(title), "# %s", status.channels[channel].name);
         } else {
-            snprintf(title, sizeof(title), "@ %s", nodeLabel(findNode(status, c.peer), c.peer, nameBuf, sizeof(nameBuf)));
+            snprintf(title, sizeof(title), "@ %s", nodeLabel(findNode(status, peer), peer, nameBuf, sizeof(nameBuf)));
         }
         makeLabel(row, title, 12, 8, 290, &lv_font_montserrat_18, Theme::white());
 
         // Most recent line as the preview.
         const MeshtasticMessage *last = nullptr;
         for (const MeshtasticMessage &m : status.messages) {
-            if (m.used && messageInConversation(m, c.peer, c.channel) && (!last || m.receivedMs >= last->receivedMs)) last = &m;
+            if (m.used && messageInConversation(m, peer, channel) && (!last || m.receivedMs >= last->receivedMs)) last = &m;
         }
         char preview[48];
         if (last) {
             snprintf(preview, sizeof(preview), "%s%.36s", last->isOurs ? "You: " : "", last->text);
         } else {
-            snprintf(preview, sizeof(preview), "%s", isChannel ? channelTag(status.channels[c.channel]) : "No messages yet");
+            snprintf(preview, sizeof(preview), "%s", isChannel ? channelTag(status.channels[channel]) : "No messages yet");
         }
         makeLabel(row, preview, 12, 36, 300, &lv_font_montserrat_14, Theme::muted());
 

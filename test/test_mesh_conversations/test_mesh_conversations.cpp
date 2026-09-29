@@ -76,6 +76,95 @@ void unread_is_strictly_after_and_never_our_own()
     CHECK_TRUE(isUnread(false, 1, 0));
 }
 
+// ---------------------------------------------------------------- the table
+// ConversationTable moved from MeshtasticScreen into core in Phase 0 Step 5.
+// Its behaviour through the screen is pinned by test_meshtastic_chats; these
+// check it on its own.
+
+void the_table_holds_24_in_first_free_slot_order()
+{
+    ConversationTable t;
+    CHECK_INT(24, ConversationTable::kCapacity);
+    for (uint8_t i = 0; i < 8; ++i) t.noteChannel(i);
+    for (uint32_t p = 1; p <= 20; ++p) t.noteMessage(msg(false, false, p, kUs, 0), kUs);
+    uint8_t used = 0;
+    for (uint8_t i = 0; i < ConversationTable::kCapacity; ++i) used += t.at(i).used ? 1 : 0;
+    CHECK_INT(24, used);
+    CHECK_TRUE(t.at(0).key.isChannel && t.at(0).key.channel == 0);
+    CHECK_TRUE(!t.at(8).key.isChannel && t.at(8).key.peer == 1);
+    CHECK_TRUE(t.at(23).key.peer == 16);  // peers 17 to 20 did not fit
+    CHECK_TRUE(t.findOrAdd(direct(99)) == nullptr);
+}
+
+void a_direct_conversation_ignores_its_channel()
+{
+    ConversationTable t;
+    ConversationKey a = direct(kPeer);
+    a.channel = 5;
+    ConversationTable::Entry *e1 = t.findOrAdd(a);
+    ConversationTable::Entry *e2 = t.findOrAdd(direct(kPeer));
+    CHECK_TRUE(e1 != nullptr && e1 == e2);
+    if (e1) CHECK_INT(0, e1->key.channel);
+}
+
+void a_channel_conversation_is_one_per_slot()
+{
+    ConversationTable t;
+    t.noteChannel(2);
+    t.noteChannel(2);
+    ConversationKey k = channel(2);
+    k.peer = 0xFFFFFFFF;
+    CHECK_TRUE(t.findOrAdd(k) == &t.at(0));
+    CHECK_FALSE(t.at(1).used);
+}
+
+void only_traffic_with_us_makes_a_direct_conversation()
+{
+    ConversationTable t;
+    t.noteMessage(msg(false, true, kPeer, 0xFFFFFFFF, 0), kUs);  // broadcast
+    t.noteMessage(msg(false, false, kPeer, kOther, 0), kUs);      // between others
+    CHECK_FALSE(t.at(0).used);
+    t.noteMessage(msg(true, false, kUs, kPeer, 0), kUs);          // we sent it
+    CHECK_TRUE(t.at(0).used && t.at(0).key.peer == kPeer);
+}
+
+void mark_viewed_adds_if_needed_and_sets_the_time()
+{
+    ConversationTable t;
+    t.markViewed(direct(kPeer), 5000);
+    CHECK_TRUE(t.at(0).used);
+    CHECK_INT(5000, t.at(0).lastViewedMs);
+    t.markViewed(direct(kPeer), 7000);
+    CHECK_INT(7000, t.at(0).lastViewedMs);
+    CHECK_FALSE(t.at(1).used);
+}
+
+void removing_a_channel_frees_its_slot_for_reuse()
+{
+    ConversationTable t;
+    t.noteChannel(0);
+    t.noteChannel(3);
+    t.markViewed(channel(3), 900);
+    t.removeChannel(3);
+    CHECK_FALSE(t.at(1).used);
+    t.noteMessage(msg(false, false, kPeer, kUs, 0), kUs);
+    CHECK_TRUE(t.at(1).used && t.at(1).key.peer == kPeer);
+    CHECK_INT(0, t.at(1).lastViewedMs);
+    t.noteChannel(3);  // comes back unread-from-zero in the next free slot
+    CHECK_TRUE(t.at(2).used && t.at(2).key.channel == 3 && t.at(2).lastViewedMs == 0);
+}
+
+void counts_is_unread_and_in_this_conversation()
+{
+    ConversationTable t;
+    t.markViewed(direct(kPeer), 1000);
+    const ConversationTable::Entry &e = t.at(0);
+    CHECK_TRUE(ConversationTable::counts(e, msg(false, false, kPeer, kUs, 0), 1001, kUs));
+    CHECK_FALSE(ConversationTable::counts(e, msg(false, false, kPeer, kUs, 0), 1000, kUs));
+    CHECK_FALSE(ConversationTable::counts(e, msg(true, false, kUs, kPeer, 0), 5000, kUs));
+    CHECK_FALSE(ConversationTable::counts(e, msg(false, false, kOther, kUs, 0), 5000, kUs));
+}
+
 int main(int argc, char **argv)
 {
     CHECK_MAIN(argc, argv);
@@ -84,5 +173,12 @@ int main(int argc, char **argv)
     CASE(a_peer_broadcast_is_not_a_direct_message);
     CASE(direct_peer_rules);
     CASE(unread_is_strictly_after_and_never_our_own);
+    CASE(the_table_holds_24_in_first_free_slot_order);
+    CASE(a_direct_conversation_ignores_its_channel);
+    CASE(a_channel_conversation_is_one_per_slot);
+    CASE(only_traffic_with_us_makes_a_direct_conversation);
+    CASE(mark_viewed_adds_if_needed_and_sets_the_time);
+    CASE(removing_a_channel_frees_its_slot_for_reuse);
+    CASE(counts_is_unread_and_in_this_conversation);
     CHECK_SUMMARY();
 }
