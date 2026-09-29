@@ -27,20 +27,18 @@ constexpr const char *kNamespace = "layertime";
 constexpr uint8_t kDefaultBrightness = 80;
 }
 
+// The T-Ultra-only settings. Since Phase 0 Step 6 the application settings
+// (clock format, units, sleep mode, early warning, mesh advertising and the
+// Meshtastic name) are the core's, kept in this same NVS namespace by
+// src/platform/twatch_ultra/TUltraSettingsStore under the same keys.
+
 void SettingsService::load(AppSettings &settings)
 {
     Preferences prefs;
     if (!prefs.begin(kNamespace, true)) {
         settings.brightness = kDefaultBrightness;
-        settings.use24Hour = false;
-        settings.metricUnits = false;
         settings.gpsEnabled = true;
-        settings.meshAdvertiseEnabled = false;
-        settings.meshtasticAdvertiseEnabled = false;
-        settings.meshtasticNodeName[0] = '\0';
-        settings.reconEarlyWarningEnabled = true;
         settings.reconSdLoggingEnabled = false;
-        settings.sleepModeEnabled = false;
         settings.squachify = false;
         // settings.meshEnabled/meshtasticEnabled intentionally left at their
         // struct defaults (false) here and below - they are never read from
@@ -49,17 +47,8 @@ void SettingsService::load(AppSettings &settings)
     }
 
     settings.brightness = prefs.getUChar("bright", kDefaultBrightness);
-    settings.use24Hour = prefs.getBool("clock24", false);
-    settings.metricUnits = prefs.getBool("metric", false);
     settings.gpsEnabled = prefs.getBool("gps", true);
-    settings.meshAdvertiseEnabled = prefs.getBool("meshadv", false);
-    settings.meshtasticAdvertiseEnabled = prefs.getBool("mtadv", false);
-    const String mtName = prefs.getString("mtname", "");
-    strncpy(settings.meshtasticNodeName, mtName.c_str(), sizeof(settings.meshtasticNodeName) - 1);
-    settings.meshtasticNodeName[sizeof(settings.meshtasticNodeName) - 1] = '\0';
-    settings.reconEarlyWarningEnabled = prefs.getBool("reconew", true);
     settings.reconSdLoggingEnabled = prefs.getBool("reconsd", false);
-    settings.sleepModeEnabled = prefs.getBool("sleepmode", false);
     settings.squachify = prefs.getBool("squach", false);
     prefs.end();
 
@@ -76,15 +65,8 @@ void SettingsService::save(const AppSettings &settings)
     }
 
     prefs.putUChar("bright", settings.brightness);
-    prefs.putBool("clock24", settings.use24Hour);
-    prefs.putBool("metric", settings.metricUnits);
     prefs.putBool("gps", settings.gpsEnabled);
-    prefs.putBool("meshadv", settings.meshAdvertiseEnabled);
-    prefs.putBool("mtadv", settings.meshtasticAdvertiseEnabled);
-    prefs.putString("mtname", settings.meshtasticNodeName);
-    prefs.putBool("reconew", settings.reconEarlyWarningEnabled);
     prefs.putBool("reconsd", settings.reconSdLoggingEnabled);
-    prefs.putBool("sleepmode", settings.sleepModeEnabled);
     prefs.putBool("squach", settings.squachify);
     // meshEnabled/meshtasticEnabled are deliberately never written here -
     // they must not persist.

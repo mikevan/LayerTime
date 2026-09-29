@@ -94,7 +94,7 @@ struct Harness {
     void earlyWarning(bool on) { svc.setEarlyWarningEnabled(on); }
 
     // ---- the face
-    void render() { face.render(state, settings, svc.core.reconState()); }
+    void render() { face.render(state, settings, svc.core.settings(), svc.core.reconState()); }
     lv_obj_t *threats() { return fake_lv::findVisibleLabelStartingWith("THREATS"); }
     std::string text()
     {

@@ -28,6 +28,7 @@
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
+#include <Preferences.h>
 #include <esp_wifi.h>
 
 #include "app/WatchApp.h"
@@ -65,8 +66,13 @@ struct Recon {
     // app: early warning off through Settings, then leave manual mode.
     void stop()
     {
-        if (settings && settingsChanged) {
-            settings->reconEarlyWarningEnabled = false;
+        if (core && settingsChanged) {
+            // As the EARLY WARNING row does since Phase 0 Step 6: the
+            // command, then the settings-changed hook.
+            layertime::LayerTimeCommand off;
+            off.type = layertime::CommandType::SetEarlyWarning;
+            off.setting.enabled = false;
+            core->execute(off);
             settingsChanged(app);
         }
         run(layertime::CommandType::ReconStop);
@@ -116,7 +122,8 @@ void SettingsService::load(AppSettings &s) { s = fake_app::g_settings; }
 void SettingsService::apply(const AppSettings &) {}
 void SettingsService::save(const AppSettings &) {}
 void WatchFace::create() {}
-void WatchFace::render(const WatchState &, const AppSettings &, const layertime::ReconState &) {}
+void WatchFace::render(const WatchState &, const AppSettings &, const layertime::ApplicationSettings &,
+                       const layertime::ReconState &) {}
 void WatchFace::setSettingsRequestedCallback(SettingsRequestedCallback, void *) {}
 void WatchFace::setGpsRequestedCallback(GpsRequestedCallback, void *) {}
 void WatchFace::setMeshRequestedCallback(MeshRequestedCallback, void *) {}
@@ -125,8 +132,8 @@ void WatchFace::setReconRequestedCallback(ReconRequestedCallback, void *) {}
 void WatchFace::setThreatsRequestedCallback(ThreatsRequestedCallback, void *) {}
 void WatchFace::setMappingRequestedCallback(MappingRequestedCallback, void *) {}
 void GpsScreen::create(BackCallback, void *) {}
-void GpsScreen::show(const WatchState &, const AppSettings &) {}
-void GpsScreen::render(const WatchState &, const AppSettings &) {}
+void GpsScreen::show(const WatchState &, const layertime::ApplicationSettings &) {}
+void GpsScreen::render(const WatchState &, const layertime::ApplicationSettings &) {}
 void MappingScreen::create(BackCallback, void *) {}
 void MappingScreen::show(const WatchState &, const AppSettings &) {}
 void MappingScreen::render(const WatchState &, const AppSettings &) {}
@@ -143,7 +150,7 @@ void ReconScreen::create(layertime::LayerTimeCore *core, BackCallback, void *)
 }
 void ReconScreen::show(ReconDetector) {}
 void ReconScreen::render() {}
-void SettingsScreen::create(AppSettings &settings, const WatchState &, SdCardService &, BackCallback,
+void SettingsScreen::create(AppSettings &settings, layertime::LayerTimeCore *, const WatchState &, SdCardService &, BackCallback,
                             SettingsChangedCallback changed, DateTimeSaveCallback, void *app)
 {
     fake_app::g_reconSeam.settings = &settings;
@@ -172,8 +179,14 @@ struct Harness {
         fake_app::g_reconSeam = fake_app::Recon{};
         fake_app::g_settings = AppSettings{};
         fake_app::g_settings.reconSdLoggingEnabled = logging;
-        fake_app::g_settings.reconEarlyWarningEnabled = true;  // the shipped default
-        fake_app::g_settings.sleepModeEnabled = sleepMode;
+        // Since Phase 0 Step 6 early warning and sleep mode are application
+        // settings, loaded by the core from NVS (test/stubs/Preferences.h).
+        fake_nvs::reset();
+        Preferences prefs;
+        prefs.begin("layertime");
+        prefs.putBool("reconew", true);  // the shipped default
+        prefs.putBool("sleepmode", sleepMode);
+        prefs.end();
         fake_app::g_clock = WatchState{};
         fake_app::g_clock.year = 2026;
         fake_app::g_clock.month = 9;

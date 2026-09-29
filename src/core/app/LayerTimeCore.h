@@ -24,7 +24,8 @@
 //
 // Phase 0 Step 4 added Recon commands, the Recon event history, alert
 // actuation, and navigation state. Step 5 added the mesh commands, the mesh
-// state, the quick-message library, and the conversation table.
+// state, the quick-message library, and the conversation table. Step 6 added
+// the application settings and their commands.
 
 #include <stdint.h>
 
@@ -35,11 +36,13 @@
 #include "../model/NavigationState.h"
 #include "../model/QuickMessage.h"
 #include "../model/ReconState.h"
+#include "../model/Settings.h"
 #include "../ports/AlertSink.h"
 #include "../ports/EventLog.h"
 #include "../ports/MeshTransport.h"
 #include "../ports/MonitorSource.h"
 #include "../ports/NavigationSource.h"
+#include "../ports/SettingsStore.h"
 
 namespace layertime {
 
@@ -53,6 +56,7 @@ struct CorePorts {
     // Indexed by MeshNetwork value. A transport's network() must match its
     // slot; one that does not is ignored.
     MeshTransport *mesh[kMeshNetworkCount] = {nullptr, nullptr};
+    SettingsStore *settings = nullptr;
 };
 
 class LayerTimeCore {
@@ -66,7 +70,17 @@ public:
     // its radios. That order is the order ReconService::poll() used.
     void tick(uint32_t nowMs);
 
-    void setSleepMode(bool enabled) { _events.setSleepMode(enabled); }
+    // Same as the SetSleepMode command.
+    void setSleepMode(bool enabled);
+
+    // The application settings. The settings commands change them. The core
+    // applies sleep mode to its own alert policy; the platform applies the
+    // rest to its hardware from here (on the T-Ultra, in
+    // WatchApp::settingsChanged, in the order it always has).
+    const ApplicationSettings &settings() const { return _settings; }
+    // From the settings store, if there is one; otherwise the defaults stay.
+    void loadSettings();
+    void saveSettings();
 
     ReconState reconState() const;
     uint8_t eventCount() const { return _events.count(); }
@@ -100,6 +114,7 @@ private:
     uint32_t _alertRaisedFor = 0;
     NavigationState _navigation;
     MeshState _mesh;
+    ApplicationSettings _settings;
     mesh::ConversationTable _conversations;
 };
 

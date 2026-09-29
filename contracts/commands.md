@@ -21,6 +21,12 @@ The set is exactly what the T-Ultra screens do today, plus
 | MeshSendQuickMessage | network, destination, quickMessageId | Send a library message by id | None yet |
 | MeshSetChannel | index, name (up to 11 characters), key (up to 48 characters) | Create or replace a channel | MeshtasticService::setChannel |
 | MeshRemoveChannel | index | Remove a channel | MeshtasticService::removeChannel |
+| SetClockFormat | enabled (true = 24-hour) | Set the clock format | Settings CLOCK FORMAT row |
+| SetUnits | enabled (true = metric) | Set display units | Settings UNITS row |
+| SetSleepMode | enabled | Suppress alerts; events are still logged | Settings SLEEP MODE row |
+| SetEarlyWarning | enabled | Run the background Recon sweep | Settings EARLY WARNING row |
+| MeshSetAdvertising | network, enabled | Announce this node on a mesh | Settings MESHCORE ADVERTISE and MESHTASTIC ADVERTISE rows |
+| MeshSetOwnName | network, name (up to 19 characters) | Name this node on a mesh. Empty lets the platform generate one. | Settings MESHTASTIC NAME page |
 
 For the two send commands, `network` selects the mesh and `destination` is a
 node or a channel on that mesh (see `MeshDestination` in `models.md`). A
@@ -40,8 +46,13 @@ platform without Meshtastic returns `Unsupported`.
 | NotReady | It can, but not now (radio off or not ready) |
 | Failed | It tried and the attempt failed |
 
-## Not commands yet
+The settings commands change `ApplicationSettings` (see `models.md`). A
+network that is not present returns `Unsupported`, as does
+`MeshSetOwnName` for MeshCore, whose name is generated from its key. A name
+that does not end inside its buffer returns `InvalidArgument`.
 
-Settings changes (radio on or off, advertising, early warning, sleep mode,
-units, and the rest) are not in contract 0.1. They get commands when
-`AppSettings` is split into application settings and platform settings.
+## Not commands
+
+Platform settings are not in the contract. On the T-Ultra those are the
+backlight brightness, GPS receiver power, SD card logging, Squachify, and
+which mesh network holds the shared LoRa radio. Another target has its own.

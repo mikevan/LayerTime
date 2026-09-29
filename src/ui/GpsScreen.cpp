@@ -108,13 +108,13 @@ lv_obj_t *GpsScreen::makeValueLabel(
     return label;
 }
 
-void GpsScreen::show(const WatchState &state, const AppSettings &settings)
+void GpsScreen::show(const WatchState &state, const layertime::ApplicationSettings &settings)
 {
     render(state, settings);
     lv_screen_load(_screen);
 }
 
-void GpsScreen::render(const WatchState &state, const AppSettings &settings)
+void GpsScreen::render(const WatchState &state, const layertime::ApplicationSettings &settings)
 {
     if (!state.gpsEnabled) {
         lv_label_set_text(_status, "GPS OFF");

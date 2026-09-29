@@ -32,6 +32,12 @@
   "MeshSendTextArgs": {
     "textSize": 161
   },
+  "ApplicationSettings": {
+    "meshtasticNameSize": 20
+  },
+  "SettingArgs": {
+    "nameSize": 20
+  },
   "MeshChannelArgs": {
     "nameSize": 12,
     "keySize": 49

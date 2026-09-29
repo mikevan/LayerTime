@@ -353,7 +353,8 @@ FAKE_LV_IGNORE(lv_obj_set_flex_align)
 FAKE_LV_IGNORE(lv_obj_move_foreground)
 
 inline void lv_timer_handler() {}
-inline uint32_t lv_display_get_inactive_time(void *) { return 0; }
+namespace fake_lv { inline uint32_t g_inactiveMs = 0; }
+inline uint32_t lv_display_get_inactive_time(void *) { return fake_lv::g_inactiveMs; }
 inline lv_indev_t *lv_indev_get_next(lv_indev_t *) { return nullptr; }
 inline lv_indev_type_t lv_indev_get_type(lv_indev_t *) { return LV_INDEV_TYPE_NONE; }
 inline lv_obj_t *lv_indev_get_active_obj() { return nullptr; }

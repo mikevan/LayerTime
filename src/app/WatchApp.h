@@ -36,6 +36,7 @@
 #include "../platform/twatch_ultra/TUltraMonitorSource.h"
 #include "../platform/twatch_ultra/TUltraMeshTransports.h"
 #include "../platform/twatch_ultra/TUltraNavigationSource.h"
+#include "../platform/twatch_ultra/TUltraSettingsStore.h"
 #include "../ui/GpsScreen.h"
 #include "../ui/MappingScreen.h"
 #include "../ui/MeshScreen.h"
@@ -112,6 +113,7 @@ private:
     layertime::twatch_ultra::TUltraNavigationSource _navigationSource{_state};
     layertime::twatch_ultra::TUltraMeshCoreTransport _meshCoreTransport{_mesh};
     layertime::twatch_ultra::TUltraMeshtasticTransport _meshtasticTransport{_meshtastic};
+    layertime::twatch_ultra::TUltraSettingsStore _settingsStore;
     layertime::LayerTimeCore _core;
 
     WatchFace _face;

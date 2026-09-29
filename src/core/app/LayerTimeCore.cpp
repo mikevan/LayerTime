@@ -92,6 +92,40 @@ CommandResult LayerTimeCore::execute(const LayerTimeCommand &command)
         return r;
     }
 
+    case CommandType::SetClockFormat:
+        _settings.use24Hour = command.setting.enabled;
+        return CommandResult::Ok;
+
+    case CommandType::SetUnits:
+        _settings.metricUnits = command.setting.enabled;
+        return CommandResult::Ok;
+
+    case CommandType::SetSleepMode:
+        setSleepMode(command.setting.enabled);
+        return CommandResult::Ok;
+
+    case CommandType::SetEarlyWarning:
+        if (!_ports.monitor) return CommandResult::Unsupported;
+        _settings.earlyWarningEnabled = command.setting.enabled;
+        return CommandResult::Ok;
+
+    case CommandType::MeshSetAdvertising:
+        if (!meshTransport(command.setting.network)) return CommandResult::Unsupported;
+        _settings.meshAdvertising[static_cast<uint8_t>(command.setting.network)] = command.setting.enabled;
+        return CommandResult::Ok;
+
+    case CommandType::MeshSetOwnName: {
+        // Only Meshtastic takes a chosen name; MeshCore's comes from its key.
+        if (command.setting.network != MeshNetwork::Meshtastic || !meshTransport(MeshNetwork::Meshtastic))
+            return CommandResult::Unsupported;
+        const char *name = command.setting.name;
+        if (!memchr(name, 0, sizeof(command.setting.name))) return CommandResult::InvalidArgument;
+        static_assert(sizeof(ApplicationSettings{}.meshtasticName) == SettingArgs::kNameSize,
+                      "a name that fits the command fits the setting");
+        memcpy(_settings.meshtasticName, name, sizeof(_settings.meshtasticName));
+        return CommandResult::Ok;
+    }
+
     case CommandType::None:
     default:
         return CommandResult::InvalidArgument;
@@ -174,6 +208,23 @@ void LayerTimeCore::refreshMesh()
         if (t) t->observeStatus(s);
         else s = MeshNetworkStatus{};
     }
+}
+
+void LayerTimeCore::setSleepMode(bool enabled)
+{
+    _settings.sleepModeEnabled = enabled;
+    _events.setSleepMode(enabled);
+}
+
+void LayerTimeCore::loadSettings()
+{
+    if (_ports.settings) _ports.settings->load(_settings);
+    _events.setSleepMode(_settings.sleepModeEnabled);
+}
+
+void LayerTimeCore::saveSettings()
+{
+    if (_ports.settings) _ports.settings->save(_settings);
 }
 
 const QuickMessage *LayerTimeCore::quickMessages(uint8_t &count) const

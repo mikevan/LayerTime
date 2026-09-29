@@ -213,7 +213,8 @@ void WatchFace::create()
     lv_obj_set_style_text_font(footer, &lv_font_montserrat_20, 0);
 }
 
-void WatchFace::render(const WatchState &state, const AppSettings &settings, const layertime::ReconState &recon)
+void WatchFace::render(const WatchState &state, const AppSettings &settings,
+                       const layertime::ApplicationSettings &app, const layertime::ReconState &recon)
 {
     // Watch-face logo: owl by default, Squachy when the setting is on AND
     // the card actually yielded a decodable image. A missing card or file
@@ -235,7 +236,7 @@ void WatchFace::render(const WatchState &state, const AppSettings &settings, con
 
     int displayHour = state.hour;
 
-    if (!settings.use24Hour) {
+    if (!app.use24Hour) {
         displayHour = state.hour % 12;
         if (displayHour == 0) {
             displayHour = 12;
@@ -252,14 +253,14 @@ void WatchFace::render(const WatchState &state, const AppSettings &settings, con
         state.day);
 
     if (state.gpsAltitudeValid) {
-        if (settings.metricUnits) {
+        if (app.metricUnits) {
             const int altitudeM = static_cast<int>(state.altitudeFt / 3.280839895f);
             lv_label_set_text_fmt(_leftTop, "ALT\n%d M", altitudeM);
         } else {
             lv_label_set_text_fmt(_leftTop, "ALT\n%d FT", static_cast<int>(state.altitudeFt));
         }
     } else {
-        lv_label_set_text(_leftTop, settings.metricUnits ? "ALT\n-- M" : "ALT\n-- FT");
+        lv_label_set_text(_leftTop, app.metricUnits ? "ALT\n-- M" : "ALT\n-- FT");
     }
 
     // No magnetometer on this board - there is no true (stationary) heading

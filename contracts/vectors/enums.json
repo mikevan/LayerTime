@@ -75,7 +75,13 @@
     "MeshSendText": 5,
     "MeshSendQuickMessage": 6,
     "MeshSetChannel": 7,
-    "MeshRemoveChannel": 8
+    "MeshRemoveChannel": 8,
+    "SetClockFormat": 9,
+    "SetUnits": 10,
+    "SetSleepMode": 11,
+    "SetEarlyWarning": 12,
+    "MeshSetAdvertising": 13,
+    "MeshSetOwnName": 14
   },
   "CommandResult": {
     "Ok": 0,

@@ -67,7 +67,7 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_chats test_meshta
 g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_decl test_declination_text/test_declination_text.cpp ../src/ui/MappingScreen.cpp ../src/core/logic/DeclinationAdvice.cpp ../src/core/logic/DeclinationCalculator.cpp ../src/core/logic/GeoGrid.cpp
 ./tests_decl
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
 ./tests_log
 
 g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_recon_screen test_recon_screen/test_recon_screen.cpp ../src/ui/ReconScreen.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
@@ -82,8 +82,17 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_mesh_screen test_
 g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_meshtastic_actions test_meshtastic_actions/test_meshtastic_actions.cpp ../src/ui/MeshtasticScreen.cpp ../src/core/logic/MeshConversations.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_meshtastic_actions
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_mesh_radio_exclusivity test_mesh_radio_exclusivity/test_mesh_radio_exclusivity.cpp ../src/ui/SettingsScreen.cpp ../src/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_mesh_radio_exclusivity test_mesh_radio_exclusivity/test_mesh_radio_exclusivity.cpp ../src/ui/SettingsScreen.cpp ../src/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
 ./tests_mesh_radio_exclusivity
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_settings_persistence test_settings_persistence/test_settings_persistence.cpp ../src/services/SettingsService.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
+./tests_settings_persistence
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_settings_flow test_settings_flow/test_settings_flow.cpp ../src/services/SettingsService.cpp ../src/ui/SettingsScreen.cpp ../src/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
+./tests_settings_flow
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_watch_face_units test_watch_face_units/test_watch_face_units.cpp ../src/ui/WatchFace.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+./tests_watch_face_units
 ```
 
 `test_recon.cpp` includes `ReconService.cpp` directly, so it can reach the
@@ -108,13 +117,24 @@ Step 5a, before the move, against the code as it stood; since then only
 their harnesses changed, as did `test_meshtastic_chats`'s. The exclusivity
 suite drives the real Settings rows into the real `WatchApp`.
 
+Step 6 split the settings. The application settings (clock format, units,
+sleep mode, early warning, mesh advertising, the Meshtastic name) are the
+core's (`src/core/model/Settings.h`), changed by commands and kept by
+`src/platform/twatch_ultra/TUltraSettingsStore` in the same NVS keys as
+before; `SettingsService` keeps the T-Ultra's own. `test_settings_persistence`
+and `test_settings_flow` were added in Step 6a, before the split, against the
+code as it stood, and only their harnesses changed after it.
+`test_watch_face_units` was run against the face before and after the split
+with identical results. `stubs/Preferences.h` is an in-memory NVS for these.
+
 ## Core logic unit suites
 
 Phase 0 Step 3 moved application and detection logic into `src/core/logic`,
 Step 4 added the event log (`src/core/logic/MonitorEventLog`), the
 application core (`src/core/app/LayerTimeCore`), and the ports it talks to
-the platform through (`src/core/ports`), and Step 5 added the mesh commands,
-the quick-message library, and the conversation table. The characterization suites above
+the platform through (`src/core/ports`), Step 5 added the mesh commands,
+the quick-message library, and the conversation table, and Step 6 added the
+application settings and their commands. The characterization suites above
 still prove the moved code behaves as it did. These suites test each core
 module on its own, with no stubs, which is also the proof that core needs
 nothing from the platform. `test_layertime_core` uses fake ports. Run from
@@ -153,6 +173,9 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_layertime_core test_layer
 
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_mesh_commands test_mesh_commands/test_mesh_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_mesh_commands
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_settings_commands test_settings_commands/test_settings_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+./tests_settings_commands
 ```
 
 ## Platform adapter suites

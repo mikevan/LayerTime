@@ -23,6 +23,7 @@
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
+#include <Preferences.h>
 #include <esp_wifi.h>
 
 #include "app/WatchApp.h"
@@ -76,7 +77,8 @@ void SettingsService::load(AppSettings &s) { s = fake_app::g_settings; }
 void SettingsService::apply(const AppSettings &) {}
 void SettingsService::save(const AppSettings &) {}
 void WatchFace::create() {}
-void WatchFace::render(const WatchState &, const AppSettings &, const layertime::ReconState &) {}
+void WatchFace::render(const WatchState &, const AppSettings &, const layertime::ApplicationSettings &,
+                       const layertime::ReconState &) {}
 void WatchFace::setSettingsRequestedCallback(SettingsRequestedCallback cb, void *u)
 {
     fake_app::g_openSettings = cb;
@@ -89,8 +91,8 @@ void WatchFace::setReconRequestedCallback(ReconRequestedCallback, void *) {}
 void WatchFace::setThreatsRequestedCallback(ThreatsRequestedCallback, void *) {}
 void WatchFace::setMappingRequestedCallback(MappingRequestedCallback, void *) {}
 void GpsScreen::create(BackCallback, void *) {}
-void GpsScreen::show(const WatchState &, const AppSettings &) {}
-void GpsScreen::render(const WatchState &, const AppSettings &) {}
+void GpsScreen::show(const WatchState &, const layertime::ApplicationSettings &) {}
+void GpsScreen::render(const WatchState &, const layertime::ApplicationSettings &) {}
 void MappingScreen::create(BackCallback, void *) {}
 void MappingScreen::show(const WatchState &, const AppSettings &) {}
 void MappingScreen::render(const WatchState &, const AppSettings &) {}
@@ -119,7 +121,13 @@ struct Harness {
         fake_nimble::g_scan = NimBLEScan{};
         fake_app::g_radio.clear();
         fake_app::g_settings = AppSettings{};
-        fake_app::g_settings.reconEarlyWarningEnabled = false;  // keep Recon's radios out of it
+        // Keep Recon's radios out of it. Early warning is an application
+        // setting since Phase 0 Step 6, loaded by the core from NVS.
+        fake_nvs::reset();
+        Preferences prefs;
+        prefs.begin("layertime");
+        prefs.putBool("reconew", false);
+        prefs.end();
         fake_app::g_openSettings = nullptr;
         app.reset(new WatchApp());
         app->begin();

@@ -20,6 +20,7 @@
 
 #include <lvgl.h>
 
+#include "../core/app/LayerTimeCore.h"
 #include "../model/AppSettings.h"
 #include "../model/WatchState.h"
 #include "../services/SdCardService.h"
@@ -36,8 +37,13 @@ public:
         int minute,
         void *userData);
 
+    // Since Phase 0 Step 6 the application settings (clock format, units,
+    // sleep mode, early warning, mesh advertising, the Meshtastic name) are
+    // the core's: their rows read the core and change by command. The
+    // T-Ultra's own settings stay in `settings`.
     void create(
         AppSettings &settings,
+        layertime::LayerTimeCore *core,
         const WatchState &state,
         SdCardService &sdCard,
         BackCallback backCallback,
@@ -110,7 +116,11 @@ private:
         const lv_font_t *font,
         lv_color_t color);
 
+    void setApplication(layertime::CommandType type, bool enabled,
+                        layertime::MeshNetwork network = layertime::MeshNetwork::Meshtastic);
+
     AppSettings *_settings = nullptr;
+    layertime::LayerTimeCore *_core = nullptr;
     const WatchState *_state = nullptr;
     SdCardService *_sdCard = nullptr;
     BackCallback _backCallback = nullptr;

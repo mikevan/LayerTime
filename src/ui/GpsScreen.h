@@ -20,7 +20,7 @@
 
 #include <lvgl.h>
 
-#include "../model/AppSettings.h"
+#include "../core/model/Settings.h"
 #include "../model/WatchState.h"
 
 class GpsScreen {
@@ -28,8 +28,9 @@ public:
     using BackCallback = void (*)(void *userData);
 
     void create(BackCallback backCallback, void *userData);
-    void show(const WatchState &state, const AppSettings &settings);
-    void render(const WatchState &state, const AppSettings &settings);
+    // Units come from the core's application settings since Phase 0 Step 6.
+    void show(const WatchState &state, const layertime::ApplicationSettings &settings);
+    void render(const WatchState &state, const layertime::ApplicationSettings &settings);
     lv_obj_t *screen() const { return _screen; }
 
 private:

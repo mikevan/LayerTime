@@ -59,6 +59,7 @@ bool squachArtPresent()
 
 void SettingsScreen::create(
     AppSettings &settings,
+    layertime::LayerTimeCore *core,
     const WatchState &state,
     SdCardService &sdCard,
     BackCallback backCallback,
@@ -67,6 +68,7 @@ void SettingsScreen::create(
     void *userData)
 {
     _settings = &settings;
+    _core = core;
     _state = &state;
     _sdCard = &sdCard;
     _backCallback = backCallback;
@@ -106,6 +108,17 @@ void SettingsScreen::create(
     lv_obj_center(backLabel);
 
     showMainPage();
+}
+
+void SettingsScreen::setApplication(layertime::CommandType type, bool enabled,
+                                    layertime::MeshNetwork network)
+{
+    if (!_core) return;
+    layertime::LayerTimeCommand c;
+    c.type = type;
+    c.setting.enabled = enabled;
+    c.setting.network = network;
+    _core->execute(c);
 }
 
 void SettingsScreen::show()
@@ -399,7 +412,7 @@ void SettingsScreen::showSdPage()
 
 void SettingsScreen::showMeshtasticNamePage()
 {
-    lv_textarea_set_text(_meshtasticNameTextArea, _settings->meshtasticNodeName);
+    lv_textarea_set_text(_meshtasticNameTextArea, _core ? _core->settings().meshtasticName : "");
     lv_obj_add_flag(_mainPage, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(_dateTimePage, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(_sdPage, LV_OBJ_FLAG_HIDDEN);
@@ -434,17 +447,18 @@ void SettingsScreen::refreshMainValues()
 {
     lv_slider_set_value(_brightnessSlider, _settings->brightness, LV_ANIM_OFF);
     lv_label_set_text_fmt(_brightnessValue, "%u", _settings->brightness);
-    lv_label_set_text(_clockValue, _settings->use24Hour ? "24 H" : "12 H");
-    lv_label_set_text(_unitsValue, _settings->metricUnits ? "METRIC" : "IMPERIAL");
+    const layertime::ApplicationSettings app = _core ? _core->settings() : layertime::ApplicationSettings{};
+    lv_label_set_text(_clockValue, app.use24Hour ? "24 H" : "12 H");
+    lv_label_set_text(_unitsValue, app.metricUnits ? "METRIC" : "IMPERIAL");
     lv_label_set_text(_gpsValue, _settings->gpsEnabled ? "ON" : "OFF");
     lv_label_set_text(_meshEnabledValue, _settings->meshEnabled ? "ON" : "OFF");
-    lv_label_set_text(_meshAdvertiseValue, _settings->meshAdvertiseEnabled ? "ON" : "OFF");
+    lv_label_set_text(_meshAdvertiseValue, app.advertisingOn(layertime::MeshNetwork::MeshCore) ? "ON" : "OFF");
     lv_label_set_text(_meshtasticEnabledValue, _settings->meshtasticEnabled ? "ON" : "OFF");
-    lv_label_set_text(_meshtasticAdvertiseValue, _settings->meshtasticAdvertiseEnabled ? "ON" : "OFF");
-    lv_label_set_text(_meshtasticNameValue, _settings->meshtasticNodeName[0] != '\0' ? _settings->meshtasticNodeName : "AUTO");
-    lv_label_set_text(_earlyWarningValue, _settings->reconEarlyWarningEnabled ? "ON" : "OFF");
+    lv_label_set_text(_meshtasticAdvertiseValue, app.advertisingOn(layertime::MeshNetwork::Meshtastic) ? "ON" : "OFF");
+    lv_label_set_text(_meshtasticNameValue, app.meshtasticName[0] != '\0' ? app.meshtasticName : "AUTO");
+    lv_label_set_text(_earlyWarningValue, app.earlyWarningEnabled ? "ON" : "OFF");
     lv_label_set_text(_reconSdLoggingValue, _settings->reconSdLoggingEnabled ? "ON" : "OFF");
-    lv_label_set_text(_sleepModeValue, _settings->sleepModeEnabled ? "ON" : "OFF");
+    lv_label_set_text(_sleepModeValue, app.sleepModeEnabled ? "ON" : "OFF");
     // Says NO FILE whether the toggle is on or off, so the art being absent
     // is visible before the user wonders why nothing happened.
     lv_label_set_text(_squachifyValue,
@@ -550,7 +564,8 @@ void SettingsScreen::brightnessThunk(lv_event_t *event)
 void SettingsScreen::clockModeThunk(lv_event_t *event)
 {
     auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
-    self->_settings->use24Hour = !self->_settings->use24Hour;
+    if (!self->_core) return;
+    self->setApplication(layertime::CommandType::SetClockFormat, !self->_core->settings().use24Hour);
     self->refreshMainValues();
 
     if (self->_settingsChangedCallback != nullptr) {
@@ -561,7 +576,8 @@ void SettingsScreen::clockModeThunk(lv_event_t *event)
 void SettingsScreen::unitsThunk(lv_event_t *event)
 {
     auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
-    self->_settings->metricUnits = !self->_settings->metricUnits;
+    if (!self->_core) return;
+    self->setApplication(layertime::CommandType::SetUnits, !self->_core->settings().metricUnits);
     self->refreshMainValues();
 
     if (self->_settingsChangedCallback != nullptr) {
@@ -613,7 +629,10 @@ void SettingsScreen::meshtasticEnabledThunk(lv_event_t *event)
 void SettingsScreen::meshtasticAdvertiseThunk(lv_event_t *event)
 {
     auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
-    self->_settings->meshtasticAdvertiseEnabled = !self->_settings->meshtasticAdvertiseEnabled;
+    if (!self->_core) return;
+    self->setApplication(layertime::CommandType::MeshSetAdvertising,
+                         !self->_core->settings().advertisingOn(layertime::MeshNetwork::Meshtastic),
+                         layertime::MeshNetwork::Meshtastic);
     self->refreshMainValues();
 
     if (self->_settingsChangedCallback != nullptr) {
@@ -631,8 +650,14 @@ void SettingsScreen::meshtasticNameSaveThunk(lv_event_t *event)
 {
     auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
     const char *text = lv_textarea_get_text(self->_meshtasticNameTextArea);
-    strncpy(self->_settings->meshtasticNodeName, text, sizeof(self->_settings->meshtasticNodeName) - 1);
-    self->_settings->meshtasticNodeName[sizeof(self->_settings->meshtasticNodeName) - 1] = '\0';
+    if (self->_core) {
+        layertime::LayerTimeCommand c;
+        c.type = layertime::CommandType::MeshSetOwnName;
+        c.setting.network = layertime::MeshNetwork::Meshtastic;
+        strncpy(c.setting.name, text ? text : "", sizeof(c.setting.name) - 1);
+        c.setting.name[sizeof(c.setting.name) - 1] = '\0';
+        self->_core->execute(c);
+    }
     self->showMainPage();
     self->refreshMainValues();
 
@@ -650,7 +675,10 @@ void SettingsScreen::meshtasticNameCancelThunk(lv_event_t *event)
 void SettingsScreen::meshAdvertiseThunk(lv_event_t *event)
 {
     auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
-    self->_settings->meshAdvertiseEnabled = !self->_settings->meshAdvertiseEnabled;
+    if (!self->_core) return;
+    self->setApplication(layertime::CommandType::MeshSetAdvertising,
+                         !self->_core->settings().advertisingOn(layertime::MeshNetwork::MeshCore),
+                         layertime::MeshNetwork::MeshCore);
     self->refreshMainValues();
 
     if (self->_settingsChangedCallback != nullptr) {
@@ -661,7 +689,8 @@ void SettingsScreen::meshAdvertiseThunk(lv_event_t *event)
 void SettingsScreen::earlyWarningThunk(lv_event_t *event)
 {
     auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
-    self->_settings->reconEarlyWarningEnabled = !self->_settings->reconEarlyWarningEnabled;
+    if (!self->_core) return;
+    self->setApplication(layertime::CommandType::SetEarlyWarning, !self->_core->settings().earlyWarningEnabled);
     self->refreshMainValues();
 
     if (self->_settingsChangedCallback != nullptr) {
@@ -683,7 +712,8 @@ void SettingsScreen::reconSdLoggingThunk(lv_event_t *event)
 void SettingsScreen::sleepModeThunk(lv_event_t *event)
 {
     auto *self = static_cast<SettingsScreen *>(lv_event_get_user_data(event));
-    self->_settings->sleepModeEnabled = !self->_settings->sleepModeEnabled;
+    if (!self->_core) return;
+    self->setApplication(layertime::CommandType::SetSleepMode, !self->_core->settings().sleepModeEnabled);
     self->refreshMainValues();
 
     if (self->_settingsChangedCallback != nullptr) {

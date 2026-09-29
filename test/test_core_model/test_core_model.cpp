@@ -33,6 +33,7 @@
 #include "core/model/MonitorEvent.h"
 #include "core/model/NavigationState.h"
 #include "core/model/QuickMessage.h"
+#include "core/model/Settings.h"
 #include "core/model/ReconState.h"
 #include "core/model/Time.h"
 #include "platform/twatch_ultra/TUltraProfile.h"
@@ -219,8 +220,11 @@ void enum_values_match_vectors()
         M(CommandType, None), M(CommandType, ReconStart), M(CommandType, ReconStop),
         M(CommandType, ReconClearEvents), M(CommandType, ReconAcknowledgeAlert),
         M(CommandType, MeshSendText), M(CommandType, MeshSendQuickMessage),
-        M(CommandType, MeshSetChannel), M(CommandType, MeshRemoveChannel)};
-    checkEnum(j, "CommandType", cmd, 9);
+        M(CommandType, MeshSetChannel), M(CommandType, MeshRemoveChannel),
+        M(CommandType, SetClockFormat), M(CommandType, SetUnits), M(CommandType, SetSleepMode),
+        M(CommandType, SetEarlyWarning), M(CommandType, MeshSetAdvertising),
+        M(CommandType, MeshSetOwnName)};
+    checkEnum(j, "CommandType", cmd, 15);
 
     const EnumMember res[] = {M(CommandResult, Ok), M(CommandResult, Unsupported),
                               M(CommandResult, InvalidArgument), M(CommandResult, NotReady),
@@ -274,6 +278,11 @@ void capacities_match_vectors()
     CHECK_INT(QuickMessageLibrary::kMaxMessages,
               intValue(j, object(j, w, "QuickMessage"), "maxMessages"));
     CHECK_INT(MeshSendTextArgs::kTextSize, intValue(j, object(j, w, "MeshSendTextArgs"), "textSize"));
+    CHECK_INT(ApplicationSettings::kMeshtasticNameSize,
+              intValue(j, object(j, w, "ApplicationSettings"), "meshtasticNameSize"));
+    CHECK_INT(SettingArgs::kNameSize, intValue(j, object(j, w, "SettingArgs"), "nameSize"));
+    CHECK_INT(ApplicationSettings::kMeshtasticNameSize, sizeof(ApplicationSettings{}.meshtasticName));
+    CHECK_INT(SettingArgs::kNameSize, sizeof(SettingArgs{}.name));
     CHECK_INT(MeshChannelArgs::kNameSize, intValue(j, object(j, w, "MeshChannelArgs"), "nameSize"));
     CHECK_INT(MeshChannelArgs::kKeySize, intValue(j, object(j, w, "MeshChannelArgs"), "keySize"));
     CHECK_INT(DeviceCapabilities::kProfileIdSize,

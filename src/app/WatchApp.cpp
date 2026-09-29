@@ -41,9 +41,29 @@ void WatchApp::begin()
     instance.begin();
     beginLvglHelper(instance);
 
+    // The core is attached first because it holds the application settings,
+    // which everything below reads. Attaching touches no hardware. It is
+    // still attached before early warning is switched on, which starts Wi-Fi
+    // capture straight away, so candidates always have somewhere to go.
+    layertime::CorePorts ports;
+    ports.monitor = &_monitorSource;
+    ports.alerts = &_alertSink;
+    ports.eventLog = &_eventLog;
+    ports.navigation = &_navigationSource;
+    ports.mesh[static_cast<uint8_t>(layertime::MeshNetwork::MeshCore)] = &_meshCoreTransport;
+    ports.mesh[static_cast<uint8_t>(layertime::MeshNetwork::Meshtastic)] = &_meshtasticTransport;
+    ports.settings = &_settingsStore;
+    _core.attach(ports);
+
+    // Both halves of the settings, before anything reads either: the
+    // T-Ultra's own, and the application's (which also sets sleep mode in
+    // the core's alert policy).
     _settingsService.load(_settings);
+    _core.loadSettings();
+    const layertime::ApplicationSettings &app = _core.settings();
+
     _settingsService.apply(_settings);
-    _sleepModeActive = _settings.sleepModeEnabled;
+    _sleepModeActive = app.sleepModeEnabled;
     if (_sleepModeActive) {
         // Loaded from a previous session with sleep mode already on -
         // start dark immediately rather than lighting up for the normal
@@ -53,28 +73,17 @@ void WatchApp::begin()
     }
     _gps.begin(_settings.gpsEnabled);
     _mesh.begin();
-    _mesh.setAdvertisingEnabled(_settings.meshAdvertiseEnabled);
+    _mesh.setAdvertisingEnabled(app.advertisingOn(layertime::MeshNetwork::MeshCore));
     // Mesh radio always starts powered off; the user opts in each session
     // from Settings > MESH.
     _meshtastic.begin();
-    _meshtastic.setIdentity(_settings.meshtasticNodeName);
-    _meshtastic.setAdvertisingEnabled(_settings.meshtasticAdvertiseEnabled);
+    _meshtastic.setIdentity(app.meshtasticName);
+    _meshtastic.setAdvertisingEnabled(app.advertisingOn(layertime::MeshNetwork::Meshtastic));
     // Meshtastic radio also always starts powered off, same reasoning as
     // Mesh above - and the two are kept mutually exclusive in settingsChanged().
     _sdCard.begin();
     _recon.begin();
-    // Core is attached before early warning is switched on, because that
-    // starts Wi-Fi capture straight away and candidates need somewhere to go.
-    _core.setSleepMode(_settings.sleepModeEnabled);
-    layertime::CorePorts ports;
-    ports.monitor = &_monitorSource;
-    ports.alerts = &_alertSink;
-    ports.eventLog = &_eventLog;
-    ports.navigation = &_navigationSource;
-    ports.mesh[static_cast<uint8_t>(layertime::MeshNetwork::MeshCore)] = &_meshCoreTransport;
-    ports.mesh[static_cast<uint8_t>(layertime::MeshNetwork::Meshtastic)] = &_meshtasticTransport;
-    _core.attach(ports);
-    _recon.setEarlyWarningEnabled(_settings.reconEarlyWarningEnabled);
+    _recon.setEarlyWarningEnabled(app.earlyWarningEnabled);
 
     _face.create();
     _face.setSettingsRequestedCallback(settingsRequestedThunk, this);
@@ -105,6 +114,7 @@ void WatchApp::begin()
 
     _settingsScreen.create(
         _settings,
+        &_core,
         _state,
         _sdCard,
         settingsBackThunk,
@@ -156,8 +166,8 @@ void WatchApp::refreshState()
         _state.gpsFix, _state.latitude, _state.longitude,
         _state.gpsAltitudeValid ? static_cast<int32_t>(_state.altitudeFt / 3.280839895f) : 0);
     _meshtastic.setOwnBattery(_state.batteryPercent);
-    _face.render(_state, _settings, _core.reconState());
-    _gpsScreen.render(_state, _settings);
+    _face.render(_state, _settings, _core.settings(), _core.reconState());
+    _gpsScreen.render(_state, _core.settings());
     _mappingScreen.render(_state, _settings);
     _meshScreen.render(_mesh.status());
     _meshtasticScreen.render(_meshtastic.status());
@@ -252,7 +262,7 @@ void WatchApp::openSettings()
 
 void WatchApp::openGps()
 {
-    _gpsScreen.show(_state, _settings);
+    _gpsScreen.show(_state, _core.settings());
 }
 
 void WatchApp::openMapping()
@@ -316,14 +326,18 @@ void WatchApp::closeSettings()
 void WatchApp::settingsChanged()
 {
     _settingsService.apply(_settings);
-    if (_settings.sleepModeEnabled && !_sleepModeActive) {
+    // The application settings were already changed in the core by the
+    // Settings screen's command; this applies them to the hardware, in the
+    // same order as before they moved.
+    const layertime::ApplicationSettings &app = _core.settings();
+    if (app.sleepModeEnabled && !_sleepModeActive) {
         // Just turned on - darken right away instead of waiting out the
         // normal auto-blank timeout. Tapping the screen still wakes it
         // normally afterward (e.g. to check the time or turn this back off).
         instance.setBrightness(0);
         displayBlanked = true;
     }
-    _sleepModeActive = _settings.sleepModeEnabled;
+    _sleepModeActive = app.sleepModeEnabled;
     _gps.setEnabled(_settings.gpsEnabled);
     // MeshCore and Meshtastic share one physical SX1262 radio. The settings
     // screen already keeps meshEnabled/meshtasticEnabled mutually exclusive,
@@ -341,14 +355,16 @@ void WatchApp::settingsChanged()
     if (_settings.meshtasticEnabled) {
         _meshtastic.setRadioEnabled(true);
     }
-    _mesh.setAdvertisingEnabled(_settings.meshAdvertiseEnabled);
-    _meshtastic.setIdentity(_settings.meshtasticNodeName);
-    _meshtastic.setAdvertisingEnabled(_settings.meshtasticAdvertiseEnabled);
-    _recon.setEarlyWarningEnabled(_settings.reconEarlyWarningEnabled);
-    _core.setSleepMode(_settings.sleepModeEnabled);
+    _mesh.setAdvertisingEnabled(app.advertisingOn(layertime::MeshNetwork::MeshCore));
+    _meshtastic.setIdentity(app.meshtasticName);
+    _meshtastic.setAdvertisingEnabled(app.advertisingOn(layertime::MeshNetwork::Meshtastic));
+    _recon.setEarlyWarningEnabled(app.earlyWarningEnabled);
+    // Sleep mode is already in the core's alert policy: SetSleepMode put it
+    // there.
     _settingsService.save(_settings);
-    _face.render(_state, _settings, _core.reconState());
-    _gpsScreen.render(_state, _settings);
+    _core.saveSettings();
+    _face.render(_state, _settings, _core.settings(), _core.reconState());
+    _gpsScreen.render(_state, _core.settings());
     _mappingScreen.render(_state, _settings);
     _meshScreen.render(_mesh.status());
     _meshtasticScreen.render(_meshtastic.status());

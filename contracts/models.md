@@ -223,6 +223,26 @@ platform: every event is logged and counted, but **no alert is raised when
 sleep mode is on, or when the match is Low confidence.** Nothing is missed;
 only the interruption is suppressed.
 
+## ApplicationSettings
+
+The wearer's settings for what LayerTime does, on any target. Owned by the
+core, changed only by commands (see `commands.md`), and saved through the
+platform's settings store. A setting that exists only because of one watch's
+hardware (its backlight, its SD card, its shared LoRa radio, its GPS power)
+belongs to that platform, not here.
+
+| Field | Type | Size | Default | T-Ultra source |
+|---|---|---|---|---|
+| use24Hour | bool | | false | AppSettings.use24Hour, NVS "clock24" |
+| metricUnits | bool | | false | AppSettings.metricUnits, NVS "metric" |
+| sleepModeEnabled | bool | | false | AppSettings.sleepModeEnabled, NVS "sleepmode" |
+| earlyWarningEnabled | bool | | true | AppSettings.reconEarlyWarningEnabled, NVS "reconew" |
+| meshAdvertising | bool per network | | false | AppSettings.meshAdvertiseEnabled (NVS "meshadv"), meshtasticAdvertiseEnabled (NVS "mtadv") |
+| meshtasticName | text | 20 | empty | AppSettings.meshtasticNodeName, NVS "mtname". Empty means the platform generates one. |
+
+Sleep mode is the alert suppression in "Alert" below. The T-Ultra also
+darkens its backlight for it; that part is the platform's.
+
 ## QuickMessage
 
 | Field | Type | Size | Meaning |

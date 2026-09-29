@@ -32,9 +32,9 @@ namespace layertime {
 //
 // The set is exactly what the T-Ultra screens call on services today, plus
 // MeshSendQuickMessage, which the architecture names as the model example.
-// Settings changes are deliberately absent: AppSettings still mixes
-// application settings with T-Ultra-only ones (brightness, Squachify, the
-// shared-radio switch), and they get commands when it is split, not before.
+// Phase 0 Step 6 split the settings: application settings change by the
+// commands from 9 on; T-Ultra-only ones (brightness, GPS power, SD logging,
+// Squachify, the shared-radio switch) stay with the platform.
 //
 // Numeric values are part of the contract. Do not renumber; append only.
 enum class CommandType : uint8_t {
@@ -47,6 +47,12 @@ enum class CommandType : uint8_t {
     MeshSendQuickMessage = 6,   // args: meshQuick
     MeshSetChannel = 7,         // args: meshChannel. Meshtastic only.
     MeshRemoveChannel = 8,      // args: meshChannel.index. Meshtastic only.
+    SetClockFormat = 9,         // args: setting.enabled (true = 24-hour)
+    SetUnits = 10,              // args: setting.enabled (true = metric)
+    SetSleepMode = 11,          // args: setting.enabled
+    SetEarlyWarning = 12,       // args: setting.enabled
+    MeshSetAdvertising = 13,    // args: setting.network, setting.enabled
+    MeshSetOwnName = 14,        // args: setting.network, setting.name. Meshtastic only.
 };
 
 // Every command gets exactly one of these back. Nothing is silently ignored.
@@ -89,6 +95,15 @@ struct MeshChannelArgs {
     char key[kKeySize] = {0};
 };
 
+// For the settings commands. Only the fields a command names are read.
+struct SettingArgs {
+    static constexpr uint8_t kNameSize = 20; // 19 characters, as the T-Ultra takes it
+
+    MeshNetwork network = MeshNetwork::Meshtastic;
+    bool enabled = false;
+    char name[kNameSize] = {0};
+};
+
 // A plain struct rather than a union: every argument block has default
 // initialisers, commands are short-lived, and about 300 bytes on the stack
 // is cheaper than getting union lifetime rules wrong. Only the block named
@@ -99,6 +114,7 @@ struct LayerTimeCommand {
     MeshSendTextArgs meshText;
     MeshSendQuickArgs meshQuick;
     MeshChannelArgs meshChannel;
+    SettingArgs setting;
 };
 
 } // namespace layertime
