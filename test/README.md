@@ -55,10 +55,10 @@ The production files emit a few compiler warnings of their own, so these
 commands do not use `-Werror`. Run each from `test/`.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_ubx test_ubx/test_ubx.cpp ../src/services/UbxParser.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_ubx test_ubx/test_ubx.cpp ../src/platform/twatch_ultra/UbxParser.cpp
 ./tests_ubx
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_recon test_recon/test_recon.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_recon test_recon/test_recon.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp
 ./tests_recon
 
 g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_chats test_meshtastic_chats/test_meshtastic_chats.cpp ../src/ui/MeshtasticScreen.cpp ../src/core/logic/MeshConversations.cpp
@@ -67,20 +67,38 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_chats test_meshta
 g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_decl test_declination_text/test_declination_text.cpp ../src/ui/MappingScreen.cpp ../src/core/logic/DeclinationAdvice.cpp ../src/core/logic/DeclinationCalculator.cpp ../src/core/logic/GeoGrid.cpp
 ./tests_decl
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/app/WatchApp.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp
 ./tests_log
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_recon_screen test_recon_screen/test_recon_screen.cpp ../src/ui/ReconScreen.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp
+./tests_recon_screen
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_watch_face_threats test_watch_face_threats/test_watch_face_threats.cpp ../src/ui/WatchFace.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp
+./tests_watch_face_threats
 ```
 
 `test_recon.cpp` includes `ReconService.cpp` directly, so it can reach the
 service's file-local pieces. Do not also pass `ReconService.cpp` on
 that command line.
 
+Since Phase 0 Step 4 the Recon event history, the alert, and the Recon
+commands are in core (`src/core/app`, `src/core/logic/MonitorEventLog`),
+reached through the T-Ultra adapters in `src/platform/twatch_ultra`. The
+Recon, screen and detection-log suites wire those together the way
+`WatchApp` does, in their harnesses only; the cases themselves are unchanged.
+`test_recon_screen` and `test_watch_face_threats` were added in Step 4a,
+before the move, against the code as it stood.
+
 ## Core logic unit suites
 
-Phase 0 Step 3 moved application and detection logic into `src/core/logic`.
-The characterization suites above still prove the moved code behaves as it
-did. These suites test each core module on its own, with no stubs, which is
-also the proof that core needs nothing from the platform. Run from `test/`.
+Phase 0 Step 3 moved application and detection logic into `src/core/logic`,
+and Step 4 added the event log (`src/core/logic/MonitorEventLog`), the
+application core (`src/core/app/LayerTimeCore`), and the ports it talks to
+the platform through (`src/core/ports`). The characterization suites above
+still prove the moved code behaves as it did. These suites test each core
+module on its own, with no stubs, which is also the proof that core needs
+nothing from the platform. `test_layertime_core` uses fake ports. Run from
+`test/`.
 
 ```
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_decl_advice test_declination_advice/test_declination_advice.cpp ../src/core/logic/DeclinationAdvice.cpp
@@ -106,4 +124,20 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_mesh_conversations test_m
 
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_detection_csv test_detection_csv/test_detection_csv.cpp ../src/core/logic/DetectionCsv.cpp
 ./tests_detection_csv
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_monitor_event_log test_monitor_event_log/test_monitor_event_log.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/ReconSelection.cpp
+./tests_monitor_event_log
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_layertime_core test_layertime_core/test_layertime_core.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp
+./tests_layertime_core
+```
+
+## Platform adapter suites
+
+The T-Ultra adapters in `src/platform/twatch_ultra` that are not already
+covered by the characterization suites. Run from `test/`.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_navigation_source test_navigation_source/test_navigation_source.cpp
+./tests_navigation_source
 ```

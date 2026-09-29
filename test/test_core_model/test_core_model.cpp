@@ -20,6 +20,7 @@
 // declare a MeshNode and a MeshMessage, and this must still compile.
 #include "services/MeshService.h"
 #include "services/MeshtasticService.h"
+#include "core/logic/MonitorEventLog.h"
 #include "services/ReconService.h"
 #include "ui/QuickPhrases.h"
 
@@ -592,9 +593,14 @@ void recon_target_matches_tultra_recon_detector()
 
 void monitor_event_holds_every_tultra_detection()
 {
-    CHECK_INT(ReconStatus::MAX_DETECTIONS, ReconState::kMaxEvents);
-    CHECK_INT(sizeof(ReconDetection{}.address), MonitorEvent::kSourceIdSize);
-    CHECK_INT(sizeof(ReconDetection{}.detail), MonitorEvent::kDetailSize);
+    // Phase 0 Step 4 removed the T-Ultra's own record (ReconDetection) and
+    // list (ReconStatus::detections); the T-Ultra now keeps MonitorEvents in
+    // core. The sizes those types had are pinned here as numbers, so the
+    // model cannot shrink below what the watch stored before the move.
+    CHECK_INT(40, ReconState::kMaxEvents);        // ReconStatus::MAX_DETECTIONS
+    CHECK_INT(19, MonitorEvent::kSourceIdSize);   // ReconDetection::address
+    CHECK_INT(40, MonitorEvent::kDetailSize);     // ReconDetection::detail
+    CHECK_INT(ReconState::kMaxEvents, layertime::recon::MonitorEventLog::kCapacity);
 }
 
 void mesh_model_holds_every_tultra_mesh_record()

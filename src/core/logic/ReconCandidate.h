@@ -36,6 +36,12 @@ struct Candidate {
     int8_t rssi = 0;
     Confidence confidence = Confidence::High;
     uint8_t channel = 0;
+    // Filled in by the platform when it hands the candidate to core, not by
+    // the classifiers: which radio saw it, on which band, and the platform's
+    // uptime at that moment. The event log stamps lastSeen from atMs.
+    SourceKind sourceKind = SourceKind::Unknown;
+    Band band = Band::Unknown;
+    uint32_t atMs = 0;
 };
 
 // Receives each candidate, in the order the classifier finds them.

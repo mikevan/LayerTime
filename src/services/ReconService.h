@@ -36,37 +36,13 @@ class NimBLEAdvertisedDevice;
 using SignalConfidence = layertime::Confidence;
 using ReconDetector = layertime::ReconTarget;
 
-struct ReconDetection {
-    char category[14] = {0};
-    char detail[40] = {0};
-    char address[19] = {0};
-    int8_t rssi = 0;
-    uint8_t channel = 0;
-    uint32_t lastSeenMs = 0;
-    // How many times this unique (category, address) signal has been seen
-    // since the log was last cleared. Wide on purpose - a real attack can
-    // mean thousands of repeats of the same deauth frame.
-    uint32_t encounterCount = 1;
-    // How much this particular match is worth trusting. Set per call site,
-    // and per signature row where the table knows better than the detector
-    // does - Meta on its own SIG-assigned 0xFD5F is High, the two unsourced
-    // Meta UUIDs are Low, and both report as META.
-    SignalConfidence confidence = SignalConfidence::High;
-};
-
+// What the radios are doing. Since Phase 0 Step 4 the detection log, its
+// event serial and the pending alert live in core
+// (src/core/logic/MonitorEventLog), not here: this service only acquires.
 struct ReconStatus {
-    // This is a persistent session log, not a live scan snapshot - it is
-    // only cleared by an explicit user action (ReconScreen's CLEAR LOG
-    // button), never automatically by stop()/start(). Sized generously so
-    // a long monitoring session doesn't evict genuine unique threats.
-    static constexpr size_t MAX_DETECTIONS = 40;
     ReconDetector detector = ReconDetector::None;
     ReconDetector activeDetector = ReconDetector::None;
-    ReconDetection detections[MAX_DETECTIONS];
-    size_t detectionCount = 0;
-    uint32_t eventSerial = 0;
     bool monitoring = false;
-    bool alertPending = false;
 
     // Background early-warning scheduler state (independent of manual
     // monitoring above).
@@ -86,8 +62,10 @@ public:
     // of a manual detector/leaving the Recon screen (not stop() directly).
     void exitManualMode();
     void stopActivity() { exitManualMode(); } // Existing WatchApp compatibility.
-    void clearDetections();
-    void acknowledgeAlert();
+    // Forgets the Wi-Fi detectors' own tracking state (deauth burst
+    // counters, per-BSSID SSID sets). Acquisition-side only: the event
+    // history is core's, cleared by the ReconClearEvents command.
+    void resetDetectorState();
     const ReconStatus &status() const { return _status; }
     static const char *detectorName(ReconDetector detector);
     static const char *confidenceLabel(SignalConfidence confidence);
@@ -104,22 +82,13 @@ public:
     // automatically paused while a manual detector is running.
     void setEarlyWarningEnabled(bool enabled);
 
-    // While true, new detections are still logged and counted normally,
-    // but do not set alertPending - so ReconScreen's popup never opens and
-    // poll() never vibrates or wakes the display for them. Meant for
-    // overnight use; acknowledgeAlert()/clearDetections() are unaffected.
-    void setSleepModeEnabled(bool enabled) { _sleepModeEnabled = enabled; }
-
     // Called by the NimBLEScanCallbacks handler for each device found during
     // an async scan (manual or background).
     void handleBleAdvertisement(const NimBLEAdvertisedDevice *device);
 
-    // Optional sink invoked once for every genuinely new (non-duplicate)
-    // detection - i.e. not on repeat RSSI updates of something already
-    // seen. Used by WatchApp to append detections to the SD log when that
-    // setting is enabled; ReconService itself has no file I/O.
-    using DetectionSink = void (*)(const ReconDetection &detection, void *userData);
-    void setDetectionSink(DetectionSink sink, void *userData);
+    // Where each candidate a classifier finds is delivered, stamped with the
+    // radio, band and millis(). Called on the Wi-Fi or NimBLE callback task.
+    void setCandidateSink(layertime::recon::CandidateSink sink, void *context);
 
 private:
     static void promiscuousThunk(void *buf, int type);
@@ -127,10 +96,8 @@ private:
     void startWifiMonitoring();
     void stopWifiMonitoring();
     void startBleScan(ReconDetector detector, uint32_t durationMs);
-    // confidence is deliberately not defaulted - every call site states its
-    // own grade, so a new detector can't silently inherit High.
-    void addDetection(ReconDetector detector, const char *detail, const char *address,
-                      int8_t rssi, SignalConfidence confidence, uint8_t channel = 0);
+    void deliver(const layertime::recon::Candidate &candidate, layertime::SourceKind kind,
+                 layertime::Band band);
     bool wants(ReconDetector detector) const;
     static bool groupContains(ReconDetector group, ReconDetector detector);
     // Which radios a selection needs. A group can need both (COUNTER-INTRUSION
@@ -144,7 +111,8 @@ private:
     // Bridges from the core classifiers back into this service: the
     // classifiers ask which detectors are live and hand back candidates.
     static bool wantsThunk(ReconDetector detector, const void *self);
-    static void candidateThunk(const layertime::recon::Candidate &candidate, void *self);
+    static void wifiCandidateThunk(const layertime::recon::Candidate &candidate, void *self);
+    static void bleCandidateThunk(const layertime::recon::Candidate &candidate, void *self);
 
     void pollManual(uint32_t now);
     void pollEarlyWarning(uint32_t now);
@@ -155,8 +123,6 @@ private:
     bool _bleInitialized = false;
     uint32_t _lastChannelHopMs = 0;
     uint32_t _lastBleCycleMs = 0;
-    uint32_t _alertActuatedSerial = 0;
-    bool _sleepModeEnabled = false;
     // Deauth burst and several-SSIDs-per-BSSID tracking, in core since
     // Phase 0 Step 3e.
     layertime::recon::WifiFrameClassifier _wifiClassifier;
@@ -178,6 +144,6 @@ private:
     // Which detector(s) the in-flight async BLE scan is checking for.
     ReconDetector _currentBleScanDetector = ReconDetector::None;
 
-    DetectionSink _detectionSink = nullptr;
-    void *_detectionSinkUserData = nullptr;
+    layertime::recon::CandidateSink _candidateSink = nullptr;
+    void *_candidateSinkContext = nullptr;
 };

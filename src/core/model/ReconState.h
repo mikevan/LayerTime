@@ -28,13 +28,13 @@ namespace layertime {
 
 // What Recon is doing right now.
 //
-// The event list itself is deliberately NOT embedded here. The producer
-// already owns that storage (on the T-Ultra, ReconStatus::detections).
-// Copying it into a second array would double the RAM and create two copies
-// that can disagree. Events are read through the monitor source instead.
+// The event list itself is deliberately NOT embedded here. The application
+// core owns that storage (logic/MonitorEventLog). Copying it into a second
+// array would double the RAM and create two copies that can disagree.
+// Events are read from the core instead.
 struct ReconState {
-    // Most events a producer keeps. When full, the oldest is dropped. Taken
-    // from the T-Ultra's ReconStatus::MAX_DETECTIONS.
+    // Most events the core keeps. When full, the oldest is dropped. Taken
+    // from the T-Ultra's former ReconStatus::MAX_DETECTIONS.
     static constexpr uint8_t kMaxEvents = 40;
 
     // What the user selected.

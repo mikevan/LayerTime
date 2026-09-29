@@ -1,20 +1,24 @@
-// Characterization tests for the detection log CSV row written by
-// WatchApp::logReconDetection() in src/app/WatchApp.cpp, as it stands.
+// Characterization tests for the detection log CSV row. Until Phase 0 Step 4
+// it was written by WatchApp::logReconDetection(); since then by the T-Ultra
+// EventLog adapter (src/platform/twatch_ultra/TUltraEventLog), which the core
+// calls for each new event. Output is unchanged, and so is every case below.
 //
-// logReconDetection() is private and only reachable as the detection sink
-// WatchApp registers with ReconService in begin(). So this test runs the real
-// WatchApp::begin() and the real ReconService, both compiled unchanged against
-// the test-only stubs in test/stubs/, and triggers genuine detections through
-// the same radio entry points the watch uses.
+// The adapter is only reachable through the core WatchApp builds in begin().
+// So this test runs the real WatchApp::begin(), the real core and adapters,
+// and the real ReconService, compiled against the test-only stubs in
+// test/stubs/, and triggers genuine detections through the same radio entry
+// points the watch uses.
 //
 // Link seams: every other class WatchApp owns is replaced by the test-only
 // fakes below. Three of them do real work for the test:
 //   * ClockService::update   supplies the date and time the row is stamped with.
 //   * SettingsService::load  supplies the settings begin() starts from.
 //   * SdCardService::appendCsvRow records what would have been written.
-// ReconScreen::create also records the ReconService pointer WatchApp hands
-// it, which is how a test starts a manual detector the way the Recon screen
-// would. Everything else is an empty body.
+// ReconScreen::create also records the core WatchApp hands it, which is how
+// a test starts a manual detector the way the Recon screen would: with a
+// ReconStart command. SettingsScreen::create records the settings-changed
+// hook, which teardown uses to switch early warning off the way the Settings
+// screen would. Everything else is an empty body.
 
 #include "check.h"
 
@@ -35,7 +39,41 @@ struct CsvWrite { std::string path, header, row; };
 inline std::vector<CsvWrite> g_writes;
 inline AppSettings g_settings;
 inline WatchState g_clock;
-inline ReconService *g_recon = nullptr;
+
+// What the cases call to act as the Recon and Settings screens would.
+struct Recon {
+    layertime::LayerTimeCore *core = nullptr;
+    AppSettings *settings = nullptr;
+    SettingsScreen::SettingsChangedCallback settingsChanged = nullptr;
+    void *app = nullptr;
+
+    void run(layertime::CommandType t, ReconDetector d = ReconDetector::None)
+    {
+        layertime::LayerTimeCommand c;
+        c.type = t;
+        c.reconTarget.target = d;
+        core->execute(c);
+    }
+    void startDetector(ReconDetector d) { run(layertime::CommandType::ReconStart, d); }
+    // A BLE result, delivered through the scan callbacks the service
+    // registered with NimBLE.
+    void handleBleAdvertisement(const NimBLEAdvertisedDevice *d)
+    {
+        if (fake_nimble::g_scan.callbacks) fake_nimble::g_scan.callbacks->onResult(d);
+    }
+    // Every radio off, so no static pointer inside ReconService outlives the
+    // app: early warning off through Settings, then leave manual mode.
+    void stop()
+    {
+        if (settings && settingsChanged) {
+            settings->reconEarlyWarningEnabled = false;
+            settingsChanged(app);
+        }
+        run(layertime::CommandType::ReconStop);
+    }
+};
+inline Recon g_reconSeam;
+inline Recon *g_recon = nullptr;
 }
 
 void ClockService::update(WatchState &s)
@@ -73,7 +111,7 @@ void SettingsService::load(AppSettings &s) { s = fake_app::g_settings; }
 void SettingsService::apply(const AppSettings &) {}
 void SettingsService::save(const AppSettings &) {}
 void WatchFace::create() {}
-void WatchFace::render(const WatchState &, const AppSettings &, const ReconStatus &) {}
+void WatchFace::render(const WatchState &, const AppSettings &, const layertime::ReconState &) {}
 void WatchFace::setSettingsRequestedCallback(SettingsRequestedCallback, void *) {}
 void WatchFace::setGpsRequestedCallback(GpsRequestedCallback, void *) {}
 void WatchFace::setMeshRequestedCallback(MeshRequestedCallback, void *) {}
@@ -93,11 +131,20 @@ void MeshScreen::render(const MeshStatus &) {}
 void MeshtasticScreen::create(MeshtasticService *, BackCallback, void *) {}
 void MeshtasticScreen::show(const MeshtasticStatus &) {}
 void MeshtasticScreen::render(const MeshtasticStatus &) {}
-void ReconScreen::create(ReconService *service, BackCallback, void *) { fake_app::g_recon = service; }
+void ReconScreen::create(layertime::LayerTimeCore *core, BackCallback, void *)
+{
+    fake_app::g_reconSeam.core = core;
+    fake_app::g_recon = &fake_app::g_reconSeam;
+}
 void ReconScreen::show(ReconDetector) {}
 void ReconScreen::render() {}
-void SettingsScreen::create(AppSettings &, const WatchState &, SdCardService &, BackCallback,
-                            SettingsChangedCallback, DateTimeSaveCallback, void *) {}
+void SettingsScreen::create(AppSettings &settings, const WatchState &, SdCardService &, BackCallback,
+                            SettingsChangedCallback changed, DateTimeSaveCallback, void *app)
+{
+    fake_app::g_reconSeam.settings = &settings;
+    fake_app::g_reconSeam.settingsChanged = changed;
+    fake_app::g_reconSeam.app = app;
+}
 void SettingsScreen::show() {}
 
 // ---------------------------------------------------------------- harness
@@ -117,6 +164,7 @@ struct Harness {
         fake_nimble::g_scan = NimBLEScan{};
         fake_app::g_writes.clear();
         fake_app::g_recon = nullptr;
+        fake_app::g_reconSeam = fake_app::Recon{};
         fake_app::g_settings = AppSettings{};
         fake_app::g_settings.reconSdLoggingEnabled = logging;
         fake_app::g_settings.reconEarlyWarningEnabled = true;  // the shipped default

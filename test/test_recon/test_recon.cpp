@@ -9,6 +9,12 @@
 // These tests record CURRENT behaviour. Where current behaviour looks wrong,
 // the test still pins it, and its name says KNOWN_DEFECT, so a later fix is a
 // deliberate, visible change rather than an accident.
+//
+// Since Phase 0 Step 4 the detection log, the alert decision and its
+// actuation live in core (LayerTimeCore, MonitorEventLog) behind the T-Ultra
+// adapters, and ReconService only acquires. The Session below wires those
+// together exactly as WatchApp does, and presents them to the cases under the
+// old ReconService names, so every case body is unchanged from Step 3.
 
 #include "check.h"
 
@@ -16,6 +22,10 @@
 #include <vector>
 
 #include "services/ReconService.cpp"
+
+#include "core/app/LayerTimeCore.h"
+#include "platform/twatch_ultra/TUltraAlertSink.h"
+#include "platform/twatch_ultra/TUltraMonitorSource.h"
 
 // Since Phase 0 Step 3 the classifiers and tables checked below live in
 // src/core/logic. The expectations are unchanged; only the namespace moved.
@@ -36,20 +46,114 @@ void resetFakes()
     gBleActiveInstance = nullptr;
 }
 
+// The detection record and status as the cases read them. These were
+// ReconService's own types before Step 4; the view below rebuilds them from
+// core on every read, field for field.
+struct ReconDetection {
+    char category[14] = {0};
+    char detail[40] = {0};
+    char address[19] = {0};
+    int8_t rssi = 0;
+    uint8_t channel = 0;
+    uint32_t lastSeenMs = 0;
+    uint32_t encounterCount = 1;
+    SignalConfidence confidence = SignalConfidence::High;
+};
+
+struct LegacyStatus {
+    static constexpr size_t MAX_DETECTIONS = 40;
+    ReconDetector detector = ReconDetector::None;
+    ReconDetector activeDetector = ReconDetector::None;
+    ReconDetection detections[MAX_DETECTIONS];
+    size_t detectionCount = 0;
+    uint32_t eventSerial = 0;
+    bool monitoring = false;
+    bool alertPending = false;
+    bool earlyWarningEnabled = false;
+    bool earlyWarningResting = false;
+};
+
+ReconDetection legacy(const layertime::MonitorEvent &e)
+{
+    ReconDetection d;
+    snprintf(d.category, sizeof(d.category), "%s", ReconService::detectorName(e.detector));
+    snprintf(d.detail, sizeof(d.detail), "%s", e.detail);
+    snprintf(d.address, sizeof(d.address), "%s", e.sourceId);
+    d.rssi = e.rssi;
+    d.channel = e.channel;
+    d.lastSeenMs = e.lastSeen.uptimeMs;
+    d.encounterCount = e.count;
+    d.confidence = e.confidence;
+    return d;
+}
+
+struct Recorder : layertime::EventLog {
+    std::vector<ReconDetection> *rows = nullptr;
+    void append(const layertime::MonitorEvent &e) override { rows->push_back(legacy(e)); }
+};
+
+// The old ReconService surface, routed the way WatchApp routes it now: Recon
+// commands and sleep mode to core, radio entry points and early warning to
+// the service, poll() to core's tick.
+struct Facade {
+    ReconService &radio;
+    layertime::LayerTimeCore &core;
+
+    void run(layertime::CommandType t, ReconDetector d = ReconDetector::None)
+    {
+        layertime::LayerTimeCommand c;
+        c.type = t;
+        c.reconTarget.target = d;
+        core.execute(c);
+    }
+    void startDetector(ReconDetector d) { run(layertime::CommandType::ReconStart, d); }
+    void exitManualMode() { run(layertime::CommandType::ReconStop); }
+    void clearDetections() { run(layertime::CommandType::ReconClearEvents); }
+    void acknowledgeAlert() { run(layertime::CommandType::ReconAcknowledgeAlert); }
+    void poll() { core.tick(millis()); }
+    void stop() { radio.stop(); }
+    void setEarlyWarningEnabled(bool on) { radio.setEarlyWarningEnabled(on); }
+    void setSleepModeEnabled(bool on) { core.setSleepMode(on); }
+    void handleBleAdvertisement(const NimBLEAdvertisedDevice *d) { radio.handleBleAdvertisement(d); }
+};
+
 // Owns one service for a test case and always tears its radios down, so no
 // static pointer inside ReconService outlives the object.
 struct Session {
-    ReconService svc;
+    ReconService radio;
+    layertime::twatch_ultra::TUltraMonitorSource monitor{radio};
+    layertime::twatch_ultra::TUltraAlertSink alerts;
+    Recorder recorder;
+    layertime::LayerTimeCore core;
+    Facade svc{radio, core};
     std::vector<ReconDetection> sunk;
+    mutable LegacyStatus view;
     Session()
     {
         resetFakes();
-        svc.setDetectionSink(
-            [](const ReconDetection &d, void *u) { static_cast<Session *>(u)->sunk.push_back(d); },
-            this);
+        recorder.rows = &sunk;
+        layertime::CorePorts p;
+        p.monitor = &monitor;
+        p.alerts = &alerts;
+        p.eventLog = &recorder;
+        core.attach(p);
     }
     ~Session() { svc.stop(); }
-    const ReconStatus &s() const { return svc.status(); }
+    const LegacyStatus &s() const
+    {
+        const layertime::ReconState r = core.reconState();
+        view = LegacyStatus{};
+        view.detector = r.selected;
+        view.activeDetector = r.active;
+        view.monitoring = r.monitoring;
+        view.earlyWarningEnabled = r.earlyWarningEnabled;
+        view.earlyWarningResting = r.earlyWarningResting;
+        view.alertPending = r.alertPending;
+        view.eventSerial = r.lastEventId;
+        view.detectionCount = r.eventCount;
+        for (uint8_t i = 0; i < r.eventCount; ++i) view.detections[i] = legacy(core.event(i));
+        return view;
+    }
 };
 
 // ---- Wi-Fi frames, delivered through the captured promiscuous callback.
@@ -873,6 +977,30 @@ void acknowledged_alert_does_not_vibrate()
     CHECK_INT(0, instance.vibrations);
 }
 
+// Added in Phase 0 Step 4: the fields the core event carries that the old
+// record did not. Which radio saw it and on what band come from the
+// platform, and lastSeen is the uptime at delivery.
+void events_record_the_radio_and_band_that_saw_them()
+{
+    Session x;
+    x.svc.startDetector(ReconDetector::Pwnagotchi);
+    const uint8_t pwn[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD};
+    fake_arduino::g_millis = 4321;
+    deliver(beacon(pwn, "pwn", false), -55, 1);
+    CHECK_INT(1, x.core.eventCount());
+    CHECK_INT(static_cast<int>(layertime::SourceKind::Wifi), static_cast<int>(x.core.event(0).sourceKind));
+    CHECK_INT(static_cast<int>(layertime::Band::Band2_4GHz), static_cast<int>(x.core.event(0).band));
+    CHECK_INT(4321, x.core.event(0).lastSeen.uptimeMs);
+
+    startBle(x, ReconDetector::AirTag);
+    NimBLEAdvertisedDevice d = bleDevice(kPlainMac, -71);
+    d.manufacturerData = {mfg({0x4C, 0x00, 0x12, 0x19})};
+    x.svc.handleBleAdvertisement(&d);
+    CHECK_INT(2, x.core.eventCount());
+    CHECK_INT(static_cast<int>(layertime::SourceKind::Ble), static_cast<int>(x.core.event(1).sourceKind));
+    CHECK_INT(static_cast<int>(layertime::Band::Unknown), static_cast<int>(x.core.event(1).band));
+}
+
 int main(int argc, char **argv)
 {
     CHECK_MAIN(argc, argv);
@@ -923,5 +1051,6 @@ int main(int argc, char **argv)
     CASE(low_first_then_high_never_alerts_KNOWN_DEFECT);
     CASE(poll_vibrates_once_per_new_alerting_record);
     CASE(acknowledged_alert_does_not_vibrate);
+    CASE(events_record_the_radio_and_band_that_saw_them);
     CHECK_SUMMARY();
 }

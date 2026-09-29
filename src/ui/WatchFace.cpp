@@ -213,7 +213,7 @@ void WatchFace::create()
     lv_obj_set_style_text_font(footer, &lv_font_montserrat_20, 0);
 }
 
-void WatchFace::render(const WatchState &state, const AppSettings &settings, const ReconStatus &reconStatus)
+void WatchFace::render(const WatchState &state, const AppSettings &settings, const layertime::ReconState &recon)
 {
     // Watch-face logo: owl by default, Squachy when the setting is on AND
     // the card actually yielded a decodable image. A missing card or file
@@ -285,9 +285,9 @@ void WatchFace::render(const WatchState &state, const AppSettings &settings, con
     // manual detector ("ALL", "DEAUTH", ...), "EARLY WARNING" when only the
     // background sweep is running, or "OFF" when nothing is scanning at all.
     const char *reconStatusText;
-    if (reconStatus.monitoring) {
-        reconStatusText = ReconService::detectorShortName(reconStatus.detector);
-    } else if (reconStatus.earlyWarningEnabled) {
+    if (recon.monitoring) {
+        reconStatusText = ReconService::detectorShortName(recon.selected);
+    } else if (recon.earlyWarningEnabled) {
         reconStatusText = ReconService::detectorShortName(ReconDetector::EarlyWarning);
     } else {
         reconStatusText = "OFF";
@@ -299,7 +299,7 @@ void WatchFace::render(const WatchState &state, const AppSettings &settings, con
     // The log persists across start/stop - only the user's CLEAR LOG button
     // on the Recon screen resets it - so a threat found earlier stays flagged
     // here until the user acknowledges and clears it.
-    lv_obj_set_style_text_color(_leftBottom, reconStatus.detectionCount > 0 ? Theme::danger() : Theme::green(), 0);
+    lv_obj_set_style_text_color(_leftBottom, recon.eventCount > 0 ? Theme::danger() : Theme::green(), 0);
 }
 
 void WatchFace::setSettingsRequestedCallback(

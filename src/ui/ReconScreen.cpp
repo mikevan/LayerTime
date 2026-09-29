@@ -32,9 +32,9 @@ constexpr ReconDetector kGroups[] = {
 constexpr size_t kGroupCount = sizeof(kGroups) / sizeof(kGroups[0]);
 }
 
-void ReconScreen::create(ReconService *service, BackCallback backCallback, void *userData)
+void ReconScreen::create(layertime::LayerTimeCore *core, BackCallback backCallback, void *userData)
 {
-    _service = service;
+    _core = core;
     _backCallback = backCallback;
     _userData = userData;
     _screen = lv_obj_create(nullptr);
@@ -173,16 +173,24 @@ void ReconScreen::show(ReconDetector detector)
 }
 void ReconScreen::render()
 {
-    if (!_service) return;
-    const ReconStatus &s = _service->status();
+    if (!_core) return;
+    const layertime::ReconState s = _core->reconState();
     if (s.monitoring) renderMonitor();
-    if (s.alertPending && s.eventSerial != _renderedEventSerial) renderAlert();
+    if (s.alertPending && s.lastEventId != _renderedEventSerial) renderAlert();
+}
+
+void ReconScreen::command(layertime::CommandType type, ReconDetector target)
+{
+    layertime::LayerTimeCommand c;
+    c.type = type;
+    c.reconTarget.target = target;
+    _core->execute(c);
 }
 
 void ReconScreen::selectDetector(ReconDetector detector)
 {
-    if (!_service) return;
-    _service->startDetector(detector);
+    if (!_core) return;
+    command(layertime::CommandType::ReconStart, detector);
     lv_obj_add_flag(_menu, LV_OBJ_FLAG_HIDDEN);
     for (size_t i = 0; i < kGroupCount; ++i)
         if (_groupPages[i]) lv_obj_add_flag(_groupPages[i], LV_OBJ_FLAG_HIDDEN);
@@ -297,23 +305,24 @@ void ReconScreen::showMenuLevel(ReconDetector group)
 
 void ReconScreen::renderMonitor()
 {
-    const ReconStatus &s = _service->status();
+    const layertime::ReconState s = _core->reconState();
     lv_label_set_text_fmt(_status, "%s  x%u",
-                          ReconService::detectorName(s.detector), static_cast<unsigned>(s.detectionCount));
-    std::string text = s.detectionCount ? "" : "No activity detected.";
-    for (size_t i = 0; i < s.detectionCount; ++i) {
-        const ReconDetection &d = s.detections[i];
+                          ReconService::detectorName(s.selected), static_cast<unsigned>(s.eventCount));
+    std::string text = s.eventCount ? "" : "No activity detected.";
+    for (uint8_t i = 0; i < s.eventCount; ++i) {
+        const layertime::MonitorEvent &d = _core->event(i);
         char line[190];
         const char *conf = ReconService::confidenceLabel(d.confidence);
+        const char *category = ReconService::detectorName(d.detector);
         if (d.channel)
             snprintf(line, sizeof(line), "%s  [%s]\n%s\n%s  %d dBm  CH %u  x%lu\n\n",
-                     d.category, conf, d.detail, d.address, static_cast<int>(d.rssi),
+                     category, conf, d.detail, d.sourceId, static_cast<int>(d.rssi),
                      static_cast<unsigned>(d.channel),
-                     static_cast<unsigned long>(d.encounterCount));
+                     static_cast<unsigned long>(d.count));
         else
             snprintf(line, sizeof(line), "%s  [%s]\n%s\n%s  %d dBm  x%lu\n\n",
-                     d.category, conf, d.detail, d.address, static_cast<int>(d.rssi),
-                     static_cast<unsigned long>(d.encounterCount));
+                     category, conf, d.detail, d.sourceId, static_cast<int>(d.rssi),
+                     static_cast<unsigned long>(d.count));
         text += line;
     }
     lv_label_set_text(_results, text.c_str());
@@ -321,13 +330,13 @@ void ReconScreen::renderMonitor()
 
 void ReconScreen::renderAlert()
 {
-    const ReconStatus &s = _service->status();
-    if (!s.detectionCount) return;
-    const ReconDetection &d = s.detections[s.detectionCount - 1];
+    const layertime::ReconState s = _core->reconState();
+    if (!s.eventCount) return;
+    const layertime::MonitorEvent &d = _core->event(s.eventCount - 1);
     lv_label_set_text_fmt(_alertText, "%s  [%s]\n%s\n%s\n%d dBm",
-                          d.category, ReconService::confidenceLabel(d.confidence),
-                          d.detail, d.address, static_cast<int>(d.rssi));
-    _renderedEventSerial = s.eventSerial;
+                          ReconService::detectorName(d.detector), ReconService::confidenceLabel(d.confidence),
+                          d.detail, d.sourceId, static_cast<int>(d.rssi));
+    _renderedEventSerial = s.lastEventId;
     lv_obj_clear_flag(_alert, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(_alert);
     // No lv_screen_load() here on purpose - the alert is a top-layer overlay,
@@ -342,8 +351,8 @@ void ReconScreen::backThunk(lv_event_t *event)
     if (!self) return;
     // Three levels, one button: monitor -> the group it was started from
     // -> the top menu -> out of Recon.
-    if (self->_service && self->_service->status().monitoring) {
-        self->_service->exitManualMode();
+    if (self->_core && self->_core->reconState().monitoring) {
+        self->command(layertime::CommandType::ReconStop);
         self->showMenuLevel(self->_openGroup);
         return;
     }
@@ -366,15 +375,15 @@ void ReconScreen::detectorThunk(lv_event_t *event)
 void ReconScreen::dismissThunk(lv_event_t *event)
 {
     auto *self = static_cast<ReconScreen *>(lv_event_get_user_data(event));
-    if (!self || !self->_service) return;
-    self->_service->acknowledgeAlert();
+    if (!self || !self->_core) return;
+    self->command(layertime::CommandType::ReconAcknowledgeAlert);
     lv_obj_add_flag(self->_alert, LV_OBJ_FLAG_HIDDEN);
 }
 
 void ReconScreen::clearLogThunk(lv_event_t *event)
 {
     auto *self = static_cast<ReconScreen *>(lv_event_get_user_data(event));
-    if (!self || !self->_service) return;
-    self->_service->clearDetections();
+    if (!self || !self->_core) return;
+    self->command(layertime::CommandType::ReconClearEvents);
     self->renderMonitor();
 }

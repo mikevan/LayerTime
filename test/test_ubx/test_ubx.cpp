@@ -1,4 +1,5 @@
-// Characterization tests for src/services/UbxParser.{h,cpp}, as it stands.
+// Characterization tests for src/platform/twatch_ultra/UbxParser.{h,cpp}
+// (src/services/ until Phase 0 Step 4), as it stands.
 //
 // These record what the parser does today, including choices a later change
 // might want to revisit, so any change in behaviour shows up as a failure
@@ -8,7 +9,7 @@
 
 #include <vector>
 
-#include "services/UbxParser.h"
+#include "platform/twatch_ultra/UbxParser.h"
 
 namespace {
 

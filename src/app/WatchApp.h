@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 
+#include "../core/app/LayerTimeCore.h"
 #include "../model/AppSettings.h"
 #include "../model/WatchState.h"
 #include "../services/BatteryService.h"
@@ -30,6 +31,10 @@
 #include "../services/ReconService.h"
 #include "../services/SdCardService.h"
 #include "../services/SettingsService.h"
+#include "../platform/twatch_ultra/TUltraAlertSink.h"
+#include "../platform/twatch_ultra/TUltraEventLog.h"
+#include "../platform/twatch_ultra/TUltraMonitorSource.h"
+#include "../platform/twatch_ultra/TUltraNavigationSource.h"
 #include "../ui/GpsScreen.h"
 #include "../ui/MappingScreen.h"
 #include "../ui/MeshScreen.h"
@@ -59,7 +64,6 @@ private:
     static void touchPressedThunk(lv_event_t *event);
     static void settingsBackThunk(void *userData);
     static void settingsChangedThunk(void *userData);
-    static void reconDetectionSinkThunk(const ReconDetection &detection, void *userData);
     static void dateTimeSaveThunk(
         int year,
         int month,
@@ -84,7 +88,6 @@ private:
     void closeSettings();
     void settingsChanged();
     void saveDateTime(int year, int month, int day, int hour, int minute);
-    void logReconDetection(const ReconDetection &detection);
     void handleFaceBackgroundTap();
 
     WatchState _state;
@@ -98,6 +101,15 @@ private:
     ReconService _recon;
     SdCardService _sdCard;
     SettingsService _settingsService;
+
+    // The application core and the T-Ultra adapters that plug it into the
+    // services above. Recon's event history, alert decision and commands
+    // live in _core; ReconService only acquires.
+    layertime::twatch_ultra::TUltraMonitorSource _monitorSource{_recon};
+    layertime::twatch_ultra::TUltraAlertSink _alertSink;
+    layertime::twatch_ultra::TUltraEventLog _eventLog{_settings, _state, _sdCard};
+    layertime::twatch_ultra::TUltraNavigationSource _navigationSource{_state};
+    layertime::LayerTimeCore _core;
 
     WatchFace _face;
     GpsScreen _gpsScreen;

@@ -21,7 +21,7 @@
 #include <stdint.h>
 
 #include "../model/WatchState.h"
-#include "UbxParser.h"
+#include "../platform/twatch_ultra/UbxParser.h"
 
 class GpsService {
 public:

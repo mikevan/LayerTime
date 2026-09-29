@@ -19,12 +19,17 @@
 #pragma once
 
 #include <lvgl.h>
+#include "../core/app/LayerTimeCore.h"
 #include "../services/ReconService.h"
+
+// Renders Recon state read from the core and issues Recon commands to it.
+// Since Phase 0 Step 4 it no longer calls ReconService; the include above is
+// only for the ReconDetector name and the detector name tables.
 
 class ReconScreen {
 public:
     using BackCallback = void (*)(void *userData);
-    void create(ReconService *service, BackCallback backCallback, void *userData);
+    void create(layertime::LayerTimeCore *core, BackCallback backCallback, void *userData);
     // detector: None opens the detector-picker menu (default, matches the
     // RECON watch-face button). Any other value skips straight to that
     // detector's monitor page, e.g. ReconDetector::All for the THREATS box.
@@ -58,8 +63,9 @@ private:
     void renderMenu();
     void renderMonitor();
     void renderAlert();
+    void command(layertime::CommandType type, ReconDetector target = ReconDetector::None);
 
-    ReconService *_service = nullptr;
+    layertime::LayerTimeCore *_core = nullptr;
     BackCallback _backCallback = nullptr;
     void *_userData = nullptr;
     lv_obj_t *_screen = nullptr;

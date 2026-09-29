@@ -22,8 +22,6 @@
 #include <LilyGoLib.h>
 #include <LV_Helper.h>
 
-#include "../core/logic/DetectionCsv.h"
-
 namespace {
 constexpr uint32_t kDisplayTimeoutMs = 15000;
 // Two background taps closer together than this put the display to sleep.
@@ -65,9 +63,16 @@ void WatchApp::begin()
     // Mesh above - and the two are kept mutually exclusive in settingsChanged().
     _sdCard.begin();
     _recon.begin();
+    // Core is attached before early warning is switched on, because that
+    // starts Wi-Fi capture straight away and candidates need somewhere to go.
+    _core.setSleepMode(_settings.sleepModeEnabled);
+    layertime::CorePorts ports;
+    ports.monitor = &_monitorSource;
+    ports.alerts = &_alertSink;
+    ports.eventLog = &_eventLog;
+    ports.navigation = &_navigationSource;
+    _core.attach(ports);
     _recon.setEarlyWarningEnabled(_settings.reconEarlyWarningEnabled);
-    _recon.setSleepModeEnabled(_settings.sleepModeEnabled);
-    _recon.setDetectionSink(reconDetectionSinkThunk, this);
 
     _face.create();
     _face.setSettingsRequestedCallback(settingsRequestedThunk, this);
@@ -94,7 +99,7 @@ void WatchApp::begin()
     _mappingScreen.create(mappingBackThunk, this);
     _meshScreen.create(&_mesh, meshBackThunk, this);
     _meshtasticScreen.create(&_meshtastic, meshtasticBackThunk, this);
-    _reconScreen.create(&_recon, reconBackThunk, this);
+    _reconScreen.create(&_core, reconBackThunk, this);
 
     _settingsScreen.create(
         _settings,
@@ -114,7 +119,7 @@ void WatchApp::tick()
     _gps.poll(_state);
     _mesh.poll();
     _meshtastic.poll();
-    _recon.poll();
+    _core.tick(millis());
     lv_timer_handler();
 
     const uint32_t inactiveMs = lv_display_get_inactive_time(nullptr);
@@ -141,13 +146,14 @@ void WatchApp::refreshState()
 {
     _clock.update(_state);
     _battery.update(_state);
+    _core.refreshNavigation();
     // Meshtastic broadcasts our position and battery on its own schedule;
     // it just needs to be told what they currently are.
     _meshtastic.setOwnPosition(
         _state.gpsFix, _state.latitude, _state.longitude,
         _state.gpsAltitudeValid ? static_cast<int32_t>(_state.altitudeFt / 3.280839895f) : 0);
     _meshtastic.setOwnBattery(_state.batteryPercent);
-    _face.render(_state, _settings, _recon.status());
+    _face.render(_state, _settings, _core.reconState());
     _gpsScreen.render(_state, _settings);
     _mappingScreen.render(_state, _settings);
     _meshScreen.render(_mesh.status());
@@ -293,7 +299,9 @@ void WatchApp::openThreatsRecon()
 
 void WatchApp::closeRecon()
 {
-    _recon.exitManualMode();
+    layertime::LayerTimeCommand stop;
+    stop.type = layertime::CommandType::ReconStop;
+    _core.execute(stop);
     lv_screen_load(_face.screen());
 }
 
@@ -334,9 +342,9 @@ void WatchApp::settingsChanged()
     _meshtastic.setIdentity(_settings.meshtasticNodeName);
     _meshtastic.setAdvertisingEnabled(_settings.meshtasticAdvertiseEnabled);
     _recon.setEarlyWarningEnabled(_settings.reconEarlyWarningEnabled);
-    _recon.setSleepModeEnabled(_settings.sleepModeEnabled);
+    _core.setSleepMode(_settings.sleepModeEnabled);
     _settingsService.save(_settings);
-    _face.render(_state, _settings, _recon.status());
+    _face.render(_state, _settings, _core.reconState());
     _gpsScreen.render(_state, _settings);
     _mappingScreen.render(_state, _settings);
     _meshScreen.render(_mesh.status());
@@ -348,38 +356,6 @@ void WatchApp::saveDateTime(int year, int month, int day, int hour, int minute)
 {
     _clock.setDateTime(year, month, day, hour, minute, 0);
     refreshState();
-}
-
-void WatchApp::reconDetectionSinkThunk(const ReconDetection &detection, void *userData)
-{
-    static_cast<WatchApp *>(userData)->logReconDetection(detection);
-}
-
-void WatchApp::logReconDetection(const ReconDetection &detection)
-{
-    if (!_settings.reconSdLoggingEnabled) {
-        return;
-    }
-
-    // The row format lives in core (src/core/logic/DetectionCsv).
-    layertime::detection_log::RowFields fields;
-    fields.year = _state.year;
-    fields.month = _state.month;
-    fields.day = _state.day;
-    fields.hour = _state.hour;
-    fields.minute = _state.minute;
-    fields.second = _state.second;
-    fields.category = detection.category;
-    fields.detail = detection.detail;
-    fields.address = detection.address;
-    fields.rssi = detection.rssi;
-    fields.channel = static_cast<unsigned>(detection.channel);
-    fields.confidence = ReconService::confidenceLabel(detection.confidence);
-
-    char row[layertime::detection_log::kRowBufferSize];
-    layertime::detection_log::formatRow(fields, row, sizeof(row));
-
-    _sdCard.appendCsvRow(layertime::detection_log::kPath, layertime::detection_log::kHeader, row);
 }
 
 void WatchApp::touchPressedThunk(lv_event_t *event)

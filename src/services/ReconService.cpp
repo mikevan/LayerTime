@@ -137,7 +137,7 @@ void ReconService::begin()
 void ReconService::startDetector(ReconDetector detector)
 {
     stop();
-    // Note: does NOT clearDetections() here. The threat log is persistent
+    // Note: does NOT clear the event log here. The threat log is persistent
     // across start/stop cycles by design - only an explicit user action
     // (ReconScreen's CLEAR LOG button) clears it, so the user always knows
     // whether anything has ever been seen, not just this session.
@@ -163,13 +163,8 @@ void ReconService::poll()
 {
     const uint32_t now = millis();
 
-    // Hardware and LVGL calls stay on the application loop, never the Wi-Fi
-    // or BLE callbacks.
-    if (_status.alertPending && _alertActuatedSerial != _status.eventSerial) {
-        _alertActuatedSerial = _status.eventSerial;
-        lv_display_trigger_activity(nullptr);
-        instance.vibrator();
-    }
+    // Alert actuation (wake + vibrate) moved to core's tick() and the
+    // T-Ultra AlertSink in Phase 0 Step 4, and still runs just before this.
 
     if (_status.monitoring) {
         pollManual(now);
@@ -352,73 +347,33 @@ void ReconService::exitManualMode()
     }
 }
 
-void ReconService::clearDetections()
+void ReconService::resetDetectorState()
 {
-    _status.detectionCount = 0;
-    _status.alertPending = false;
     _wifiClassifier.reset();
 }
 
-void ReconService::acknowledgeAlert() { _status.alertPending = false; }
 bool ReconService::wants(ReconDetector detector) const
 {
     return layertime::recon::wants(_status.monitoring, _status.detector,
                                    _earlyWarningEnabled && _earlyWarningSweeping, detector);
 }
 
-void ReconService::addDetection(ReconDetector detector, const char *detail, const char *address,
-                                int8_t rssi, SignalConfidence confidence, uint8_t channel)
+void ReconService::setCandidateSink(layertime::recon::CandidateSink sink, void *context)
 {
-    const char *category = detectorName(detector);
-    for (size_t i = 0; i < _status.detectionCount; ++i) {
-        ReconDetection &existing = _status.detections[i];
-        if (strcmp(existing.category, category) == 0 && strcmp(existing.address, address) == 0) {
-            existing.rssi = rssi;
-            existing.channel = channel;
-            existing.lastSeenMs = millis();
-            // Alert policy lives in core (src/core/logic/AlertPolicy): keep
-            // the strongest grade seen, and never alert on a repeat.
-            const layertime::alert::RepeatOutcome outcome =
-                layertime::alert::onRepeatSighting(existing.confidence, confidence);
-            existing.confidence = outcome.confidence;
-            if (outcome.raiseAlert) _status.alertPending = true;
-            ++existing.encounterCount;
-            return;
-        }
-    }
-
-    size_t index = _status.detectionCount;
-    if (index >= ReconStatus::MAX_DETECTIONS) {
-        memmove(&_status.detections[0], &_status.detections[1],
-                sizeof(ReconDetection) * (ReconStatus::MAX_DETECTIONS - 1));
-        index = ReconStatus::MAX_DETECTIONS - 1;
-    } else ++_status.detectionCount;
-
-    ReconDetection &entry = _status.detections[index];
-    entry = ReconDetection{};
-    snprintf(entry.category, sizeof(entry.category), "%s", category);
-    snprintf(entry.detail, sizeof(entry.detail), "%s", detail ? detail : "Activity detected");
-    snprintf(entry.address, sizeof(entry.address), "%s", address ? address : "");
-    entry.rssi = rssi;
-    entry.channel = channel;
-    entry.confidence = confidence;
-    entry.lastSeenMs = millis();
-    ++_status.eventSerial;
-    // The detection above is logged and counted either way. Whether it also
-    // buzzes is the core alert policy (src/core/logic/AlertPolicy).
-    if (layertime::alert::raisesOnNewRecord(confidence, _sleepModeEnabled)) {
-        _status.alertPending = true;
-    }
-
-    if (_detectionSink != nullptr) {
-        _detectionSink(entry, _detectionSinkUserData);
-    }
+    _candidateSink = sink;
+    _candidateSinkContext = context;
 }
 
-void ReconService::setDetectionSink(DetectionSink sink, void *userData)
+void ReconService::deliver(const layertime::recon::Candidate &candidate, layertime::SourceKind kind,
+                           layertime::Band band)
 {
-    _detectionSink = sink;
-    _detectionSinkUserData = userData;
+    // The event log itself is core's (src/core/logic/MonitorEventLog).
+    if (_candidateSink == nullptr) return;
+    layertime::recon::Candidate stamped = candidate;
+    stamped.sourceKind = kind;
+    stamped.band = band;
+    stamped.atMs = millis();
+    _candidateSink(stamped, _candidateSinkContext);
 }
 
 void ReconService::promiscuousThunk(void *buf, int type)
@@ -435,7 +390,7 @@ void ReconService::onPromiscuousPacket(void *buf, int type)
     // This side only unpacks what the Wi-Fi driver handed over.
     _wifiClassifier.classify(packet->payload, packet->rx_ctrl.sig_len, packet->rx_ctrl.rssi,
                              packet->rx_ctrl.channel, millis(), wantsThunk, this,
-                             candidateThunk, this);
+                             wifiCandidateThunk, this);
 }
 
 bool ReconService::wantsThunk(ReconDetector detector, const void *self)
@@ -443,10 +398,17 @@ bool ReconService::wantsThunk(ReconDetector detector, const void *self)
     return static_cast<const ReconService *>(self)->wants(detector);
 }
 
-void ReconService::candidateThunk(const layertime::recon::Candidate &c, void *self)
+// The T-Ultra's Wi-Fi radio is 2.4 GHz only.
+void ReconService::wifiCandidateThunk(const layertime::recon::Candidate &c, void *self)
 {
-    static_cast<ReconService *>(self)->addDetection(c.detector, c.detail, c.address, c.rssi,
-                                                    c.confidence, c.channel);
+    static_cast<ReconService *>(self)->deliver(c, layertime::SourceKind::Wifi,
+                                               layertime::Band::Band2_4GHz);
+}
+
+void ReconService::bleCandidateThunk(const layertime::recon::Candidate &c, void *self)
+{
+    static_cast<ReconService *>(self)->deliver(c, layertime::SourceKind::Ble,
+                                               layertime::Band::Unknown);
 }
 
 void ReconService::startBleScan(ReconDetector detector, uint32_t durationMs)
@@ -497,5 +459,5 @@ void ReconService::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
     advert.uuid16 = bleUuid16Thunk;
     advert.context = device;
 
-    layertime::recon::classifyBleAdvert(advert, _currentBleScanDetector, candidateThunk, this);
+    layertime::recon::classifyBleAdvert(advert, _currentBleScanDetector, bleCandidateThunk, this);
 }

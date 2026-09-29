@@ -58,7 +58,7 @@ create a new one.
 | eventId | uint32 | | Assigned when the record is created; +1 per new record |
 | detector | ReconTarget | | The detector that matched. Always a single detector, Deauth through GoogleTag. |
 | confidence | Confidence | | ReconDetection.confidence |
-| sourceKind | SourceKind | | Derived from the detector (Wi-Fi or BLE) |
+| sourceKind | SourceKind | | The radio that saw it (Wi-Fi or BLE). Flock can be either. |
 | sourceId | text | 19 | ReconDetection.address. Untrusted over-the-air text. |
 | detail | text | 40 | ReconDetection.detail |
 | rssi | int8 | dBm | ReconDetection.rssi |
@@ -81,8 +81,9 @@ A detector's display name is not stored on the event. Clients look it up in
 
 ## ReconState
 
-What Recon is doing right now. The event list is read from the monitor
-source, not copied into this record.
+What Recon is doing right now. The event list is kept by the application
+core and read from it, not copied into this record. The monitor source only
+acquires; it does not own event history.
 
 | Field | Type | T-Ultra source |
 |---|---|---|

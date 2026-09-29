@@ -22,6 +22,7 @@
 
 #include "../model/AppSettings.h"
 #include "../model/WatchState.h"
+#include "../core/model/ReconState.h"
 #include "../services/ReconService.h"
 #include "OwlLogo.h"
 #include "SquachLogo.h"
@@ -37,7 +38,7 @@ public:
     using MappingRequestedCallback = void (*)(void *userData);
 
     void create();
-    void render(const WatchState &state, const AppSettings &settings, const ReconStatus &reconStatus);
+    void render(const WatchState &state, const AppSettings &settings, const layertime::ReconState &recon);
     void setSettingsRequestedCallback(SettingsRequestedCallback callback, void *userData);
     void setGpsRequestedCallback(GpsRequestedCallback callback, void *userData);
     void setMeshRequestedCallback(MeshRequestedCallback callback, void *userData);

@@ -64,11 +64,13 @@ constexpr int LV_FLEX_FLOW_ROW_WRAP = 4;
 constexpr int LV_DIR_VER = 12;
 constexpr int LV_SCROLLBAR_MODE_AUTO = 3;
 constexpr int LV_ANIM_OFF = 0;
+constexpr int LV_FLEX_ALIGN_START = 0;
+constexpr int LV_FLEX_ALIGN_CENTER = 2;
 constexpr int32_t LV_SIZE_CONTENT = 2001;
 constexpr int32_t LV_COORD_MAX = 536870911;
 #define LV_H(x) (x)
 
-enum lv_event_code_t { LV_EVENT_ALL = 0, LV_EVENT_PRESSED = 1, LV_EVENT_CLICKED = 10 };
+enum lv_event_code_t { LV_EVENT_ALL = 0, LV_EVENT_PRESSED = 1, LV_EVENT_LONG_PRESSED = 5, LV_EVENT_CLICKED = 10 };
 
 enum lv_indev_type_t { LV_INDEV_TYPE_NONE = 0, LV_INDEV_TYPE_POINTER = 1 };
 
@@ -85,6 +87,8 @@ struct lv_obj_t {
     uint32_t flags = 0;
     uint32_t states = 0;
     void *userData = nullptr;
+    // Last text colour set, so tests can read status colouring.
+    uint32_t textColor = 0;
     struct Callback {
         lv_event_cb_t cb;
         lv_event_code_t code;
@@ -108,6 +112,8 @@ struct lv_draw_buf_t {};
 namespace fake_lv {
 
 inline lv_obj_t *g_active = nullptr;
+// LVGL's top layer: always drawn above whichever screen is active.
+inline lv_obj_t *g_top = nullptr;
 inline std::vector<lv_obj_t *> g_objects;  // every live object
 
 inline lv_obj_t *make(lv_obj_t *parent, FakeKind kind)
@@ -142,12 +148,13 @@ inline bool within(const lv_obj_t *o, const lv_obj_t *root)
     return false;
 }
 
-// Visible labels on the active screen, in creation order.
+// Visible labels on the active screen or the top layer, in creation order.
 inline std::vector<lv_obj_t *> visibleLabels()
 {
     std::vector<lv_obj_t *> out;
     for (lv_obj_t *o : g_objects)
-        if (o->kind == FakeKind::Label && within(o, g_active) && visible(o)) out.push_back(o);
+        if (o->kind == FakeKind::Label && (within(o, g_active) || within(o, g_top)) && visible(o))
+            out.push_back(o);
     return out;
 }
 
@@ -204,6 +211,7 @@ inline void reset()
         if (o->parent == nullptr) roots.push_back(o);
     for (lv_obj_t *r : roots) destroy(r);
     g_active = nullptr;
+    g_top = nullptr;
 }
 
 } // namespace fake_lv
@@ -256,7 +264,14 @@ inline void lv_textarea_add_text(lv_obj_t *o, const char *text)
 }
 inline const char *lv_textarea_get_text(const lv_obj_t *o) { return o ? o->text.c_str() : nullptr; }
 
+inline lv_obj_t *lv_layer_top()
+{
+    if (fake_lv::g_top == nullptr) fake_lv::g_top = fake_lv::make(nullptr, FakeKind::Object);
+    return fake_lv::g_top;
+}
+
 inline void lv_obj_add_flag(lv_obj_t *o, uint32_t f) { if (o) o->flags |= f; }
+inline void lv_obj_clear_flag(lv_obj_t *o, uint32_t f) { if (o) o->flags &= ~f; }
 inline void lv_obj_remove_flag(lv_obj_t *o, uint32_t f) { if (o) o->flags &= ~f; }
 inline bool lv_obj_has_flag(const lv_obj_t *o, uint32_t f) { return o && (o->flags & f) == f; }
 inline void lv_obj_add_state(lv_obj_t *o, uint32_t s) { if (o) o->states |= s; }
@@ -270,6 +285,11 @@ inline void lv_obj_add_event_cb(lv_obj_t *o, lv_event_cb_t cb, lv_event_code_t c
 }
 inline void *lv_event_get_user_data(lv_event_t *e) { return e ? e->userData : nullptr; }
 inline lv_obj_t *lv_event_get_target_obj(lv_event_t *e) { return e ? e->target : nullptr; }
+
+inline void lv_obj_set_style_text_color(lv_obj_t *o, lv_color_t c, int)
+{
+    if (o) o->textColor = c.hex;
+}
 
 inline void lv_screen_load(lv_obj_t *screen) { fake_lv::g_active = screen; }
 inline lv_obj_t *lv_screen_active() { return fake_lv::g_active; }
@@ -289,7 +309,6 @@ FAKE_LV_IGNORE(lv_obj_set_style_bg_opa)
 FAKE_LV_IGNORE(lv_obj_set_style_bg_color)
 FAKE_LV_IGNORE(lv_obj_set_style_border_width)
 FAKE_LV_IGNORE(lv_obj_set_style_border_color)
-FAKE_LV_IGNORE(lv_obj_set_style_text_color)
 FAKE_LV_IGNORE(lv_obj_set_style_text_font)
 FAKE_LV_IGNORE(lv_obj_set_style_text_align)
 FAKE_LV_IGNORE(lv_obj_set_style_pad_all)
@@ -307,6 +326,8 @@ FAKE_LV_IGNORE(lv_textarea_set_placeholder_text)
 FAKE_LV_IGNORE(lv_keyboard_set_textarea)
 FAKE_LV_IGNORE(lv_display_trigger_activity)
 FAKE_LV_IGNORE(lv_indev_add_event_cb)
+FAKE_LV_IGNORE(lv_obj_set_flex_align)
+FAKE_LV_IGNORE(lv_obj_move_foreground)
 
 inline void lv_timer_handler() {}
 inline uint32_t lv_display_get_inactive_time(void *) { return 0; }
