@@ -1,5 +1,5 @@
 // Characterization tests for the Meshtastic conversation and unread rules in
-// src/ui/MeshtasticScreen.cpp, as it stands.
+// src/platform/twatch_ultra/ui/MeshtasticScreen.cpp, as it stands.
 //
 // The screen is compiled unchanged against the test-only LVGL fake in
 // test/stubs/, driven through its public create/show/render API, and read
@@ -26,7 +26,7 @@
 
 #include "core/app/LayerTimeCore.h"
 #include "platform/twatch_ultra/TUltraMeshTransports.h"
-#include "ui/MeshtasticScreen.h"
+#include "platform/twatch_ultra/ui/MeshtasticScreen.h"
 
 // ---------------------------------------------------------------- link seams (test only)
 

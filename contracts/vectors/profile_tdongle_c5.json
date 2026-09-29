@@ -1,0 +1,27 @@
+{
+  "contractVersion": "0.1",
+  "profileId": "tdongle-c5",
+  "note": "LILYGO T-Dongle-C5, the LayerTime Node for Slice 1. It runs the Recon engine and serves the tactix over LayerTime Link; it has no operator UI beyond a status LCD, one LED, and one button. Drafted in Slice 1 Increment 0: nothing is verified yet, so every effective value is the DeviceCapabilities default and intent is in target. A field's effective value changes only when its status becomes verified on the board.",
+  "capabilities": {
+    "displayClass":         { "effective": "MonochromeLowRes", "target": "MonochromeLowRes", "status": "documented", "evidence": "0.96 in ST7735 80 x 160 status LCD: github.com/Xinyuan-LilyGO/T-Dongle-C5 readme.md and include/pin_config.h (commit 239a993). Colour, but too small for LayerTime screens; it shows status text only." },
+    "displayShape":         { "effective": "Rectangle",        "target": "Rectangle",        "status": "documented", "evidence": "Same source: 80 x 160 panel, used in landscape 160 x 80." },
+    "displayWidth":         { "effective": 0,                  "target": 160,                "status": "documented", "evidence": "include/pin_config.h TFT_HOR_RES 80 / TFT_VER_RES 160; src/platform/tdongle_c5/TDongleC5Pins.h" },
+    "displayHeight":        { "effective": 0,                  "target": 80,                 "status": "documented", "evidence": "As displayWidth" },
+    "touch":                { "effective": false,              "target": false,              "status": "documented", "evidence": "No touch controller on the schematic (hardware/T-Dongle-C5 V1.1.pdf)" },
+    "buttons":              { "effective": false,              "target": true,               "status": "documented", "evidence": "KEY1 (BOOT) on GPIO28 with 10 k pull-up R16, schematic V1.1; strapping pin per ESP32-C5 datasheet Table 3-3. Read as an input after boot in src/platform/tdongle_c5/C5BringUp.cpp." },
+    "vibration":            { "effective": false,              "target": false,              "status": "documented", "evidence": "No vibration motor on the schematic. Alerts use the APA102 LED (U3, GPIO4 clock / GPIO5 data) and the LCD." },
+    "gps":                  { "effective": false,              "target": false,              "status": "documented", "evidence": "No GNSS on the schematic. Position comes from the tactix in later slices." },
+    "compass":              { "effective": false,              "target": false,              "status": "documented", "evidence": "No magnetometer on the schematic" },
+    "altitude":             { "effective": false,              "target": false,              "status": "documented", "evidence": "No barometer or GNSS on the schematic" },
+    "nativeMaps":           { "effective": false,              "target": false,              "status": "documented", "evidence": "No cartography on a 160 x 80 status LCD" },
+    "removableStorage":     { "effective": false,              "target": false,              "status": "design",     "evidence": "A microSD slot exists (SPI, CS GPIO23, sharing the LCD bus; D0 is strapping pin GPIO7). Slice 1 decision D5: not used." },
+    "localWifiMonitor":     { "effective": false,              "target": true,               "status": "unverified", "evidence": "ESP32-C5 sniffer mode: docs.espressif.com/projects/esp-idf/en/latest/esp32c5/api-guides/wifi-driver/wifi-modes.html. Proven for LayerTime in Slice 1 Increment 2A." },
+    "localBleMonitor":      { "effective": false,              "target": true,               "status": "unverified", "evidence": "NimBLE on the ESP32-C5: docs.espressif.com/projects/esp-idf/en/latest/esp32c5/api-guides/ble/overview.html; NimBLE-Arduino 2.3.0+ lists ESP32C5. Proven for LayerTime in Slice 1 Increment 2A." },
+    "externalRecon":        { "effective": false,              "target": false,              "status": "design",     "evidence": "The C5 is the Recon engine and the LayerTime Link server, not a client of another node" },
+    "meshUi":               { "effective": false,              "target": false,              "status": "design",     "evidence": "No mesh on the C5 in Slice 1 (LT-ARCH-001 rule 6); mesh is Slice 2 through Android" },
+    "localMeshtasticRadio": { "effective": false,              "target": false,              "status": "design",     "evidence": "No LoRa radio on the board; LT-ARCH-001 rule 6" },
+    "localMeshCoreRadio":   { "effective": false,              "target": false,              "status": "design",     "evidence": "As localMeshtasticRadio" },
+    "meshRadioShared":      { "effective": false,              "target": false,              "status": "design",     "evidence": "No mesh radio" },
+    "androidBridge":        { "effective": false,              "target": false,              "status": "design",     "evidence": "The Android bridge is Slice 2 and serves the tactix, not the C5" }
+  }
+}

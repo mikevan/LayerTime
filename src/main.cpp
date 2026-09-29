@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <Arduino.h>
-#include "app/WatchApp.h"
+#include "platform/twatch_ultra/app/WatchApp.h"
 
 WatchApp app;
 

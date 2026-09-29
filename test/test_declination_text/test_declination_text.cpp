@@ -1,5 +1,5 @@
 // Characterization tests for the declination instruction text built in
-// src/ui/MappingScreen.cpp, as it stands.
+// src/platform/twatch_ultra/ui/MappingScreen.cpp, as it stands.
 //
 // The screen is compiled unchanged against the test-only LVGL fake, together
 // with the real DeclinationCalculator and GeoGrid, and driven through its
@@ -26,7 +26,7 @@
 
 #include "core/logic/DeclinationCalculator.h"
 #include "core/logic/GeoGrid.h"
-#include "ui/MappingScreen.h"
+#include "platform/twatch_ultra/ui/MappingScreen.h"
 
 namespace {
 
@@ -38,7 +38,7 @@ const Place kFortBragg{35.139, -79.006};
 struct Harness {
     MappingScreen screen;
     WatchState state;
-    AppSettings settings;
+    TUltraSettings settings;
 
     Harness()
     {

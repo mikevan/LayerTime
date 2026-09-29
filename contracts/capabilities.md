@@ -71,3 +71,4 @@ same edit. The conformance test enforces this rule for every profile.
 |---|---|---|
 | twatch-ultra | `vectors/profile_twatch_ultra.json` | Every field verified, by measurement or from the code. Bound in C++ by `src/platform/twatch_ultra/TUltraProfile.h`. |
 | tactix-amoled | `vectors/profile_tactix_amoled.json` | No LayerTime code runs on it yet, so nothing is verified and every effective value is the default. Intent is in `target`. |
+| tdongle-c5 | `vectors/profile_tdongle_c5.json` | Drafted in Slice 1 Increment 0. Nothing is verified yet, so every effective value is the default. Intent is in `target`; `localWifiMonitor` and `localBleMonitor` become verified in Increment 2A. |

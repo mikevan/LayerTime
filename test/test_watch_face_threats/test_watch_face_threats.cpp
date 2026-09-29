@@ -1,4 +1,4 @@
-// Characterization tests for the THREATS block on src/ui/WatchFace. Written
+// Characterization tests for the THREATS block on src/platform/twatch_ultra/ui/WatchFace. Written
 // in Phase 0 Step 4a against the face as it stood, before the detection log
 // moved into core.
 //
@@ -22,8 +22,8 @@
 #include "core/app/LayerTimeCore.h"
 #include "platform/twatch_ultra/TUltraAlertSink.h"
 #include "platform/twatch_ultra/TUltraMonitorSource.h"
-#include "services/ReconService.h"
-#include "ui/WatchFace.h"
+#include "platform/twatch_ultra/services/ReconService.h"
+#include "platform/twatch_ultra/ui/WatchFace.h"
 
 // ---- link fakes for the two logo widgets
 void OwlLogo::create(lv_obj_t *, int, int, int, int) {}
@@ -68,7 +68,7 @@ struct Harness {
     Recon svc;
     WatchFace face;
     WatchState state;
-    AppSettings settings;
+    TUltraSettings settings;
 
     Harness()
     {

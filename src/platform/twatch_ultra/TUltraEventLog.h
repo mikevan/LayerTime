@@ -23,9 +23,9 @@
 // WatchApp::logReconDetection in Phase 0 Step 4, output unchanged.
 
 #include "../../core/ports/EventLog.h"
-#include "../../model/AppSettings.h"
-#include "../../model/WatchState.h"
-#include "../../services/SdCardService.h"
+#include "model/TUltraSettings.h"
+#include "model/WatchState.h"
+#include "services/SdCardService.h"
 
 namespace layertime {
 namespace twatch_ultra {
@@ -34,13 +34,13 @@ class TUltraEventLog : public EventLog {
 public:
     // The row is stamped from `state`, WatchApp's cached clock, refreshed
     // every 250 ms - not the clock at the moment of detection.
-    TUltraEventLog(const AppSettings &settings, const WatchState &state, SdCardService &sdCard)
+    TUltraEventLog(const TUltraSettings &settings, const WatchState &state, SdCardService &sdCard)
         : _settings(settings), _state(state), _sdCard(sdCard) {}
 
     void append(const MonitorEvent &event) override;
 
 private:
-    const AppSettings &_settings;
+    const TUltraSettings &_settings;
     const WatchState &_state;
     SdCardService &_sdCard;
 };

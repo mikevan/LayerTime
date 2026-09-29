@@ -5,8 +5,8 @@
   "capabilities": {
     "displayClass":         { "effective": "ColorHighRes", "status": "verified", "evidence": "CO5300 QSPI AMOLED, LilyGoLib docs/hardware/lilygo-t-watch-ultra.md" },
     "displayShape":         { "effective": "Rectangle",    "status": "verified", "evidence": "410 x 502 panel; screens laid out at that size in src/ui" },
-    "displayWidth":         { "effective": 410,            "status": "verified", "evidence": "LilyGoLib hardware doc; src/ui/MappingScreen.cpp" },
-    "displayHeight":        { "effective": 502,            "status": "verified", "evidence": "LilyGoLib hardware doc; src/ui/MappingScreen.cpp" },
+    "displayWidth":         { "effective": 410,            "status": "verified", "evidence": "LilyGoLib hardware doc; src/platform/twatch_ultra/ui/MappingScreen.cpp" },
+    "displayHeight":        { "effective": 502,            "status": "verified", "evidence": "LilyGoLib hardware doc; src/platform/twatch_ultra/ui/MappingScreen.cpp" },
     "touch":                { "effective": true,           "status": "verified", "evidence": "CST9217 at I2C 0x1A, measured by tools/gpsdiag 2026-09-05" },
     "buttons":              { "effective": false,          "status": "verified", "evidence": "No physical button input anywhere in src/" },
     "vibration":            { "effective": true,           "status": "verified", "evidence": "DRV2605 at I2C 0x5A; instance.vibrator() in ReconService" },

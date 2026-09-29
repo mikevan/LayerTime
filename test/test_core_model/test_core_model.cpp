@@ -20,10 +20,10 @@
 // MeshCore service's records were called MeshNode and MeshMessage, the same
 // names as the core model's, until Phase 0 Step 5 renamed them MeshCoreNode
 // and MeshCoreMessage; this must still compile with both in scope.
-#include "services/MeshService.h"
-#include "services/MeshtasticService.h"
+#include "platform/twatch_ultra/services/MeshService.h"
+#include "platform/twatch_ultra/services/MeshtasticService.h"
 #include "core/logic/MonitorEventLog.h"
-#include "services/ReconService.h"
+#include "platform/twatch_ultra/services/ReconService.h"
 #include "core/logic/QuickMessages.h"
 
 #include "core/model/Alert.h"
@@ -508,6 +508,16 @@ void tactix_profile_obeys_effective_rule()
     for (const char *f : kCapabilityFields) CHECK_TRUE(hasKey(j, object(j, caps, f), "target"));
 }
 
+void tdongle_c5_profile_obeys_effective_rule()
+{
+    checkProfileRules("profile_tdongle_c5.json");
+    const std::string j = readVector("profile_tdongle_c5.json");
+    CHECK_STR("tdongle-c5", stringValue(j, whole(j), "profileId").c_str());
+    // Drafted before any hardware proof: intent is recorded in target on every field.
+    Span caps = object(j, whole(j), "capabilities");
+    for (const char *f : kCapabilityFields) CHECK_TRUE(hasKey(j, object(j, caps, f), "target"));
+}
+
 void twatch_ultra_binding_matches_effective_values()
 {
     const std::string j = readVector("profile_twatch_ultra.json");
@@ -720,6 +730,7 @@ int main(int argc, char **argv)
     CASE(mesh_state_indexes_by_network);
     CASE(twatch_ultra_profile_obeys_effective_rule);
     CASE(tactix_profile_obeys_effective_rule);
+    CASE(tdongle_c5_profile_obeys_effective_rule);
     CASE(twatch_ultra_binding_matches_effective_values);
     CASE(mesh_identity_lengths_follow_kind);
     CASE(mesh_identity_network_follows_kind);

@@ -1,4 +1,4 @@
-// Characterization tests for src/ui/MeshScreen, the MeshCore screen. Written
+// Characterization tests for src/platform/twatch_ultra/ui/MeshScreen, the MeshCore screen. Written
 // in Phase 0 Step 5a against the screen as it stood, before its send moved
 // behind a core command and its phrase list moved into core. Step 5 rewired
 // the screen; only the Harness changed, and every case is as written in 5a.
@@ -20,7 +20,7 @@
 
 #include "core/app/LayerTimeCore.h"
 #include "platform/twatch_ultra/TUltraMeshTransports.h"
-#include "ui/MeshScreen.h"
+#include "platform/twatch_ultra/ui/MeshScreen.h"
 
 // ---------------------------------------------------------------- link seams (test only)
 

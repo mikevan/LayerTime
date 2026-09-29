@@ -29,7 +29,7 @@
 #include <Arduino.h>
 
 #include "../../core/ports/NavigationSource.h"
-#include "../../model/WatchState.h"
+#include "model/WatchState.h"
 
 namespace layertime {
 namespace twatch_ultra {

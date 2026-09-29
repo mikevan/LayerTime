@@ -233,12 +233,12 @@ belongs to that platform, not here.
 
 | Field | Type | Size | Default | T-Ultra source |
 |---|---|---|---|---|
-| use24Hour | bool | | false | AppSettings.use24Hour, NVS "clock24" |
-| metricUnits | bool | | false | AppSettings.metricUnits, NVS "metric" |
-| sleepModeEnabled | bool | | false | AppSettings.sleepModeEnabled, NVS "sleepmode" |
-| earlyWarningEnabled | bool | | true | AppSettings.reconEarlyWarningEnabled, NVS "reconew" |
-| meshAdvertising | bool per network | | false | AppSettings.meshAdvertiseEnabled (NVS "meshadv"), meshtasticAdvertiseEnabled (NVS "mtadv") |
-| meshtasticName | text | 20 | empty | AppSettings.meshtasticNodeName, NVS "mtname". Empty means the platform generates one. |
+| use24Hour | bool | | false | NVS "clock24", through TUltraSettingsStore |
+| metricUnits | bool | | false | NVS "metric", through TUltraSettingsStore |
+| sleepModeEnabled | bool | | false | NVS "sleepmode", through TUltraSettingsStore |
+| earlyWarningEnabled | bool | | true | NVS "reconew", through TUltraSettingsStore |
+| meshAdvertising | bool per network | | false | NVS "meshadv" (MeshCore) and "mtadv" (Meshtastic), through TUltraSettingsStore |
+| meshtasticName | text | 20 | empty | NVS "mtname", through TUltraSettingsStore. Empty means the platform generates one. |
 
 Sleep mode is the alert suppression in "Alert" below. The T-Ultra also
 darkens its backlight for it; that part is the platform's.

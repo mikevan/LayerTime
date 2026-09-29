@@ -1,4 +1,4 @@
-// Characterization tests for what src/ui/MeshtasticScreen asks the mesh to
+// Characterization tests for what src/platform/twatch_ultra/ui/MeshtasticScreen asks the mesh to
 // do: send on a channel, send direct, and add, edit, or delete a channel.
 // Written in Phase 0 Step 5a against the screen as it stood, before those
 // actions moved behind core commands.
@@ -25,7 +25,7 @@
 
 #include "core/app/LayerTimeCore.h"
 #include "platform/twatch_ultra/TUltraMeshTransports.h"
-#include "ui/MeshtasticScreen.h"
+#include "platform/twatch_ultra/ui/MeshtasticScreen.h"
 
 // ---------------------------------------------------------------- link seams (test only)
 

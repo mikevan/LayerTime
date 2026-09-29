@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!-- LayerTime Connect IQ Device App. Slice 1 Increment 0 skeleton.
+     Hand-written, not generated: the product list is deliberately the one
+     device LayerTime targets in Slice 1. Add products only by decision. -->
+<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
+    <iq:application entry="LayerTimeApp" id="138526A970794AFB8318DF0370265696" launcherIcon="@Drawables.LauncherIcon" minApiLevel="6.0.0" name="@Strings.AppName" type="watch-app" version="0.1.0">
+        <iq:products>
+            <iq:product id="fenix847mm"/>
+        </iq:products>
+        <iq:permissions>
+            <iq:uses-permission id="BluetoothLowEnergy"/>
+        </iq:permissions>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+        <iq:barrels/>
+    </iq:application>
+</iq:manifest>

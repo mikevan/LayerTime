@@ -31,20 +31,20 @@
 #include <Preferences.h>
 #include <esp_wifi.h>
 
-#include "app/WatchApp.h"
+#include "platform/twatch_ultra/app/WatchApp.h"
 
 // ---------------------------------------------------------------- link seams (test only)
 
 namespace fake_app {
 struct CsvWrite { std::string path, header, row; };
 inline std::vector<CsvWrite> g_writes;
-inline AppSettings g_settings;
+inline TUltraSettings g_settings;
 inline WatchState g_clock;
 
 // What the cases call to act as the Recon and Settings screens would.
 struct Recon {
     layertime::LayerTimeCore *core = nullptr;
-    AppSettings *settings = nullptr;
+    TUltraSettings *settings = nullptr;
     SettingsScreen::SettingsChangedCallback settingsChanged = nullptr;
     void *app = nullptr;
 
@@ -118,11 +118,11 @@ bool SdCardService::appendCsvRow(const char *path, const char *header, const cha
     fake_app::g_writes.push_back({path, header, row});
     return true;
 }
-void SettingsService::load(AppSettings &s) { s = fake_app::g_settings; }
-void SettingsService::apply(const AppSettings &) {}
-void SettingsService::save(const AppSettings &) {}
+void SettingsService::load(TUltraSettings &s) { s = fake_app::g_settings; }
+void SettingsService::apply(const TUltraSettings &) {}
+void SettingsService::save(const TUltraSettings &) {}
 void WatchFace::create() {}
-void WatchFace::render(const WatchState &, const AppSettings &, const layertime::ApplicationSettings &,
+void WatchFace::render(const WatchState &, const TUltraSettings &, const layertime::ApplicationSettings &,
                        const layertime::ReconState &) {}
 void WatchFace::setSettingsRequestedCallback(SettingsRequestedCallback, void *) {}
 void WatchFace::setGpsRequestedCallback(GpsRequestedCallback, void *) {}
@@ -135,8 +135,8 @@ void GpsScreen::create(BackCallback, void *) {}
 void GpsScreen::show(const WatchState &, const layertime::ApplicationSettings &) {}
 void GpsScreen::render(const WatchState &, const layertime::ApplicationSettings &) {}
 void MappingScreen::create(BackCallback, void *) {}
-void MappingScreen::show(const WatchState &, const AppSettings &) {}
-void MappingScreen::render(const WatchState &, const AppSettings &) {}
+void MappingScreen::show(const WatchState &, const TUltraSettings &) {}
+void MappingScreen::render(const WatchState &, const TUltraSettings &) {}
 void MeshScreen::create(layertime::LayerTimeCore *, const MeshService *, BackCallback, void *) {}
 void MeshScreen::show(const MeshStatus &) {}
 void MeshScreen::render(const MeshStatus &) {}
@@ -150,7 +150,7 @@ void ReconScreen::create(layertime::LayerTimeCore *core, BackCallback, void *)
 }
 void ReconScreen::show(ReconDetector) {}
 void ReconScreen::render() {}
-void SettingsScreen::create(AppSettings &settings, layertime::LayerTimeCore *, const WatchState &, SdCardService &, BackCallback,
+void SettingsScreen::create(TUltraSettings &settings, layertime::LayerTimeCore *, const WatchState &, SdCardService &, BackCallback,
                             SettingsChangedCallback changed, DateTimeSaveCallback, void *app)
 {
     fake_app::g_reconSeam.settings = &settings;
@@ -177,7 +177,7 @@ struct Harness {
         fake_app::g_writes.clear();
         fake_app::g_recon = nullptr;
         fake_app::g_reconSeam = fake_app::Recon{};
-        fake_app::g_settings = AppSettings{};
+        fake_app::g_settings = TUltraSettings{};
         fake_app::g_settings.reconSdLoggingEnabled = logging;
         // Since Phase 0 Step 6 early warning and sleep mode are application
         // settings, loaded by the core from NVS (test/stubs/Preferences.h).

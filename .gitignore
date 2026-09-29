@@ -4,3 +4,5 @@ build
 .github
 .keepsafe
 Claude outputs/
+garmin/bin/
+__pycache__/

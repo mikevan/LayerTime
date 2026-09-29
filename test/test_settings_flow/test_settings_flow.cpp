@@ -29,7 +29,7 @@
 #include <Preferences.h>
 #include <esp_wifi.h>
 
-#include "app/WatchApp.h"
+#include "platform/twatch_ultra/app/WatchApp.h"
 
 // ---------------------------------------------------------------- link seams (test only)
 
@@ -81,7 +81,7 @@ uint64_t SdCardService::totalBytes() const { return 0; }
 uint64_t SdCardService::usedBytes() const { return 0; }
 bool SdCardService::appendCsvRow(const char *, const char *, const char *) { return true; }
 void WatchFace::create() {}
-void WatchFace::render(const WatchState &, const AppSettings &s, const layertime::ApplicationSettings &app,
+void WatchFace::render(const WatchState &, const TUltraSettings &s, const layertime::ApplicationSettings &app,
                        const layertime::ReconState &)
 {
     fake_app::g_face.drawn = true;
@@ -104,8 +104,8 @@ void GpsScreen::create(BackCallback, void *) {}
 void GpsScreen::show(const WatchState &, const layertime::ApplicationSettings &) {}
 void GpsScreen::render(const WatchState &, const layertime::ApplicationSettings &s) { fake_app::g_gpsMetric = s.metricUnits; }
 void MappingScreen::create(BackCallback, void *) {}
-void MappingScreen::show(const WatchState &, const AppSettings &) {}
-void MappingScreen::render(const WatchState &, const AppSettings &) {}
+void MappingScreen::show(const WatchState &, const TUltraSettings &) {}
+void MappingScreen::render(const WatchState &, const TUltraSettings &) {}
 void MeshScreen::create(layertime::LayerTimeCore *, const MeshService *, BackCallback, void *) {}
 void MeshScreen::show(const MeshStatus &) {}
 void MeshScreen::render(const MeshStatus &) {}

@@ -1,4 +1,4 @@
-// Characterization tests for the clock and altitude on src/ui/WatchFace:
+// Characterization tests for the clock and altitude on src/platform/twatch_ultra/ui/WatchFace:
 // 12- or 24-hour time, and altitude in feet or metres. Added in Phase 0
 // Step 6, when those two settings moved into the core, and run against the
 // face both before and after that move with identical results.
@@ -12,7 +12,7 @@
 #include <string>
 
 #include "core/app/LayerTimeCore.h"
-#include "ui/WatchFace.h"
+#include "platform/twatch_ultra/ui/WatchFace.h"
 
 // ---- link fakes for the two logo widgets
 void OwlLogo::create(lv_obj_t *, int, int, int, int) {}
@@ -27,7 +27,7 @@ namespace {
 struct Harness {
     WatchFace face;
     WatchState state;
-    AppSettings settings;
+    TUltraSettings settings;
     layertime::LayerTimeCore core;
 
     Harness()

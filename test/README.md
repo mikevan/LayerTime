@@ -61,37 +61,37 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_ubx test_ubx/test_ubx.cpp
 g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_recon test_recon/test_recon.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_recon
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_chats test_meshtastic_chats/test_meshtastic_chats.cpp ../src/ui/MeshtasticScreen.cpp ../src/core/logic/MeshConversations.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_chats test_meshtastic_chats/test_meshtastic_chats.cpp ../src/platform/twatch_ultra/ui/MeshtasticScreen.cpp ../src/core/logic/MeshConversations.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_chats
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_decl test_declination_text/test_declination_text.cpp ../src/ui/MappingScreen.cpp ../src/core/logic/DeclinationAdvice.cpp ../src/core/logic/DeclinationCalculator.cpp ../src/core/logic/GeoGrid.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_decl test_declination_text/test_declination_text.cpp ../src/platform/twatch_ultra/ui/MappingScreen.cpp ../src/core/logic/DeclinationAdvice.cpp ../src/core/logic/DeclinationCalculator.cpp ../src/core/logic/GeoGrid.cpp
 ./tests_decl
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/platform/twatch_ultra/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/platform/twatch_ultra/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
 ./tests_log
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_recon_screen test_recon_screen/test_recon_screen.cpp ../src/ui/ReconScreen.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_recon_screen test_recon_screen/test_recon_screen.cpp ../src/platform/twatch_ultra/ui/ReconScreen.cpp ../src/platform/twatch_ultra/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_recon_screen
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_watch_face_threats test_watch_face_threats/test_watch_face_threats.cpp ../src/ui/WatchFace.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_watch_face_threats test_watch_face_threats/test_watch_face_threats.cpp ../src/platform/twatch_ultra/ui/WatchFace.cpp ../src/platform/twatch_ultra/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_watch_face_threats
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_mesh_screen test_mesh_screen/test_mesh_screen.cpp ../src/ui/MeshScreen.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_mesh_screen test_mesh_screen/test_mesh_screen.cpp ../src/platform/twatch_ultra/ui/MeshScreen.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_mesh_screen
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_meshtastic_actions test_meshtastic_actions/test_meshtastic_actions.cpp ../src/ui/MeshtasticScreen.cpp ../src/core/logic/MeshConversations.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_meshtastic_actions test_meshtastic_actions/test_meshtastic_actions.cpp ../src/platform/twatch_ultra/ui/MeshtasticScreen.cpp ../src/core/logic/MeshConversations.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_meshtastic_actions
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_mesh_radio_exclusivity test_mesh_radio_exclusivity/test_mesh_radio_exclusivity.cpp ../src/ui/SettingsScreen.cpp ../src/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_mesh_radio_exclusivity test_mesh_radio_exclusivity/test_mesh_radio_exclusivity.cpp ../src/platform/twatch_ultra/ui/SettingsScreen.cpp ../src/platform/twatch_ultra/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/platform/twatch_ultra/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
 ./tests_mesh_radio_exclusivity
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_settings_persistence test_settings_persistence/test_settings_persistence.cpp ../src/services/SettingsService.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_settings_persistence test_settings_persistence/test_settings_persistence.cpp ../src/platform/twatch_ultra/services/SettingsService.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
 ./tests_settings_persistence
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_settings_flow test_settings_flow/test_settings_flow.cpp ../src/services/SettingsService.cpp ../src/ui/SettingsScreen.cpp ../src/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_settings_flow test_settings_flow/test_settings_flow.cpp ../src/platform/twatch_ultra/services/SettingsService.cpp ../src/platform/twatch_ultra/ui/SettingsScreen.cpp ../src/platform/twatch_ultra/app/WatchApp.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/platform/twatch_ultra/TUltraAlertSink.cpp ../src/platform/twatch_ultra/TUltraEventLog.cpp ../src/core/logic/DetectionCsv.cpp ../src/platform/twatch_ultra/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/platform/twatch_ultra/TUltraSettingsStore.cpp
 ./tests_settings_flow
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_watch_face_units test_watch_face_units/test_watch_face_units.cpp ../src/ui/WatchFace.cpp ../src/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_watch_face_units test_watch_face_units/test_watch_face_units.cpp ../src/platform/twatch_ultra/ui/WatchFace.cpp ../src/platform/twatch_ultra/services/ReconService.cpp ../src/core/logic/ReconSelection.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_watch_face_units
 ```
 
@@ -189,4 +189,33 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_navigation_source
 
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_mesh_transports test_mesh_transports/test_mesh_transports.cpp
 ./tests_mesh_transports
+```
+
+## T-Dongle-C5
+
+The hardware-free logic behind the C5 bring-up firmware in
+`src/platform/tdongle_c5/` (Slice 1 Increment 0): the APA102 LED frame, the
+button debouncer, the advertised test name, and the MiB report. Run from
+`test/`.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_tdongle_c5_bringup test_tdongle_c5_bringup/test_tdongle_c5_bringup.cpp ../src/platform/tdongle_c5/BringUpLogic.cpp
+./tests_tdongle_c5_bringup
+```
+
+## Core and platform boundary
+
+Checks the source tree itself. Every `#include` under `src/` is resolved the
+way the compiler resolves it (the including file's directory, then the
+`src/` include root) and judged by the file it reaches, not by how its path
+is spelled. `src/core` may reach only `src/core` and the C and C++ standard
+library. Everything specific to one device lives under
+`src/platform/<target>/`; only platform code and `src/main.cpp` reach it, and
+one target never reaches into another (`twatch_ultra` and `tdongle_c5` today). Added in Phase 0 Step 7, when the
+T-Ultra's app, services, screens, and settings structs moved under
+`src/platform/twatch_ultra/`. Run from `test/`, because it reads `../src`.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_boundary test_boundary/test_boundary.cpp
+./tests_boundary
 ```

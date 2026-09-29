@@ -22,7 +22,7 @@
 // the Wi-Fi promiscuous capture, NimBLE scanning and radio scheduling.
 
 #include "../../core/ports/MonitorSource.h"
-#include "../../services/ReconService.h"
+#include "services/ReconService.h"
 
 namespace layertime {
 namespace twatch_ultra {

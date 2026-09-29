@@ -1,5 +1,5 @@
 // Characterization tests for how LayerTime's settings are saved to and
-// loaded from NVS. Written in Phase 0 Step 6a against src/services/
+// loaded from NVS. Written in Phase 0 Step 6a against src/platform/twatch_ultra/services/
 // SettingsService as it stood, before the settings split into application
 // settings (owned by the core) and T-Ultra settings.
 //
@@ -26,7 +26,7 @@
 #include <Preferences.h>
 
 #include "platform/twatch_ultra/TUltraSettingsStore.h"
-#include "services/SettingsService.h"
+#include "platform/twatch_ultra/services/SettingsService.h"
 
 namespace {
 
@@ -81,9 +81,9 @@ struct Harness {
     static constexpr uint8_t kCore = static_cast<uint8_t>(layertime::MeshNetwork::MeshCore);
     static constexpr uint8_t kTastic = static_cast<uint8_t>(layertime::MeshNetwork::Meshtastic);
 
-    static AppSettings toPlatform(const Settings &s)
+    static TUltraSettings toPlatform(const Settings &s)
     {
-        AppSettings a;
+        TUltraSettings a;
         a.brightness = s.brightness;
         a.gpsEnabled = s.gpsEnabled;
         a.meshEnabled = s.meshEnabled;
@@ -104,7 +104,7 @@ struct Harness {
         c.sleepModeEnabled = s.sleepModeEnabled;
         return c;
     }
-    static Settings combined(const AppSettings &a, const layertime::ApplicationSettings &c)
+    static Settings combined(const TUltraSettings &a, const layertime::ApplicationSettings &c)
     {
         Settings s;
         s.brightness = a.brightness;
@@ -126,7 +126,7 @@ struct Harness {
     // Loads into `start` and returns what the watch would then hold.
     Settings load(const Settings &start = Settings{})
     {
-        AppSettings a = toPlatform(start);
+        TUltraSettings a = toPlatform(start);
         layertime::ApplicationSettings c = toApplication(start);
         service.load(a);
         store.load(c);

@@ -1,4 +1,4 @@
-// Characterization tests for src/ui/ReconScreen. Written in Phase 0 Step 4a
+// Characterization tests for src/platform/twatch_ultra/ui/ReconScreen. Written in Phase 0 Step 4a
 // against the screen as it stood, before the detection log and the Recon
 // commands moved into core.
 //
@@ -21,8 +21,8 @@
 #include "core/app/LayerTimeCore.h"
 #include "platform/twatch_ultra/TUltraAlertSink.h"
 #include "platform/twatch_ultra/TUltraMonitorSource.h"
-#include "services/ReconService.h"
-#include "ui/ReconScreen.h"
+#include "platform/twatch_ultra/services/ReconService.h"
+#include "platform/twatch_ultra/ui/ReconScreen.h"
 
 namespace {
 

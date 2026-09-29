@@ -1,4 +1,4 @@
-// Characterization tests for src/services/ReconService.cpp, as it stands.
+// Characterization tests for src/platform/twatch_ultra/services/ReconService.cpp, as it stands.
 //
 // The production file is compiled into this test unchanged, by including it,
 // so its file-local classifiers and signature tables are reachable. Radio
@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "services/ReconService.cpp"
+#include "platform/twatch_ultra/services/ReconService.cpp"
 
 #include "core/app/LayerTimeCore.h"
 #include "platform/twatch_ultra/TUltraAlertSink.h"

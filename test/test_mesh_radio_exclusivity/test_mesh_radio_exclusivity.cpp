@@ -26,13 +26,13 @@
 #include <Preferences.h>
 #include <esp_wifi.h>
 
-#include "app/WatchApp.h"
+#include "platform/twatch_ultra/app/WatchApp.h"
 
 // ---------------------------------------------------------------- link seams (test only)
 
 namespace fake_app {
 inline std::vector<std::string> g_radio;
-inline AppSettings g_settings;
+inline TUltraSettings g_settings;
 inline WatchFace::SettingsRequestedCallback g_openSettings = nullptr;
 inline void *g_openSettingsUser = nullptr;
 }
@@ -73,11 +73,11 @@ bool SdCardService::formatAndMount() { return false; }
 uint64_t SdCardService::totalBytes() const { return 0; }
 uint64_t SdCardService::usedBytes() const { return 0; }
 bool SdCardService::appendCsvRow(const char *, const char *, const char *) { return true; }
-void SettingsService::load(AppSettings &s) { s = fake_app::g_settings; }
-void SettingsService::apply(const AppSettings &) {}
-void SettingsService::save(const AppSettings &) {}
+void SettingsService::load(TUltraSettings &s) { s = fake_app::g_settings; }
+void SettingsService::apply(const TUltraSettings &) {}
+void SettingsService::save(const TUltraSettings &) {}
 void WatchFace::create() {}
-void WatchFace::render(const WatchState &, const AppSettings &, const layertime::ApplicationSettings &,
+void WatchFace::render(const WatchState &, const TUltraSettings &, const layertime::ApplicationSettings &,
                        const layertime::ReconState &) {}
 void WatchFace::setSettingsRequestedCallback(SettingsRequestedCallback cb, void *u)
 {
@@ -94,8 +94,8 @@ void GpsScreen::create(BackCallback, void *) {}
 void GpsScreen::show(const WatchState &, const layertime::ApplicationSettings &) {}
 void GpsScreen::render(const WatchState &, const layertime::ApplicationSettings &) {}
 void MappingScreen::create(BackCallback, void *) {}
-void MappingScreen::show(const WatchState &, const AppSettings &) {}
-void MappingScreen::render(const WatchState &, const AppSettings &) {}
+void MappingScreen::show(const WatchState &, const TUltraSettings &) {}
+void MappingScreen::render(const WatchState &, const TUltraSettings &) {}
 void MeshScreen::create(layertime::LayerTimeCore *, const MeshService *, BackCallback, void *) {}
 void MeshScreen::show(const MeshStatus &) {}
 void MeshScreen::render(const MeshStatus &) {}
@@ -120,7 +120,7 @@ struct Harness {
         fake_wifi::g_rxCallback = nullptr;
         fake_nimble::g_scan = NimBLEScan{};
         fake_app::g_radio.clear();
-        fake_app::g_settings = AppSettings{};
+        fake_app::g_settings = TUltraSettings{};
         // Keep Recon's radios out of it. Early warning is an application
         // setting since Phase 0 Step 6, loaded by the core from NVS.
         fake_nvs::reset();

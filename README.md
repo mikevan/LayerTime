@@ -158,10 +158,19 @@ This project builds against **[pioarduino](https://github.com/pioarduino/platfor
 
 ## Project layout
 
-- `src/app/WatchApp.*` — top-level app: wires every service and screen together, owns the settings-changed/mutual-exclusion logic.
-- `src/services/` — hardware/protocol logic (Battery, Clock, GPS, Recon, MeshService (MeshCore), MeshtasticService, SdCardService, SettingsService).
-- `src/ui/` — LVGL screens (WatchFace, GpsScreen, MeshScreen, MeshtasticScreen, ReconScreen, SettingsScreen).
-- `src/model/` — shared state/settings structs (`AppSettings`, `WatchState`).
+- `src/core/` — the LayerTime application itself, independent of any watch: the model, the application logic, and the ports a platform plugs into. It uses nothing but the C and C++ standard libraries.
+- `src/platform/twatch_ultra/` — everything specific to the T-Watch Ultra:
+  - `app/WatchApp.*` — wires the core, every service, and every screen together, and owns the settings-changed/mutual-exclusion logic.
+  - `services/` — hardware/protocol logic (Battery, Clock, GPS, Recon, MeshService (MeshCore), MeshtasticService, SdCardService, SettingsService).
+  - `ui/` — LVGL screens (WatchFace, GpsScreen, MappingScreen, MeshScreen, MeshtasticScreen, ReconScreen, SettingsScreen).
+  - `model/` — the watch's own state and settings structs (`TUltraSettings`, `WatchState`).
+  - the adapters that connect the core's ports to those services.
+- `src/platform/tdongle_c5/` — the LayerTime Node on the LILYGO T-Dongle-C5 (Slice 1). Increment 0 bring-up: status LCD with the LayerTime owl, APA102 LED, BOOT button, PSRAM, and a NimBLE test advertisement (`tools/c5_owl_image.py` regenerates the owl bitmap from the T-Ultra SVG). Built by the `tdongle_c5` environment in `platformio.ini`.
+- `garmin/` — the LayerTime Connect IQ Device App for the Garmin tactix 8 AMOLED (Slice 1). Increment 0 skeleton.
+- `boards/` — board definitions not shipped by the platform (`lilygo-t-dongle-c5.json`).
+- `tools/pioarduino-platform-55.03.36-1-lt1/` — the T-Ultra build platform (pioarduino 55.03.36-1, Arduino core 3.3.6) carried in-tree with a one-line bootstrap patch; see its `LAYERTIME-PATCH.md`.
+- `contracts/` — the canonical LayerTime application model; every target binds to it.
+- `test/` — host-side tests built with plain g++; see `test/README.md`.
 - `variants/lilygo_twatch_ultra/` — board pin definitions.
 - `assets/` — source SVG assets (owl logo) and README imagery.
 - `docs/` — the browser flasher published by GitHub Pages (`index.html`, `manifest.json`, `firmware/`).

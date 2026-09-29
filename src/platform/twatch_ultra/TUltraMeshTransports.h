@@ -28,8 +28,8 @@
 // reported NotReady while the radio is not ready, and Failed otherwise.
 
 #include "../../core/ports/MeshTransport.h"
-#include "../../services/MeshService.h"
-#include "../../services/MeshtasticService.h"
+#include "services/MeshService.h"
+#include "services/MeshtasticService.h"
 
 namespace layertime {
 namespace twatch_ultra {
