@@ -6,3 +6,4 @@ build
 Claude outputs/
 garmin/bin/
 __pycache__/
+garmin/developer_key

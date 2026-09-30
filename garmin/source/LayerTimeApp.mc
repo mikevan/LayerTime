@@ -16,9 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// Slice 1 Increment 0: the app skeleton. It proves the project builds for
-// fenix847mm (the tactix 8 AMOLED device id), installs, launches, draws, and
-// takes button input. LayerTime Link arrives in Increment 1.
+// Slice 1 Increment 1: the app owns the LayerTime Link client for as long
+// as it runs (foreground Device App by decision; plan section 0B).
 
 import Toybox.Application;
 import Toybox.Lang;
@@ -26,18 +25,27 @@ import Toybox.WatchUi;
 
 class LayerTimeApp extends Application.AppBase {
 
+    private var _link as LinkClient?;
+
     public function initialize() {
         AppBase.initialize();
     }
 
     public function onStart(state as Dictionary?) as Void {
+        _link = new LinkClient();
+        _link.start();
     }
 
     public function onStop(state as Dictionary?) as Void {
+        if (_link != null) {
+            _link.stop();
+            _link = null;
+        }
     }
 
     public function getInitialView() as [Views] or [Views, InputDelegates] {
-        var view = new $.LayerTimeView();
-        return [view, new $.LayerTimeDelegate(view)];
+        var link = _link as LinkClient;
+        var view = new $.LayerTimeView(link);
+        return [view, new $.LayerTimeDelegate(link)];
     }
 }

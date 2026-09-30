@@ -19,39 +19,53 @@
 import Toybox.Lang;
 import Toybox.WatchUi;
 
-// Physical-button-first input. BACK is left to the system so it exits the
-// app, which is the intended Slice 1 way to leave the mission interface.
+// Physical-button-first input. START sends a PING; BACK is left to the
+// system so it exits the app, which is the intended way to leave the
+// mission interface. A new-session notice is dismissed by any button. On
+// the linktest build only, UP starts or stops the 100-PING burst
+// (LinkBurst.mc) and DOWN starts the 10-minute Status measurement
+// (HeartbeatWatch.mc; a second DOWN during a run is ignored); the release
+// build's LinkBurst.toggle() and HeartbeatWatch.start() do nothing.
 class LayerTimeDelegate extends WatchUi.BehaviorDelegate {
 
-    private var _view as LayerTimeView;
+    private var _link as LinkClient;
 
-    public function initialize(view as LayerTimeView) {
+    public function initialize(link as LinkClient) {
         BehaviorDelegate.initialize();
-        _view = view;
+        _link = link;
     }
 
     public function onSelect() as Boolean {
-        _view.recordKey("START");
+        if (_link.newSession) {
+            _link.acknowledgeNewSession();
+            return true;
+        }
+        _link.ping();
+        WatchUi.requestUpdate();
         return true;
     }
 
     public function onNextPage() as Boolean {
-        _view.recordKey("DOWN");
+        if (_link.newSession) {
+            _link.acknowledgeNewSession();
+            return true;
+        }
+        HeartbeatWatch.start(_link);
+        WatchUi.requestUpdate();
         return true;
     }
 
     public function onPreviousPage() as Boolean {
-        _view.recordKey("UP");
+        if (_link.newSession) {
+            _link.acknowledgeNewSession();
+            return true;
+        }
+        LinkBurst.toggle(_link);
+        WatchUi.requestUpdate();
         return true;
     }
 
     public function onMenu() as Boolean {
-        _view.recordKey("MENU");
-        return true;
-    }
-
-    public function onKey(keyEvent as KeyEvent) as Boolean {
-        _view.recordKey(keyName(keyEvent.getKey()));
         return true;
     }
 

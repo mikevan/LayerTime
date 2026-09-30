@@ -17,12 +17,14 @@ is the definition. This folder is.
 | `models.md` | NavigationState, MonitorEvent, ReconState, Mesh (node, message, network status), ApplicationSettings, Alert, QuickMessage, Timestamp |
 | `commands.md` | LayerTimeCommand and CommandResult |
 | `capabilities.md` | DeviceCapabilities and how profiles are declared |
+| `link.md` | LayerTime Link 0.1: the BLE GATT wire format between a Node and an interface (Slice 1 draft) |
 | `vectors/enums.json` | Numeric value of every enum, plus canonical display-name tables |
 | `vectors/capacities.json` | Fixed sizes and identity lengths |
 | `vectors/profile_twatch_ultra.json` | T-Watch Ultra capability profile: effective value, status, and evidence per field |
 | `vectors/profile_tactix_amoled.json` | tactix 8 AMOLED capability profile: effective value, target, status, and evidence per field |
 | `vectors/profile_tdongle_c5.json` | T-Dongle-C5 (LayerTime Node) capability profile: effective value, target, status, and evidence per field |
 | `vectors/quick_messages_default.json` | The default quick-message library |
+| `vectors/link_frames.json` | Byte-exact LayerTime Link frames, requests, replies, and dispatch cases |
 
 ## Rules every binding follows
 
@@ -47,7 +49,9 @@ is the definition. This folder is.
 
 A binding conforms when its enum values, fixed sizes, defaults, and profile
 match the vectors in this folder. For the C++ binding, that is checked by
-`test/test_core_model/`. Vectors are data. When a vector and a binding
+`test/test_core_model/`, and the Link codec by `test/test_link_codec/`; the
+Monkey C Link codec is checked against the same frames by
+`garmin/test/LinkCodecTests.mc`. Vectors are data. When a vector and a binding
 disagree, the binding is wrong unless the contract is deliberately changed.
 
 ## Targets
@@ -86,4 +90,6 @@ These are known and deliberately left out of Phase 0:
   exist today (Pwnagotchi, MultiSSID, Pineapple, Axon, Tile, and others). This
   contract carries the detectors that exist. Reconciling the two lists
   belongs to the C5 detector work.
-- **The LayerTime Link wire format.** Decided in its own task.
+- **The LayerTime Link wire format beyond Increment 1.** `link.md` binds
+  advertising, the service, Status, HELLO and PING; the remaining operations
+  are bound as the Slice 1 increments implement them.

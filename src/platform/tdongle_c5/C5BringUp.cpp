@@ -20,11 +20,15 @@
 // as an empty translation unit.
 #if defined(LAYERTIME_TARGET_TDONGLE_C5)
 
-// Slice 1, Increment 0: T-Dongle-C5 bring-up on a pinned toolchain.
+// Slice 1, Increments 0 and 1: T-Dongle-C5 bring-up and the LayerTime Link
+// transport proof.
 //
-// Proves, on the real board: the LCD, the APA102 LED, the BOOT button,
-// PSRAM, and NimBLE initialising and advertising a test name without
-// corrupting the heap (arduino-esp32 #12821 on the C5).
+// Increment 0 proved, on the real board: the LCD, the APA102 LED, the BOOT
+// button, PSRAM, and NimBLE initialising without corrupting the heap
+// (arduino-esp32 #12821 on the C5). Increment 1 replaces the bare test
+// advertisement with the LayerTime Link service (C5Link): Status heartbeat,
+// HELLO and PING, re-advertising on disconnect, and on LAYERTIME_LINK_TEST
+// builds the Probe characteristic, which the BOOT button drives.
 //
 // NVS persistence was proven during bring-up with a temporary boot counter
 // (namespace "lt_bringup"), verified across power cycles on 2026-09-29 and
@@ -35,16 +39,19 @@
 #include "BringUpLogic.h"
 #include "C5Display.h"
 #include "C5Led.h"
+#include "C5Link.h"
 #include "TDongleC5Pins.h"
 
 #include <Arduino.h>
-#include <NimBLEDevice.h>
+#include <string.h>
 #include <esp_chip_info.h>
 #include <esp_heap_caps.h>
 #include <esp_idf_version.h>
-#include <esp_mac.h>
 
 using namespace layertime::tdongle_c5;
+// No `namespace link = layertime::link;` alias here: at file scope the name
+// collides with newlib's link(const char*, const char*), so the capability
+// bits below are spelled out in full.
 
 namespace {
 
@@ -55,6 +62,7 @@ constexpr uint32_t kSerialWaitMs = 3000;
 
 C5Display gDisplay;
 C5Led gLed;
+C5Link gLink;
 ButtonDebouncer gButton;
 
 uint32_t gButtonCount = 0;
@@ -62,8 +70,8 @@ uint32_t gLedStep = 0;
 uint32_t gLastLedMs = 0;
 uint32_t gLastReportMs = 0;
 bool gHeapOk = true;
+bool gLinkWasConnected = false;
 bool gBleOk = false;
-char gName[kAdvertisedNameSize] = "";
 
 bool heapIntact()
 {
@@ -74,23 +82,42 @@ void showStatus()
 {
     // Each line must fit the 96 px status column (about 14 characters).
     char line[40];
-    snprintf(line, sizeof(line), "Button %lu", static_cast<unsigned long>(gButtonCount));
-    gDisplay.setLine(1, line);
-    snprintf(line, sizeof(line), "%lu MB Heap %s",
-             static_cast<unsigned long>(wholeMiB(ESP.getPsramSize())), gHeapOk ? "OK" : "BAD");
+    if (!gBleOk) {
+        gDisplay.setLine(1, "BLE FAILED");
+    } else if (gLink.connected()) {
+        // The last three bytes of the central's address: "Conn dd:ee:ff".
+        const char *addr = gLink.peerAddress();
+        const size_t n = strlen(addr);
+        snprintf(line, sizeof(line), "Conn %s", n >= 8 ? addr + n - 8 : addr);
+        gDisplay.setLine(1, line);
+    } else {
+        gDisplay.setLine(1, "Advertising");
+    }
+#if defined(LAYERTIME_LINK_TEST)
+    // Test build: P pings answered, B button presses, S Status notifies sent.
+    snprintf(line, sizeof(line), "P%lu B%lu S%lu", static_cast<unsigned long>(gLink.pingsAnswered()),
+             static_cast<unsigned long>(gButtonCount), static_cast<unsigned long>(gLink.statusNotifies()));
+#else
+    snprintf(line, sizeof(line), "Ping %lu  Btn %lu", static_cast<unsigned long>(gLink.pingsAnswered()),
+             static_cast<unsigned long>(gButtonCount));
+#endif
     gDisplay.setLine(2, line);
-    gDisplay.setLine(3, gBleOk ? gName : "BLE FAILED");
-    snprintf(line, sizeof(line), "Up %lus", static_cast<unsigned long>(millis() / 1000));
+    gDisplay.setLine(3, gLink.advertisedName());
+    snprintf(line, sizeof(line), "Up %lus  S%04X", static_cast<unsigned long>(millis() / 1000),
+             static_cast<unsigned>(gLink.sessionId()));
     gDisplay.setLine(4, line);
 }
 
 void report(const char *when)
 {
-    Serial.printf("[%s] uptime %lu s, heap free %lu, PSRAM free %lu, heap %s, button %lu\n", when,
-                  static_cast<unsigned long>(millis() / 1000),
+    Serial.printf("[%s] uptime %lu s, heap free %lu, PSRAM free %lu, heap %s, button %lu, link %s, "
+                  "heartbeat %u, pings %lu, status notifies %lu\n",
+                  when, static_cast<unsigned long>(millis() / 1000),
                   static_cast<unsigned long>(ESP.getFreeHeap()),
                   static_cast<unsigned long>(ESP.getFreePsram()), gHeapOk ? "intact" : "CORRUPT",
-                  static_cast<unsigned long>(gButtonCount));
+                  static_cast<unsigned long>(gButtonCount), gLink.connected() ? "connected" : "advertising",
+                  static_cast<unsigned>(gLink.heartbeat()), static_cast<unsigned long>(gLink.pingsAnswered()),
+                  static_cast<unsigned long>(gLink.statusNotifies()));
 }
 
 } // namespace
@@ -123,19 +150,15 @@ void setup()
     Serial.printf("Heap before BLE init: %s, free %lu\n", gHeapOk ? "intact" : "CORRUPT",
                   static_cast<unsigned long>(ESP.getFreeHeap()));
 
-    uint8_t mac[6] = {};
-    esp_read_mac(mac, ESP_MAC_BT);
-    formatAdvertisedName(mac, gName);
-    if (NimBLEDevice::init(gName)) {
-        NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
-        adv->setName(gName);
-        adv->enableScanResponse(false);
-        gBleOk = adv->start();
-    }
+    // Increment 1 capabilities: the C5 has a display, an LED and a button.
+    // The monitors are reported once Increment 2A proves them.
+    gBleOk = gLink.begin(layertime::link::kCapDisplay | layertime::link::kCapLed |
+                        layertime::link::kCapButton);
     const bool heapAfterBle = heapIntact();
     gHeapOk = gHeapOk && heapAfterBle;
-    Serial.printf("BLE init %s, advertising as %s, address %s\n", gBleOk ? "ok" : "FAILED", gName,
-                  NimBLEDevice::getAddress().toString().c_str());
+    Serial.printf("Link %s, advertising as %s, session %04X, PSRAM %lu MB\n", gBleOk ? "up" : "FAILED",
+                  gLink.advertisedName(), static_cast<unsigned>(gLink.sessionId()),
+                  static_cast<unsigned long>(wholeMiB(ESP.getPsramSize())));
     Serial.printf("Heap after BLE init: %s, free %lu\n", heapAfterBle ? "intact" : "CORRUPT",
                   static_cast<unsigned long>(ESP.getFreeHeap()));
 
@@ -151,12 +174,22 @@ void loop()
     if (gButton.update(pressed, now)) {
         ++gButtonCount;
         Serial.printf("Button press %lu\n", static_cast<unsigned long>(gButtonCount));
+        const size_t probe = gLink.sendNextProbe();
+        if (probe > 0) Serial.printf("Probe sent: %u bytes\n", static_cast<unsigned>(probe));
         showStatus();
     }
 
     if (now - gLastLedMs >= kLedStepMs) {
         gLastLedMs = now;
         gLed.show(bringUpCycleColor(gLedStep++), kLedBrightness);
+    }
+
+    gLink.service(now);
+    if (gLink.connected() != gLinkWasConnected) {
+        gLinkWasConnected = gLink.connected();
+        Serial.printf("Link %s %s\n", gLinkWasConnected ? "connected to" : "disconnected, advertising again;",
+                      gLinkWasConnected ? gLink.peerAddress() : "");
+        showStatus();
     }
 
     if (now - gLastReportMs >= kReportMs) {

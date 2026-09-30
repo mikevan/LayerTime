@@ -20,8 +20,8 @@ import Toybox.Lang;
 import Toybox.Test;
 import Toybox.WatchUi;
 
-// Run No Evil unit tests for the Increment 0 skeleton. Compiled only with
-// --unit-test and run in the simulator with monkeydo ... /t (see README.md).
+// Run No Evil unit tests for the app shell. Compiled only with --unit-test
+// and run in the simulator (see README.md).
 module LayerTimeTests {
 
     (:test)
@@ -32,14 +32,5 @@ module LayerTimeTests {
         ok = ok && LayerTimeDelegate.keyName(WatchUi.KEY_MENU).equals("MENU");
         logger.debug("key names checked");
         return ok;
-    }
-
-    (:test)
-    function pressesAreCountedInOrder(logger as Logger) as Boolean {
-        var view = new LayerTimeView();
-        var first = view.recordKey("UP");
-        var second = view.recordKey("DOWN");
-        logger.debug("first=" + first + " second=" + second);
-        return first == 1 && second == 2 && view.presses() == 2;
     }
 }

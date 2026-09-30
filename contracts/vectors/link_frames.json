@@ -1,0 +1,363 @@
+{
+  "contractVersion": "0.1",
+  "linkVersion": "0.1",
+  "note": "Byte-exact LayerTime Link 0.1 frames. Hex strings, little-endian integers. Every binding must encode 'encode' cases to exactly these bytes and decode 'decode' cases to exactly these fields. 'reject' cases give the request and the ERROR frame the Node must answer with.",
+  "uuids": {
+    "base": "8ac687f5-a08b-4851-b89f-e6b39081268e",
+    "service": "8ac60001-a08b-4851-b89f-e6b39081268e",
+    "control": "8ac60002-a08b-4851-b89f-e6b39081268e",
+    "status": "8ac60003-a08b-4851-b89f-e6b39081268e",
+    "data": "8ac60004-a08b-4851-b89f-e6b39081268e",
+    "probe": "8ac600f0-a08b-4851-b89f-e6b39081268e"
+  },
+  "constants": {
+    "maxFrame": 20,
+    "statusSize": 18,
+    "linkVersionByte": 1,
+    "serverMajor": 0,
+    "serverMinor": 1,
+    "ops": {
+      "HELLO": 1,
+      "PING": 2,
+      "COMMAND": 3,
+      "GET_CHANGED": 4,
+      "GET_TEXT": 5,
+      "testRangeFirst": 240,
+      "testRangeLast": 254,
+      "RX_MARK": 241
+    },
+    "frameTypes": {
+      "HELLO_ACK": 129,
+      "ACK": 130,
+      "RESULT": 131,
+      "EVENT_SUMMARY": 132,
+      "END": 133,
+      "TEXT": 134,
+      "ERROR": 143
+    },
+    "linkStatus": {
+      "Ok": 0,
+      "UnknownOp": 1,
+      "BadLength": 2,
+      "VersionMismatch": 3,
+      "Busy": 4
+    },
+    "statusFlags": {
+      "monitoring": 1,
+      "earlyWarningEnabled": 2,
+      "earlyWarningResting": 4,
+      "alertPending": 8,
+      "sleepMode": 16
+    },
+    "schedule": {
+      "Simultaneous": 0,
+      "Recon": 1,
+      "Report": 2
+    },
+    "capabilities": {
+      "localWifiMonitor": 1,
+      "localBleMonitor": 2,
+      "display": 4,
+      "led": 8,
+      "button": 16
+    },
+    "probeSizes": [
+      20,
+      21,
+      64,
+      180
+    ]
+  },
+  "status": [
+    {
+      "name": "increment1_nominal",
+      "bytes": "01A23F0700000000000000000000002A0000",
+      "fields": {
+        "linkVersion": 1,
+        "sessionId": 16290,
+        "changeSeq": 7,
+        "flags": 0,
+        "selected": 0,
+        "active": 0,
+        "eventCount": 0,
+        "lastAlertEventId": 0,
+        "heartbeat": 42,
+        "schedule": 0,
+        "nextReportS": 0
+      }
+    },
+    {
+      "name": "all_zero_except_version",
+      "bytes": "010000000000000000000000000000000000",
+      "fields": {
+        "linkVersion": 1,
+        "sessionId": 0,
+        "changeSeq": 0,
+        "flags": 0,
+        "selected": 0,
+        "active": 0,
+        "eventCount": 0,
+        "lastAlertEventId": 0,
+        "heartbeat": 0,
+        "schedule": 0,
+        "nextReportS": 0
+      }
+    },
+    {
+      "name": "max_values",
+      "bytes": "01FFFFFFFFFFFF1F111128FFFFFFFFFF02FF",
+      "fields": {
+        "linkVersion": 1,
+        "sessionId": 65535,
+        "changeSeq": 4294967295,
+        "flags": 31,
+        "selected": 17,
+        "active": 17,
+        "eventCount": 40,
+        "lastAlertEventId": 4294967295,
+        "heartbeat": 255,
+        "schedule": 2,
+        "nextReportS": 255
+      }
+    },
+    {
+      "name": "heartbeat_wrap_and_flags",
+      "bytes": "010201040302010A0505032100000000013C",
+      "fields": {
+        "linkVersion": 1,
+        "sessionId": 258,
+        "changeSeq": 16909060,
+        "flags": 10,
+        "selected": 5,
+        "active": 5,
+        "eventCount": 3,
+        "lastAlertEventId": 33,
+        "heartbeat": 0,
+        "schedule": 1,
+        "nextReportS": 60
+      }
+    }
+  ],
+  "requests": [
+    {
+      "name": "hello",
+      "op": "HELLO",
+      "bytes": "01110001",
+      "fields": {
+        "reqId": 17,
+        "clientMajor": 0,
+        "clientMinor": 1
+      }
+    },
+    {
+      "name": "hello_newer_minor",
+      "op": "HELLO",
+      "bytes": "01120009",
+      "fields": {
+        "reqId": 18,
+        "clientMajor": 0,
+        "clientMinor": 9
+      }
+    },
+    {
+      "name": "ping",
+      "op": "PING",
+      "bytes": "0221EFBEADDE",
+      "fields": {
+        "reqId": 33,
+        "token": 3735928559
+      }
+    },
+    {
+      "name": "ping_zero_token",
+      "op": "PING",
+      "bytes": "020000000000",
+      "fields": {
+        "reqId": 0,
+        "token": 0
+      }
+    }
+  ],
+  "replies": [
+    {
+      "name": "hello_ack_ok",
+      "type": "HELLO_ACK",
+      "bytes": "8111000001A23F1E0014",
+      "fields": {
+        "reqId": 17,
+        "linkStatus": 0,
+        "serverMajor": 0,
+        "serverMinor": 1,
+        "sessionId": 16290,
+        "capabilities": 30,
+        "maxFrame": 20
+      }
+    },
+    {
+      "name": "hello_ack_version_mismatch",
+      "type": "HELLO_ACK",
+      "bytes": "8113030001A23F1E0014",
+      "fields": {
+        "reqId": 19,
+        "linkStatus": 3,
+        "serverMajor": 0,
+        "serverMinor": 1,
+        "sessionId": 16290,
+        "capabilities": 30,
+        "maxFrame": 20
+      }
+    },
+    {
+      "name": "ack",
+      "type": "ACK",
+      "bytes": "822100EFBEADDE2A",
+      "fields": {
+        "reqId": 33,
+        "linkStatus": 0,
+        "token": 3735928559,
+        "heartbeat": 42
+      }
+    },
+    {
+      "name": "error_unknown_op",
+      "type": "ERROR",
+      "bytes": "8F0501",
+      "fields": {
+        "reqId": 5,
+        "linkStatus": 1
+      }
+    },
+    {
+      "name": "error_bad_length",
+      "type": "ERROR",
+      "bytes": "8F2102",
+      "fields": {
+        "reqId": 33,
+        "linkStatus": 2
+      }
+    }
+  ],
+  "dispatch": [
+    {
+      "name": "hello_is_answered_with_hello_ack",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "01110001",
+      "reply": "8111000001A23F1E0014"
+    },
+    {
+      "name": "hello_with_newer_minor_is_accepted",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "01120009",
+      "reply": "8112000001A23F1E0014"
+    },
+    {
+      "name": "hello_with_other_major_is_version_mismatch",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "01130100",
+      "reply": "8113030001A23F1E0014"
+    },
+    {
+      "name": "ping_is_answered_with_ack_echoing_token",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "0221EFBEADDE",
+      "reply": "822100EFBEADDE2A"
+    },
+    {
+      "name": "unknown_op_is_rejected",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "7E05",
+      "reply": "8F0501"
+    },
+    {
+      "name": "test_op_on_release_build_is_unknown",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "F10600000000000000000000",
+      "reply": "8F0601"
+    },
+    {
+      "name": "short_ping_is_bad_length",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "02210102",
+      "reply": "8F2102"
+    },
+    {
+      "name": "long_hello_is_bad_length",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "0111000100",
+      "reply": "8F1102"
+    },
+    {
+      "name": "one_byte_request_is_bad_length_with_reqid_zero",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "02",
+      "reply": "8F0002"
+    },
+    {
+      "name": "empty_request_is_bad_length_with_reqid_zero",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "",
+      "reply": "8F0002"
+    },
+    {
+      "name": "command_op_is_not_bound_yet_unknown_in_increment_1",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "03300105",
+      "reply": "8F3001"
+    }
+  ]
+}

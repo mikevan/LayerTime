@@ -203,6 +203,29 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_tdongle_c5_bringup test_t
 ./tests_tdongle_c5_bringup
 ```
 
+## LayerTime Link
+
+The LayerTime Link 0.1 wire format of `contracts/link.md`, added in Slice 1
+Increment 1. `test_link_codec` runs the C++ codec and the Node dispatcher in
+`src/core/link` against every byte-exact vector in
+`contracts/vectors/link_frames.json`. `test_link_vectors_mc` reads the
+generated Monkey C copy of those vectors, `garmin/source/link/LinkVectors.mc`,
+back with its own parser and checks it against the same JSON, so the Connect
+IQ conformance tests (`garmin/test/LinkCodecTests.mc`, run in the Connect IQ
+simulator) are always working from the same bytes; a stale copy fails here
+first. `tools/gen_link_vectors_mc.py` regenerates that file (`--check` reports
+whether it is current). Both suites share `link_vectors_json.h`. Run from
+`test/`, because the vectors are read from `../contracts/vectors/` and
+`../garmin/`.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_link_codec test_link_codec/test_link_codec.cpp ../src/core/link/LinkCodec.cpp
+./tests_link_codec
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_link_vectors_mc test_link_vectors_mc/test_link_vectors_mc.cpp
+./tests_link_vectors_mc
+```
+
 ## Core and platform boundary
 
 Checks the source tree itself. Every `#include` under `src/` is resolved the

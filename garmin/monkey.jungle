@@ -3,3 +3,7 @@
 project.manifest = manifest.xml
 project.typecheck = strict
 base.sourcePath = source;test
+# Release build: drop the test-only PING burst (source/link/LinkBurst.mc,
+# (:linktest)) and keep its (:production) stub. linktest.jungle is the
+# measurement build that does the opposite.
+base.excludeAnnotations = linktest

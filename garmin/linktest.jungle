@@ -1,0 +1,8 @@
+# LayerTime Connect IQ Device App, linktest build (Slice 1 Increment 1).
+# Same sources and manifest as monkey.jungle, but keeps the (:linktest)
+# PING burst in source/link/LinkBurst.mc and drops its (:production) stub.
+# This is the Connect IQ counterpart of the C5's tdongle_c5_test environment.
+project.manifest = manifest.xml
+project.typecheck = strict
+base.sourcePath = source;test
+base.excludeAnnotations = production
