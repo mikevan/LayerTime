@@ -59,21 +59,124 @@ Known quirk: a verbose build (`-v`) of this project fails at the final
 script under this platform, compiles nothing differently, and the normal
 (non-verbose) build is unaffected.
 
-## Current firmware: Phase 1 bring-up (0.1.3)
+## Current firmware: Recon milestone R1 (0.2.3)
 
-`source/S3PlusMain.cpp` identifies the hardware. Over USB serial (115200) it
-prints a report, repeated every 10 seconds, with the chip, MAC, PSRAM, both I2C
-buses checked against LilyGo's documented parts, the GNSS module fitted,
-battery and charger, RTC time, and the FFat partition and filesystem (the
-partition table entry, what is mounted at /fs and /ffat, and one
-non-formatting mount retry). The screen shows the same pass and fail results;
-tap it to test touch (a dot follows the tap) and haptics (one pulse per tap,
-at most once a second). The LoRa radio is never initialised and its power rail
-is switched off. LilyGoLib's own `begin()` mounts FFat at `/fs` (formatting it
-only if it will not mount at all) and, on the first boot only, writes the
-battery fuel-gauge parameters to the AXP2101.
+0.2.x runs Recon on this watch: the T-Ultra's onboard Wi-Fi and BLE
+monitoring, threats, and alerts, through the shared core
+(`src/core/app/LayerTimeCore`) and S3 Plus adapters behind the core's ports.
+Logging is R2; the long run and the side-by-side comparison with the Ultra
+are R3. The LoRa radio is never initialised and its power rail is switched
+off (mesh is deferred).
 
-### FFat repair (0.1.2)
+| Folder | What it holds |
+|---|---|
+| `source/S3PlusMain.cpp` | `setup()` and `loop()`, nothing else. |
+| `source/app/` | `S3PlusApp`: bring-up, the core and its ports, the screens, the display gate. |
+| `source/recon/` | `S3PlusReconService` (copy of the Ultra's `ReconService`), `S3PlusMonitorSource`, `EventLock`. |
+| `source/gnss/` | `S3PlusGpsService`, `S3PlusUbx` (copy of the Ultra's `UbxParser`), `S3PlusNavigationSource`, `S3PlusClock`, `GnssRules`. |
+| `source/ui/` | Home, Recon, and Time screens; `DisplayGate`; `TextFormat`; the theme. |
+| `source/S3PlusAlertSink`, `S3PlusSettingsStore` | The alert and settings ports. |
+| `source/BringUpReport`, `BringUpCheck` | The hardware report printed once at boot. |
+
+What the wearer sees:
+
+* **Home (0.2.3):** after the Garmin face's design (`garmin/source/
+  HomeView.mc`), laid out for 240 x 240: 24 battery dots across the top
+  over "BAT 87%" (both red at 20% or below); the owl, large, with the GPS
+  and DONGLE icons beside its ears; the time and the date flanked by a
+  "WATCH" ring
+  (the watch's own temperature from the BMA423, red at 45 C / 113 F and
+  above, so it shows the watch running hot; it is not air temperature) and
+  a "SUNRISE" or "SUNSET" ring (the next one, from the last GNSS position
+  and the clock; NOAA's equations, `gnss/Solar`), as on the Garmin; "GPS"
+  is green with a usable fix and red without, "DONGLE" red (no dongle link
+  on this watch yet; "DONGLE ICON" in Settings hides it); "LOCATION" and
+  "RECON"; and the Garmin's Recon bracket with the
+  Garmin's wording ("EARLY WARN  REST", "EARLY WARN", "RECON ALL", "RECON
+  OFF") over "N DETECTIONS", amber, red on an alert. Tap the bracket for
+  the running scan's monitor (or ALL), the GPS icon or "LOCATION" for the
+  GPS page, "RECON" for the Recon menu. Long-press the face for Settings,
+  as on the Ultra and the Garmin. Until GNSS or the DATE / TIME page has set
+  the clock, the date line reads "TIME NOT SET YET".
+* **GPS (0.2.3):** the Ultra's GPS page scaled to 240 x 240, in its design:
+  filled gold "< BACK", green "GPS" title, fix status, "LAT" and "LON", the
+  "MGRS" grid reference, "ALT", "SATS", "ACC", and "SPD", "DIRECTION OF
+  TRAVEL", and "LAYERTIME | GPS". "ACC" is the receiver's own horizontal
+  accuracy, shown where the Ultra shows HDOP. A position that is no longer
+  current is never shown: the status reads "FIX LOST 2M AGO" and the
+  coordinates read "--". Every line is one line tall, so a long value
+  ends in "..." instead of wrapping onto the next row. Core's GeoGrid writes
+  MGRS on two lines; this page joins them ("15S UA 92025 15918") in
+  Montserrat 14.
+* **Recon:** the Ultra's menu with the Ultra's names and labels: "ALL", the
+  three group rows (blue opens a group), each group's page, a monitor page
+  with "STOP RECON" and "CLEAR LOG", and the alert overlay with "DISMISS".
+  "BACK" on the monitor goes straight to the face and leaves the scan
+  running; the face then reads "THREATS / RECON ALL" (or "RECON" for any
+  other scan), and tapping "THREATS" reopens that scan's monitor without
+  restarting it. "STOP RECON" is the only control that stops a scan. On a
+  group or the top level, "BACK" steps back one level. Early warning is
+  switched in Settings, as on the Ultra.
+* **Settings:** the Ultra's "LAYERTIME SETTINGS" page row for row, in one
+  scrolling list: "DATE / TIME", "BRIGHTNESS" (slider), "CLOCK FORMAT" ("12
+  H" or "24 H"), "UNITS" ("IMPERIAL" or "METRIC"), "GPS" (the receiver's
+  power rail), "MESHCORE", "MESHCORE ADVERTISE", "MESHTASTIC", "MESHTASTIC
+  ADVERTISE", "MESHTASTIC NAME", "EARLY WARNING", "LOGGING", "SLEEP MODE",
+  and "SQUACHIFY?". Rows with nothing behind them yet (mesh, LOGGING,
+  SQUACHIFY?) are greyed and read "LATER". No "SD CARD" row: this watch has
+  no SD card. Added for the S3 Plus: "DONGLE ICON" ("ON" or "OFF").
+* **DATE / TIME:** "TIME ZONE" "-" and "+" (15-minute steps, UTC-12:00 to
+  UTC+14:00, applied at once), then the Ultra's date and time set: "DAY",
+  "MONTH", "YEAR", "HOUR", and "MIN" "-" and "+", "CANCEL", and "SAVE". A
+  status line says when GNSS last set the clock, or that it was set by hand.
+  GNSS still wins: its next set (at boot, then hourly) replaces a time saved
+  here.
+* **Display:** dark after 15 seconds without input. A tap on a dark screen
+  only wakes it; input returns when that finger lifts, so a button can never
+  be pressed blind. An alert wakes it with input at once. A double-tap on the
+  face (the owl, the time, anywhere but a button or the THREATS and GPS
+  blocks) puts it to sleep at once, as on the Ultra; that dark is the
+  wearer's choice, so an alert only buzzes and the next touch wakes it.
+
+Over USB serial: the hardware report once at boot, a `[s3plus] status` line
+every 30 seconds (free heap, minimum, largest block, events, Recon state,
+fix, clock), and one line per Recon start, stop, clear, and early-warning
+change.
+
+### Intentional differences from the T-Ultra
+
+| Area | T-Ultra | S3 Plus | Why |
+|---|---|---|---|
+| Event history | Radio tasks write it while the UI reads it, unlocked (the core documents the race). | `recon/EventLock`: one mutex around classification on the radio tasks, and around alerts, clear, acknowledge, and the screens' copy on the main loop. No radio is driven with the lock held. | Closes the race without changing the core. |
+| Position | NMEA through TinyGPSPlus, UBX for accuracy. | UBX NAV-PVT only: position, altitude, accuracy, ground speed, and heading of motion. | One protocol, one parser; NAV-PVT carries everything the face shows. |
+| Direction of travel | Shown whenever speed is over 0.5 mph. | Also needs the speed to be at least twice NAV-PVT's own speed accuracy, and NAV-PVT's heading accuracy within 30 degrees (`GnssRules::courseIsMeaningful`). | 0.2.1 showed "TRAVEL 223 DEG" on a watch lying on a desk: speed alone passes on noise. |
+| Leaving Recon | "BACK" on the monitor stops the scan, so the face never shows a manual scan. | "BACK" goes to the face and the scan keeps running; "STOP RECON" stops it; the face reads "RECON ALL" or "RECON". | With BACK as the only way out of the monitor, a scan could never run while the face showed it. A scan left running costs battery; the face is the reminder. |
+| Watch face | The Ultra's face: ALT, TRAVEL, THREATS, and GPS blocks around the owl. | The Garmin face's design: battery dots, WATCH and SUNRISE/SUNSET rings, GPS and DONGLE icons, and the Recon bracket in the Garmin's wording. ALT and direction of travel are on the GPS page. | Chosen 2026-10-01: colour draws the eye, small text carries the detail, and all LayerTime devices tell the Recon story the same way. The Ultra gets the same face (`claude/face_design.md` in the project). |
+| WATCH ring | Not applicable. | The watch's own temperature (BMA423 register, decoded here: SensorLib reads it as unsigned, so anything below 23 C came out near 280 C). | No air sensor on this watch; the Garmin's TEMP is phone weather. Knowing the watch runs hot is useful in itself. |
+| Settings rows with nothing behind them | Not applicable (every row works). | Greyed and reading "LATER" (mesh, LOGGING, SQUACHIFY?); no "SD CARD" row. | A switch that does nothing would lie about what the watch is doing. |
+| Date stepping | 31 JAN, "MONTH +" gives 1 FEB (the day wraps). | Gives 28 FEB (the day stays in the month; `GnssRules::stepDateField`). | A month change should not also change the day. |
+| Speed | Shown whenever NMEA reports a valid speed (TinyGPSPlus `speed.isValid()`). | "SPD" shows a speed only when DIRECTION OF TRAVEL would show a heading (`GnssRules::courseIsMeaningful`); otherwise "SPD -- MPH". The navigation data keeps the raw speed. | 0.2.2 showed "SPD 1.9 MPH" on a watch lying on a desk. |
+| GPS page | HDOP from NMEA. | "ACC", the receiver's horizontal accuracy. | No NMEA here, and HDOP is geometry, not error. |
+| GPS block | "GPS WAIT" whenever there is no fix. | "GPS 2M AGO" once a fix has been lost; "GPS WAIT" only before the first. | A lost fix shows its age instead of looking like a fresh start. |
+| Usable fix | Receiver `fixOk` and fixType 2 or more (time only included); fresh within 5 s. | `fixOk` and fixType 2, 3, or 4; current within 5 s (`GnssRules`). | A time-only solution has no position. Stale fixes are rejected by validity and age, never by 0,0. |
+| Clock | Set by hand on the Settings screen. | Set from GNSS UTC plus the time-zone offset, only when the receiver marks the date valid, the time valid, and the time fully resolved; at boot, then hourly. A time saved by hand on DATE / TIME holds until GNSS has the time. | Timestamps that agree with real time, for the side-by-side in R3. |
+| Results list | Oldest first. | Newest first. | A new detection is visible on a 240 x 240 screen without scrolling. |
+| Display sleep | A tap on a dark screen reaches the screen under it. | The waking tap is withheld (`DisplayGate`). | No blind presses on "CLEAR LOG", a detector, or "DISMISS". |
+
+The NAV-PVT UTC offsets and valid bits follow the u-blox definition as
+carried in SparkFun's u-blox GNSS v3 library (`src/u-blox_structs.h`,
+`UBX_NAV_PVT_data_t`) and Zephyr's `struct ubx_nav_pvt`; the first clock set
+on the watch prints the UTC it used, which is the live check.
+
+### Bring-up history (0.1.x)
+
+0.1.0 to 0.1.3 identified the hardware and repaired FFat. 0.2.0 keeps the
+hardware report and still completes a storage reboot test left pending by
+0.1.3, but drops the one-time format control (it ran and was locked) and the
+"Run storage reboot test" button. Both are in the history of
+`source/S3PlusMain.cpp` at 0.1.3.
+
+#### FFat repair (0.1.2)
 
 On this watch 0.1.1 reported `FFat totalBytes=0` and `ESP_FAIL` from the
 free-space query. A read-only capture (`../tools/s3plus_flash_read.py`) showed
@@ -103,7 +206,7 @@ random token, reads it back, and records the token in NVS. On the next boot it
 reads the file again, compares it, removes it, and confirms the removal; the
 outcome is stored as described below.
 
-### Storage reboot test (0.1.3)
+#### Storage reboot test (0.1.3)
 
 0.1.2 kept the reboot check's result only in RAM for one boot, and printed it
 only to the serial port. On this watch that result was lost: the serial
@@ -131,7 +234,7 @@ reporting anything. Opening the port does not reset the watch.
 
 With `ARDUINO_USB_MODE=1` (this board's setting, USB serial and JTAG),
 LilyGoLib does not expose FFat to a PC as a USB drive; that only happens in
-TinyUSB mode. Getting logs off the watch is decided in the Recon milestone.
+TinyUSB mode. Getting logs off the watch is part of R2.
 
 ## Register the watch before its first upload
 
@@ -156,6 +259,16 @@ From `s3plus/test/`:
     ./tests_s3plus_profile
     g++ -std=c++17 -O0 -Wall -Wextra -I../../test -I../source -o tests_s3plus_bringup test_s3plus_bringup/test_s3plus_bringup.cpp ../source/BringUpCheck.cpp
     ./tests_s3plus_bringup
+    g++ -std=c++17 -O0 -Wall -Wextra -I../../test -I../source -o tests_s3plus_ubx test_s3plus_ubx/test_s3plus_ubx.cpp ../source/gnss/S3PlusUbx.cpp
+    ./tests_s3plus_ubx
+    g++ -std=c++17 -O0 -Wall -Wextra -I../../test -I../source -o tests_s3plus_gnss_rules test_s3plus_gnss_rules/test_s3plus_gnss_rules.cpp ../source/gnss/GnssRules.cpp
+    ./tests_s3plus_gnss_rules
+    g++ -std=c++17 -O0 -Wall -Wextra -I../../test -I../source -o tests_s3plus_display test_s3plus_display/test_s3plus_display.cpp ../source/ui/DisplayGate.cpp
+    ./tests_s3plus_display
+    g++ -std=c++17 -O0 -Wall -Wextra -I../../test -I../../src -I../source -o tests_s3plus_text test_s3plus_text/test_s3plus_text.cpp ../source/ui/TextFormat.cpp ../../src/core/logic/ReconSelection.cpp ../../src/core/logic/GeoGrid.cpp ../source/gnss/Solar.cpp
+    ./tests_s3plus_text
+    g++ -std=c++17 -O0 -Wall -Wextra -I../../test -I../source -o tests_s3plus_solar test_s3plus_solar/test_s3plus_solar.cpp ../source/gnss/Solar.cpp
+    ./tests_s3plus_solar
 
 From the repository root, for the upload guard:
 
@@ -164,7 +277,8 @@ From the repository root, for the upload guard:
 Services this target takes over from the T-Ultra are S3 Plus copies in
 `source/`, behind the same core interfaces. They are held to account by
 interface-behaviour tests and the boundary test, not by equality with the
-Ultra's files. Intentional differences are recorded below.
+Ultra's files. Intentional differences are recorded above (0.2.0) and below
+(hardware).
 
 ## LVGL configuration
 
