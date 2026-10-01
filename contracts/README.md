@@ -65,6 +65,7 @@ target is the definition of LayerTime.
 | T-Watch Ultra (`twatch-ultra`) | `vectors/profile_twatch_ultra.json` | C++, `src/core/` | `src/platform/twatch_ultra/` | Running. Screens, hardware services, and the adapters behind the core's ports. |
 | tactix 8 AMOLED (`tactix-amoled`) | `vectors/profile_tactix_amoled.json` | Monkey C, `garmin/` | Connect IQ Device App, `garmin/` | Skeleton (Slice 1 Increment 0). The binding and the LayerTime Link client are Slice 1 work. |
 | T-Dongle-C5 (`tdongle-c5`) | `vectors/profile_tdongle_c5.json` | C++, `src/core/` | `src/platform/tdongle_c5/` | Bring-up firmware (Slice 1 Increment 0). The LayerTime Node: it runs the Recon engine and serves the tactix over LayerTime Link. |
+| T-Watch S3 Plus (`twatch-s3plus`) | `vectors/profile_twatch_s3plus.json` | C++, `src/core/` | `s3plus/` (its own pioarduino project, opened like `garmin/`) | Phase 0 build proof. The all-in-one watch with the T-Ultra's functionality: hardware adapters behind the core's ports, services, and screens. Recon first; mesh deferred. |
 
 In the C++ binding, `src/core/` holds the model, the application logic, and
 the ports a platform plugs into. It depends on nothing but the C and C++

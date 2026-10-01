@@ -1,0 +1,27 @@
+{
+  "contractVersion": "0.1",
+  "profileId": "twatch-s3plus",
+  "note": "LilyGo T-Watch S3 Plus with the SX1262 radio, the all-in-one LayerTime target with the T-Watch Ultra's functionality. Drafted in S3 Plus Phase 0, before any hardware proof: every effective value is the DeviceCapabilities default and intent is in target. A field's effective value changes only when its status becomes verified on the watch. Hardware sources: LilyGoLib docs/hardware/lilygo-t-watch-s3-plus.md and schematic T_WATCH-S3 25-03-24.pdf at commit 38e6f8d; arduino-esp32 variants/lilygo_twatch_s3/pins_arduino.h.",
+  "capabilities": {
+    "displayClass":         { "effective": "MonochromeLowRes", "target": "ColorHighRes",     "status": "documented", "evidence": "1.3 in 240 x 240 ST7789V3 IPS TFT, 262K colours (LilyGo hardware doc). The contract has two display classes; ColorHighRes is the colour class. Whether 240 x 240 needs its own class is decided when the S3 Plus screens are built." },
+    "displayShape":         { "effective": "Rectangle",        "target": "Rectangle",        "status": "documented", "evidence": "Square 240 x 240 panel (LilyGo hardware doc)" },
+    "displayWidth":         { "effective": 0,                  "target": 240,                "status": "documented", "evidence": "DISP_WIDTH 240 in variants/lilygo_twatch_s3/pins_arduino.h; LilyGo hardware doc" },
+    "displayHeight":        { "effective": 0,                  "target": 240,                "status": "documented", "evidence": "DISP_HEIGHT 240, same sources" },
+    "touch":                { "effective": false,              "target": true,               "status": "documented", "evidence": "FT6336U at 0x38 on Wire1, SDA 39 / SCL 40 / INT 16, reset not connected (LilyGo hardware doc)" },
+    "buttons":              { "effective": false,              "target": false,              "status": "documented", "evidence": "A programmable PWR button (AXP2101) and GPIO0 exist (LilyGo hardware doc). The T-Ultra reads no button; the S3 Plus matches it until a feature needs one." },
+    "vibration":            { "effective": false,              "target": true,               "status": "documented", "evidence": "DRV2605 at 0x5A, enabled by AXP2101 BLDO2 (LilyGo hardware doc); LilyGoWatch2022::vibrator() in LilyGoLib src/LilyGoWatchS3.cpp" },
+    "gps":                  { "effective": false,              "target": true,               "status": "documented", "evidence": "u-blox MIA-M10Q or Quectel LS550G on UART1 RX 41 / TX 42, 38400 baud, PPS not connected (LilyGo hardware doc; LilyGoWatchS3.cpp initGPS). Which module this watch carries is read in Phase 1." },
+    "compass":              { "effective": false,              "target": false,              "status": "documented", "evidence": "No magnetometer: the sensor is a 3-axis BMA423 accelerometer (LilyGo hardware doc)" },
+    "altitude":             { "effective": false,              "target": true,               "status": "unverified", "evidence": "GNSS altitude, as on the T-Ultra. Proven with the GPS service." },
+    "nativeMaps":           { "effective": false,              "target": false,              "status": "design",     "evidence": "No platform cartography; LayerTime draws its own tiles" },
+    "removableStorage":     { "effective": false,              "target": false,              "status": "documented", "evidence": "No SD card in LilyGo's feature table or pin map. Storage is the internal FFat partition (s3plus/partitions.csv), which is not removable." },
+    "localWifiMonitor":     { "effective": false,              "target": true,               "status": "unverified", "evidence": "ESP32-S3 promiscuous Wi-Fi, as on the T-Ultra. Proven in the Recon milestone." },
+    "localBleMonitor":      { "effective": false,              "target": true,               "status": "unverified", "evidence": "NimBLE on the ESP32-S3, as on the T-Ultra. Proven in the Recon milestone, including the core 3.3.6 BLE gate." },
+    "externalRecon":        { "effective": false,              "target": false,              "status": "design",     "evidence": "All-in-one: Recon runs on the watch, not on a LayerWand" },
+    "meshUi":               { "effective": false,              "target": true,               "status": "design",     "evidence": "Mesh is deferred until Recon is validated" },
+    "localMeshtasticRadio": { "effective": false,              "target": true,               "status": "documented", "evidence": "SX1262 on CS 5 / RST 8 / BUSY 7 / IRQ 9, LoRa rail AXP2101 ALDO4 (LilyGo hardware doc). Deferred; the TCXO voltage is unresolved (Meshtastic uses 1.8 V on this watch)." },
+    "localMeshCoreRadio":   { "effective": false,              "target": true,               "status": "documented", "evidence": "Same SX1262. Deferred, as localMeshtasticRadio." },
+    "meshRadioShared":      { "effective": false,              "target": true,               "status": "documented", "evidence": "One SX1262 serves both mesh stacks, as on the T-Ultra" },
+    "androidBridge":        { "effective": false,              "target": false,              "status": "design",     "evidence": "No Android companion in the all-in-one target" }
+  }
+}
