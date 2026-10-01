@@ -158,10 +158,12 @@ struct Session {
 
 // ---- Wi-Fi frames, delivered through the captured promiscuous callback.
 
-void deliver(const std::vector<uint8_t> &payload, int8_t rssi, uint8_t channel)
+void deliver(const std::vector<uint8_t> &payload, int8_t rssi, uint8_t channel,
+             uint8_t rxState = 0)
 {
     std::vector<uint8_t> buf(sizeof(wifi_promiscuous_pkt_t) + payload.size());
     auto *pkt = reinterpret_cast<wifi_promiscuous_pkt_t *>(buf.data());
+    pkt->rx_ctrl.rx_state = rxState;
     pkt->rx_ctrl.rssi = rssi;
     pkt->rx_ctrl.channel = channel;
     pkt->rx_ctrl.sig_len = static_cast<unsigned>(payload.size());
@@ -754,18 +756,33 @@ void ssid_is_only_read_when_the_first_element_is_an_ssid()
     CHECK_INT(0, x.s().detectionCount);
 }
 
-void multissid_needs_two_different_ssids_from_one_bssid()
+void multissid_needs_two_confirmed_ssids_from_one_bssid()
 {
+    // Behaviour changed deliberately (Multi-SSID rules rewritten in core): a
+    // name counts after three beacons, and the event counts confirmed names,
+    // not beacons. Was: any second SSID flagged, then +1 on every beacon.
     Session x;
     x.svc.startDetector(ReconDetector::MultiSSID);
-    deliver(beacon(kPlainMac, "home", true), -60, 1);
-    deliver(beacon(kPlainMac, "home", true), -60, 1);
+    for (int i = 0; i < 3; ++i) deliver(beacon(kPlainMac, "home", true), -60, 1);
+    deliver(beacon(kPlainMac, "guest", true), -60, 1);
+    deliver(beacon(kPlainMac, "guest", true), -60, 1);
     CHECK_INT(0, x.s().detectionCount);
     deliver(beacon(kPlainMac, "guest", true), -60, 1);
     CHECK_INT(1, x.s().detectionCount);
-    CHECK_STR("Multiple SSIDs from BSSID", x.s().detections[0].detail);
-    deliver(beacon(kPlainMac, "home", true), -60, 1);  // counted again on every later beacon
-    CHECK_INT(2, x.s().detections[0].encounterCount);
+    CHECK_STR("SSIDs: home | guest", x.s().detections[0].detail);
+    for (int i = 0; i < 20; ++i) deliver(beacon(kPlainMac, "home", true), -60, 1);
+    CHECK_INT(1, x.s().detections[0].encounterCount);  // beacons no longer count
+}
+
+void frames_the_receiver_marked_as_errors_are_not_classified()
+{
+    Session x;
+    x.svc.startDetector(ReconDetector::Pwnagotchi);
+    const uint8_t pwn[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD};
+    deliver(beacon(pwn, "x", true), -60, 1, 1);  // rx_state 1
+    CHECK_INT(0, x.s().detectionCount);
+    deliver(beacon(pwn, "x", true), -60, 1);
+    CHECK_INT(1, x.s().detectionCount);
 }
 
 void beacons_shorter_than_38_bytes_are_ignored()
@@ -1035,7 +1052,8 @@ int main(int argc, char **argv)
     CASE(wifi_oui_on_the_bssid_uses_the_printed_order);
     CASE(axon_ssid_prefix_detail_quotes_the_ssid);
     CASE(ssid_is_only_read_when_the_first_element_is_an_ssid);
-    CASE(multissid_needs_two_different_ssids_from_one_bssid);
+    CASE(multissid_needs_two_confirmed_ssids_from_one_bssid);
+    CASE(frames_the_receiver_marked_as_errors_are_not_classified);
     CASE(beacons_shorter_than_38_bytes_are_ignored);
     CASE(early_warning_sweep_listens_for_the_four_background_wifi_detectors);
     CASE(repeat_sighting_updates_rssi_channel_time_and_count_only);

@@ -19,6 +19,7 @@ struct wifi_pkt_rx_ctrl_t {
     signed rssi : 8;
     unsigned channel : 4;
     unsigned sig_len : 12;
+    unsigned rx_state : 8;
 };
 
 struct wifi_promiscuous_pkt_t {

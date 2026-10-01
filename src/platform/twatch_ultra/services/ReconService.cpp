@@ -386,6 +386,10 @@ void ReconService::onPromiscuousPacket(void *buf, int type)
     (void)type;
     if (!buf) return;
     auto *packet = static_cast<wifi_promiscuous_pkt_t *>(buf);
+    // The receiver marks a frame it did not get cleanly with a nonzero
+    // rx_state (ESP-IDF: "0: no error; others: error numbers which are not
+    // public"). No detector reads such a frame.
+    if (packet->rx_ctrl.rx_state != 0) return;
     // Frame classification lives in core (src/core/logic/WifiFrameClassifier).
     // This side only unpacks what the Wi-Fi driver handed over.
     _wifiClassifier.classify(packet->payload, packet->rx_ctrl.sig_len, packet->rx_ctrl.rssi,

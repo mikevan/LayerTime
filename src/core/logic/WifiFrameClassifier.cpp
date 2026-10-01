@@ -39,11 +39,36 @@ void emit(CandidateSink sink, void *context, ReconTarget detector, const char *d
     c.channel = channel;
     sink(c, context);
 }
+
+// Empty, or every byte zero: how access points hide their network name.
+bool ssidIsHidden(const uint8_t *ssid, uint8_t length)
+{
+    for (uint8_t i = 0; i < length; ++i)
+        if (ssid[i] != 0) return false;
+    return true;
+}
+
+// Network names are untrusted over-the-air bytes. Shown and written to the
+// detection CSV (which does not quote its fields), so anything but printable
+// ASCII, and the comma and double quote, become '?'.
+void appendSafeName(char *out, size_t outSize, size_t &used, const char *name, uint8_t length)
+{
+    for (uint8_t i = 0; i < length && used + 1 < outSize; ++i) {
+        const unsigned char c = static_cast<unsigned char>(name[i]);
+        out[used++] = (c < 0x20 || c > 0x7E || c == ',' || c == '"') ? '?' : static_cast<char>(c);
+    }
+    out[used] = '\0';
+}
+
+void appendText(char *out, size_t outSize, size_t &used, const char *text)
+{
+    for (; *text != '\0' && used + 1 < outSize; ++text) out[used++] = *text;
+    out[used] = '\0';
+}
 }
 
 void WifiFrameClassifier::reset()
 {
-    _multiSsidCount = 0;
     for (MultiSsidTracker &tracker : _multiSsid) tracker = MultiSsidTracker{};
     for (DeauthTracker &tracker : _deauth) tracker = DeauthTracker{};
 }
@@ -70,11 +95,12 @@ void WifiFrameClassifier::classify(const uint8_t *frame, uint16_t length, int8_t
              subtype == 0x0C ? "Deauth flood" : "Disassoc flood", mac, rssi,
              Confidence::Medium, channel);
     if (frameType == 0 && subtype == 0x08)
-        inspectBeacon(frame, length, rssi, channel, wants, wantsContext, sink, sinkContext);
+        inspectBeacon(frame, length, rssi, channel, nowMs, wants, wantsContext, sink,
+                      sinkContext);
 }
 
 void WifiFrameClassifier::inspectBeacon(const uint8_t *payload, uint16_t length, int8_t rssi,
-                                        uint8_t channel, WantsFn wants,
+                                        uint8_t channel, uint32_t nowMs, WantsFn wants,
                                         const void *wantsContext, CandidateSink sink,
                                         void *sinkContext)
 {
@@ -117,25 +143,14 @@ void WifiFrameClassifier::inspectBeacon(const uint8_t *payload, uint16_t length,
             break;
         }
     }
-    if (wants(ReconTarget::MultiSSID, wantsContext) && haveSsid) {
-        MultiSsidTracker *tracker = nullptr;
-        for (size_t i = 0; i < _multiSsidCount; ++i)
-            if (memcmp(_multiSsid[i].bssid, bssid, 6) == 0) { tracker = &_multiSsid[i]; break; }
-        if (!tracker && _multiSsidCount < 8) {
-            tracker = &_multiSsid[_multiSsidCount++];
-            memcpy(tracker->bssid, bssid, 6);
-        }
-        if (tracker) {
-            const uint16_t hash = ssidLength ? hashSsid(payload + 38, ssidLength) : 0xFFFF;
-            bool known = false;
-            for (uint8_t i = 0; i < tracker->count; ++i) if (tracker->hashes[i] == hash) known = true;
-            if (!known && tracker->count < 4) tracker->hashes[tracker->count++] = hash;
-            if (tracker->count >= 2)
-                // Medium: some legitimate APs also serve several SSIDs from
-                // one BSSID, so this is a pattern rather than proof.
-                emit(sink, sinkContext, ReconTarget::MultiSSID, "Multiple SSIDs from BSSID", mac,
-                     rssi, Confidence::Medium, channel);
-        }
+    if (wants(ReconTarget::MultiSSID, wantsContext) && haveSsid &&
+        !ssidIsHidden(payload + 38, ssidLength)) {
+        char detail[40];
+        if (noteMultiSsid(bssid, payload + 38, ssidLength, nowMs, detail, sizeof(detail)))
+            // Medium: some legitimate APs also serve several SSIDs from
+            // one BSSID, so this is a pattern rather than proof.
+            emit(sink, sinkContext, ReconTarget::MultiSSID, detail, mac, rssi,
+                 Confidence::Medium, channel);
     }
     if (wants(ReconTarget::Pineapple, wantsContext)) {
         const uint16_t capabilities = static_cast<uint16_t>(payload[34] | (payload[35] << 8));
@@ -145,6 +160,90 @@ void WifiFrameClassifier::inspectBeacon(const uint8_t *payload, uint16_t length,
             emit(sink, sinkContext, ReconTarget::Pineapple, "Suspicious Pineapple OUI", mac, rssi,
                  Confidence::Medium, channel);
     }
+}
+
+WifiFrameClassifier::MultiSsidTracker *WifiFrameClassifier::multiSsidTrackerFor(
+    const uint8_t *bssid, uint32_t nowMs)
+{
+    MultiSsidTracker *free = nullptr;
+    MultiSsidTracker *quietest = nullptr;
+    for (MultiSsidTracker &t : _multiSsid) {
+        if (!t.used) {
+            if (free == nullptr) free = &t;
+            continue;
+        }
+        if (memcmp(t.bssid, bssid, 6) == 0) return &t;
+        if (quietest == nullptr ||
+            nowMs - t.lastSeenMs > nowMs - quietest->lastSeenMs)
+            quietest = &t;
+    }
+    // A full table gives up the BSSID heard least recently. A rogue access
+    // point beacons constantly, so it is never the one given up.
+    MultiSsidTracker *slot = free != nullptr ? free : quietest;
+    *slot = MultiSsidTracker{};
+    slot->used = true;
+    memcpy(slot->bssid, bssid, 6);
+    return slot;
+}
+
+bool WifiFrameClassifier::noteMultiSsid(const uint8_t *bssid, const uint8_t *ssid,
+                                        uint8_t length, uint32_t nowMs, char *detail,
+                                        size_t detailSize)
+{
+    MultiSsidTracker *t = multiSsidTrackerFor(bssid, nowMs);
+    t->lastSeenMs = nowMs;
+
+    // Names not heard for kMultiSsidStaleMs are forgotten.
+    for (SsidName &n : t->names)
+        if (n.used && nowMs - n.lastSeenMs > kMultiSsidStaleMs) n = SsidName{};
+
+    SsidName *name = nullptr;
+    for (SsidName &n : t->names)
+        if (n.used && n.length == length && memcmp(n.name, ssid, length) == 0) {
+            name = &n;
+            break;
+        }
+    if (name == nullptr) {
+        // A free slot, or else the quietest name not yet confirmed. Confirmed
+        // names are kept until they go stale; a fifth name with every slot
+        // confirmed is not tracked.
+        for (SsidName &n : t->names)
+            if (!n.used) {
+                name = &n;
+                break;
+            }
+        if (name == nullptr)
+            for (SsidName &n : t->names)
+                if (!n.confirmed &&
+                    (name == nullptr || nowMs - n.lastSeenMs > nowMs - name->lastSeenMs))
+                    name = &n;
+        if (name == nullptr) return false;
+        *name = SsidName{};
+        name->used = true;
+        name->length = length;
+        memcpy(name->name, ssid, length);
+    }
+    name->lastSeenMs = nowMs;
+    if (name->confirmed) return false;
+    if (++name->beacons < kMultiSsidMinBeacons) return false;
+    name->confirmed = true;
+
+    uint8_t confirmed = 0;
+    for (const SsidName &n : t->names)
+        if (n.used && n.confirmed) ++confirmed;
+    if (confirmed < 2) return false;
+
+    size_t used = 0;
+    detail[0] = '\0';
+    appendText(detail, detailSize, used, "SSIDs: ");
+    bool first = true;
+    for (const SsidName &n : t->names) {
+        if (!n.used || !n.confirmed) continue;
+        if (!first) appendText(detail, detailSize, used, " | ");
+        appendSafeName(detail, detailSize, used, n.name, n.length);
+        first = false;
+    }
+    return true;
 }
 
 bool WifiFrameClassifier::noteDeauthFrame(const uint8_t *mac, uint32_t now)

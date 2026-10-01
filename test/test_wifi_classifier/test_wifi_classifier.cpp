@@ -127,15 +127,18 @@ void a_seventh_transmitter_evicts_the_longest_quiet()
 void beacon_candidates_come_out_in_a_fixed_order()
 {
     Harness h;
+    // Confirm "a" and two beacons of "b" first, with only Multi-SSID wanted.
+    h.wanted = {ReconTarget::MultiSSID};
+    for (int i = 0; i < 3; ++i) h.feed(beacon(kPwn, "a", false), -61, 9);
+    for (int i = 0; i < 2; ++i) h.feed(beacon(kPwn, "b", false), -61, 9);
+    CHECK_INT(0, h.seen.size());
+    // The third "b" confirms it: Pwnagotchi, then Multi-SSID, then Pineapple.
     h.wanted = {ReconTarget::Pwnagotchi, ReconTarget::Pineapple, ReconTarget::MultiSSID};
-    h.feed(beacon(kPwn, "a", false), -61, 9);
     h.feed(beacon(kPwn, "b", false), -61, 9);
-    // First beacon: Pwnagotchi, Pineapple. Second: Pwnagotchi, MultiSSID, Pineapple.
-    CHECK_INT(5, h.seen.size());
-    const ReconTarget order[] = {ReconTarget::Pwnagotchi, ReconTarget::Pineapple,
-                                 ReconTarget::Pwnagotchi, ReconTarget::MultiSSID,
+    CHECK_INT(3, h.seen.size());
+    const ReconTarget order[] = {ReconTarget::Pwnagotchi, ReconTarget::MultiSSID,
                                  ReconTarget::Pineapple};
-    for (size_t i = 0; i < 5 && i < h.seen.size(); ++i)
+    for (size_t i = 0; i < 3 && i < h.seen.size(); ++i)
         CHECK_INT(static_cast<int>(order[i]), static_cast<int>(h.seen[i].d));
     CHECK_STR("DE:AD:BE:EF:DE:AD", h.seen[0].address.c_str());
     CHECK_INT(-61, h.seen[0].rssi);
@@ -173,27 +176,162 @@ void unwanted_ssid_prefix_stops_the_prefix_search()
     CHECK_INT(0, h.seen.size());
 }
 
-void multissid_tracks_at_most_eight_bssids_and_four_ssids()
+// ---- several SSIDs from one BSSID --------------------------------------------
+
+namespace {
+void feedN(Harness &h, const uint8_t bssid[6], const std::string &ssid, int n)
+{
+    for (int i = 0; i < n; ++i) h.feed(beacon(bssid, ssid));
+}
+} // namespace
+
+void multissid_one_stray_frame_never_flags()
 {
     Harness h;
     h.wanted = {ReconTarget::MultiSSID};
-    uint8_t b[9][6];
-    for (int i = 0; i < 9; ++i) { memcpy(b[i], kMac, 6); b[i][5] = static_cast<uint8_t>(i); }
-    for (int i = 0; i < 9; ++i) h.feed(beacon(b[i], "one"));
-    for (int i = 0; i < 9; ++i) h.feed(beacon(b[i], "two"));
-    CHECK_INT(8, h.seen.size());  // the ninth BSSID has no tracker
-    h.seen.clear();
-    // A fifth SSID on a full tracker is not stored, but still reports.
-    for (const char *s : {"three", "four", "five"}) h.feed(beacon(b[0], s));
+    feedN(h, kMac, "home", 10);
+    feedN(h, kMac, "hone", 1);  // one garbled or odd beacon
+    feedN(h, kMac, "home", 10);
+    CHECK_INT(0, h.seen.size());
+}
+
+void multissid_flags_when_a_second_name_is_confirmed()
+{
+    Harness h;
+    h.wanted = {ReconTarget::MultiSSID};
+    feedN(h, kMac, "home", 3);
+    feedN(h, kMac, "guest", 2);
+    CHECK_INT(0, h.seen.size());
+    h.feed(beacon(kMac, "guest"), -48, 6);
+    CHECK_INT(1, h.seen.size());
+    if (h.seen.empty()) return;
+    CHECK_INT(static_cast<int>(ReconTarget::MultiSSID), static_cast<int>(h.seen[0].d));
+    CHECK_STR("SSIDs: home | guest", h.seen[0].detail.c_str());
+    CHECK_STR("02:11:22:33:44:55", h.seen[0].address.c_str());
+    CHECK_INT(static_cast<int>(Confidence::Medium), static_cast<int>(h.seen[0].c));
+    CHECK_INT(-48, h.seen[0].rssi);
+    CHECK_INT(6, h.seen[0].channel);
+}
+
+void multissid_beacons_alternating_count_toward_each_name()
+{
+    Harness h;
+    h.wanted = {ReconTarget::MultiSSID};
+    for (int i = 0; i < 3; ++i) {
+        h.feed(beacon(kMac, "home"));
+        h.feed(beacon(kMac, "guest"));
+    }
+    CHECK_INT(1, h.seen.size());
+}
+
+void multissid_reports_once_per_confirmed_name_not_per_beacon()
+{
+    Harness h;
+    h.wanted = {ReconTarget::MultiSSID};
+    feedN(h, kMac, "home", 3);
+    feedN(h, kMac, "guest", 3);
+    CHECK_INT(1, h.seen.size());
+    for (int i = 0; i < 100; ++i) {
+        h.feed(beacon(kMac, "home"));
+        h.feed(beacon(kMac, "guest"));
+    }
+    CHECK_INT(1, h.seen.size());
+    feedN(h, kMac, "third", 3);
+    CHECK_INT(2, h.seen.size());
+    if (h.seen.size() == 2) CHECK_STR("SSIDs: home | guest | third", h.seen[1].detail.c_str());
+}
+
+void multissid_names_age_out_after_sixty_seconds()
+{
+    Harness h;
+    h.wanted = {ReconTarget::MultiSSID};
+    // Heard 60 s ago exactly: still a live name.
+    feedN(h, kMac, "home", 3);
+    h.now += WifiFrameClassifier::kMultiSsidStaleMs;
+    feedN(h, kMac, "guest", 3);
+    CHECK_INT(1, h.seen.size());
+
+    // One millisecond more: a renamed router, not two networks.
+    const uint8_t other[6] = {0x02, 0x11, 0x22, 0x33, 0x44, 0x66};
+    feedN(h, other, "oldname", 3);
+    h.now += WifiFrameClassifier::kMultiSsidStaleMs + 1;
+    feedN(h, other, "newname", 3);
+    CHECK_INT(1, h.seen.size());
+}
+
+void multissid_hidden_names_do_not_count()
+{
+    Harness h;
+    h.wanted = {ReconTarget::MultiSSID};
+    feedN(h, kMac, "", 5);
+    feedN(h, kMac, std::string(3, '\0'), 5);
+    feedN(h, kMac, "home", 5);
+    CHECK_INT(0, h.seen.size());
+}
+
+void multissid_detail_is_safe_for_the_csv()
+{
+    Harness h;
+    h.wanted = {ReconTarget::MultiSSID};
+    feedN(h, kMac, "a,b", 3);
+    feedN(h, kMac, std::string("q\"") + '\x01' + '\xC3', 3);
+    CHECK_INT(1, h.seen.size());
+    if (!h.seen.empty()) CHECK_STR("SSIDs: a?b | q???", h.seen[0].detail.c_str());
+}
+
+void multissid_detail_is_cut_to_the_event_record()
+{
+    Harness h;
+    h.wanted = {ReconTarget::MultiSSID};
+    feedN(h, kMac, std::string(32, 'A'), 3);
+    feedN(h, kMac, std::string(32, 'B'), 3);
+    CHECK_INT(1, h.seen.size());
+    if (!h.seen.empty()) {
+        CHECK_INT(39, h.seen[0].detail.size());  // MonitorEvent::kDetailSize - 1
+        CHECK_STR((std::string("SSIDs: ") + std::string(32, 'A')).c_str(), h.seen[0].detail.c_str());
+    }
+}
+
+void multissid_tracks_sixteen_bssids_and_gives_up_the_quietest()
+{
+    Harness h;
+    h.wanted = {ReconTarget::MultiSSID};
+    uint8_t b[17][6];
+    for (int i = 0; i < 17; ++i) { memcpy(b[i], kMac, 6); b[i][5] = static_cast<uint8_t>(i); }
+    for (int i = 0; i < 16; ++i) {
+        feedN(h, b[i], "one", 3);
+        h.now += 10;
+    }
+    // A seventeenth BSSID takes the slot of b[0], heard least recently.
+    feedN(h, b[16], "one", 3);
+    // b[0] comes back as a new BSSID ("one" is gone) and takes b[1]'s slot.
+    feedN(h, b[0], "two", 3);
+    CHECK_INT(0, h.seen.size());
+    feedN(h, b[2], "two", 3);  // b[2] was kept, "one" and all
+    CHECK_INT(1, h.seen.size());
+}
+
+void multissid_keeps_confirmed_names_when_slots_run_out()
+{
+    Harness h;
+    h.wanted = {ReconTarget::MultiSSID};
+    for (const char *s : {"n1", "n2", "n3", "n4"}) feedN(h, kMac, s, 3);
+    CHECK_INT(3, h.seen.size());  // at the second, third, and fourth name
+    feedN(h, kMac, "n5", 3);      // every slot confirmed: not tracked
     CHECK_INT(3, h.seen.size());
 }
 
-void empty_ssid_hashes_as_its_own_value()
+void multissid_unconfirmed_names_make_room()
 {
     Harness h;
     h.wanted = {ReconTarget::MultiSSID};
-    h.feed(beacon(kMac, ""));
-    h.feed(beacon(kMac, "x"));
+    // Four one-beacon names fill every slot without confirming.
+    for (const char *s : {"n1", "n2", "n3", "n4"}) {
+        feedN(h, kMac, s, 1);
+        h.now += 10;
+    }
+    feedN(h, kMac, "x", 3);
+    feedN(h, kMac, "y", 3);
     CHECK_INT(1, h.seen.size());
 }
 
@@ -202,10 +340,10 @@ void reset_forgets_trackers()
     Harness h;
     h.wanted = {ReconTarget::Deauth, ReconTarget::MultiSSID};
     for (int i = 0; i < 5; ++i) h.feed(mgmt(0x0C, kMac));
-    h.feed(beacon(kMac, "one"));
+    feedN(h, kMac, "one", 3);
     h.k.reset();
     h.feed(mgmt(0x0C, kMac));
-    h.feed(beacon(kMac, "two"));
+    feedN(h, kMac, "two", 3);
     CHECK_INT(0, h.seen.size());
 }
 
@@ -220,8 +358,17 @@ int main(int argc, char **argv)
     CASE(ssid_element_must_fit_and_be_32_bytes_or_fewer);
     CASE(ssid_detail_is_cut_at_31_characters);
     CASE(unwanted_ssid_prefix_stops_the_prefix_search);
-    CASE(multissid_tracks_at_most_eight_bssids_and_four_ssids);
-    CASE(empty_ssid_hashes_as_its_own_value);
+    CASE(multissid_one_stray_frame_never_flags);
+    CASE(multissid_flags_when_a_second_name_is_confirmed);
+    CASE(multissid_beacons_alternating_count_toward_each_name);
+    CASE(multissid_reports_once_per_confirmed_name_not_per_beacon);
+    CASE(multissid_names_age_out_after_sixty_seconds);
+    CASE(multissid_hidden_names_do_not_count);
+    CASE(multissid_detail_is_safe_for_the_csv);
+    CASE(multissid_detail_is_cut_to_the_event_record);
+    CASE(multissid_tracks_sixteen_bssids_and_gives_up_the_quietest);
+    CASE(multissid_keeps_confirmed_names_when_slots_run_out);
+    CASE(multissid_unconfirmed_names_make_room);
     CASE(reset_forgets_trackers);
     CHECK_SUMMARY();
 }
