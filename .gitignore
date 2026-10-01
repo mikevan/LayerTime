@@ -5,6 +5,6 @@ build
 .keepsafe
 Claude outputs/
 garmin/bin/
-s3plus/bin/
+lilygo-s3plus/bin/
 __pycache__/
 garmin/developer_key
