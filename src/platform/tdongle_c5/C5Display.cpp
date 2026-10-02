@@ -27,6 +27,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <lvgl.h>
+#include <string.h>
 
 namespace layertime {
 namespace tdongle_c5 {
@@ -44,6 +45,27 @@ lv_obj_t *gLines[C5Display::kLineCount] = {};
 
 // Every LCD transfer; the LED shares this bus and is scrambled by each one.
 uint32_t gTransfers = 0;
+
+// The owl the screen shows: a RAM copy of the generated image, with the
+// indicators drawn into it (setIndicators).
+uint8_t gOwlPixels[kOwlImageSize * kOwlImageSize * 2];
+lv_image_dsc_t gOwlDsc;
+lv_obj_t *gOwl = nullptr;
+bool gIndicatorsSet = false;
+LinkIndicator gLinkIndicator = LinkIndicator::NoWatch;
+MeshIndicator gMeshIndicator = MeshIndicator::NotConnected;
+
+void drawIndicators()
+{
+    memcpy(gOwlPixels, kOwlImage.data, sizeof(gOwlPixels));
+    if (gIndicatorsSet) {
+        recolorOwlIndicator(gOwlPixels, kOwlImageSize, kOwlEyeBox, linkIndicatorColor(gLinkIndicator));
+        recolorOwlIndicator(gOwlPixels, kOwlImageSize, kOwlLensBox, meshIndicatorColor(gMeshIndicator));
+    }
+    if (gOwl != nullptr) {
+        lv_obj_invalidate(gOwl);
+    }
+}
 
 // Layout, landscape 160 x 80: the owl on the left, status text on the right.
 // The owl is 56 x 56, centred vertically; the text column starts at x = 62
@@ -128,7 +150,15 @@ bool C5Display::begin()
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
     lv_obj_t *owl = lv_image_create(screen);
-    lv_image_set_src(owl, &kOwlImage);
+    if (kOwlImage.data_size == sizeof(gOwlPixels)) {
+        gOwlDsc = kOwlImage;
+        gOwlDsc.data = gOwlPixels;
+        drawIndicators();
+        lv_image_set_src(owl, &gOwlDsc);
+        gOwl = owl;
+    } else {
+        lv_image_set_src(owl, &kOwlImage); // no indicators
+    }
     lv_obj_set_pos(owl, kOwlX, kOwlY);
 
     for (uint8_t i = 0; i < kLineCount; ++i) {
@@ -149,6 +179,15 @@ void C5Display::setLine(uint8_t line, const char *text)
 {
     if (line >= kLineCount || gLines[line] == nullptr) return;
     lv_label_set_text(gLines[line], text);
+}
+
+void C5Display::setIndicators(LinkIndicator link, MeshIndicator mesh)
+{
+    if (gIndicatorsSet && link == gLinkIndicator && mesh == gMeshIndicator) return;
+    gIndicatorsSet = true;
+    gLinkIndicator = link;
+    gMeshIndicator = mesh;
+    if (gOwl != nullptr) drawIndicators();
 }
 
 void C5Display::service()

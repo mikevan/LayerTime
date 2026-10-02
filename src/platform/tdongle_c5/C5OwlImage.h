@@ -22,11 +22,22 @@
 
 #include <lvgl.h>
 
+#include "BringUpLogic.h"
+
 namespace layertime {
 namespace tdongle_c5 {
 
 constexpr int kOwlImageSize = 56;
 extern const lv_image_dsc_t kOwlImage;
+
+// The indicator areas (BringUpLogic.h), measured on the generated pixels;
+// recheck them whenever the owl is regenerated. As the viewer sees the
+// screen, both are on the right half, which is green. The eye: rows 12 to
+// 22, columns 32 to 46. The lens of the glasses directly below it: rows 23
+// to 30, columns 30 to 46; the red bridge between the lenses ends at column
+// 29. Only green pixels inside a box are recoloured.
+constexpr PixelBox kOwlEyeBox{12, 22, 32, 46};
+constexpr PixelBox kOwlLensBox{23, 30, 30, 46};
 
 } // namespace tdongle_c5
 } // namespace layertime

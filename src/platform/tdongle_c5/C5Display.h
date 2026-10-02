@@ -24,6 +24,8 @@
 
 #include <stdint.h>
 
+#include "BringUpLogic.h"
+
 namespace layertime {
 namespace tdongle_c5 {
 
@@ -43,6 +45,13 @@ public:
     void service();
 
     void setBacklight(bool on);
+
+    // The owl's eye and lens indicators (BringUpLogic.h). The owl is drawn
+    // as generated until the first call. A change only marks the owl for
+    // redrawing; nothing reaches the panel until the next service(), so a
+    // dark screen stays dark. Before begin(), the state is kept and drawn
+    // when the screen starts.
+    void setIndicators(LinkIndicator link, MeshIndicator mesh);
 
     // How many SPI transfers the LCD has made. The status LED shares the bus
     // and is scrambled by every one (C5Led.h), so a change means the LED must

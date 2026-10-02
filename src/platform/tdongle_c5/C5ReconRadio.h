@@ -46,6 +46,8 @@
 
 #include <atomic>
 
+#include "BringUpLogic.h"
+
 #include "../../core/logic/ReconCandidate.h"
 #include "../../core/logic/ReconScheduler.h"
 #include "../../core/logic/WifiFrameClassifier.h"
@@ -103,6 +105,12 @@ public:
     void handleBleAdvertisement(const NimBLEAdvertisedDevice *device);
     void handleBleScanEnd();
 
+    // Other LayerWands heard advertising the LayerTime service during the
+    // BLE scans in the last PeerSightings::kWindowMs (LayerWand screen,
+    // NODES). Passive: read from the advertisements the scan hears anyway.
+    // Safe from any task.
+    uint8_t peerCount(uint32_t nowMs) const;
+
     const Counters &counters() const { return _counters; }
     void clearCounters() { _counters = Counters{}; }
 
@@ -129,6 +137,7 @@ private:
     bool _firstFrameOnChannel = false;
     bool _firstAdvertInScan = false;
     Counters _counters;
+    PeerSightings _peers; // guarded in C5ReconRadio.cpp
     static C5ReconRadio *_activeInstance;
 };
 

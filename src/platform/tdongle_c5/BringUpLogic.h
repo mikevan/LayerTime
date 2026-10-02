@@ -24,6 +24,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../../core/model/MonitorEvent.h"
+
 namespace layertime {
 namespace tdongle_c5 {
 
@@ -109,6 +111,89 @@ void formatAdvertisedName(const uint8_t mac[6], char out[kAdvertisedNameSize]);
 //
 // Whole mebibytes, rounded down, for the serial and LCD report.
 uint32_t wholeMiB(uint32_t bytes);
+
+// --- LayerWand screen: owl indicators --------------------------------------
+//
+// The owl's green eye shows the watch link: red with no LayerTime watch
+// connected, green with one. The green lens below it is reserved for the
+// LayerWand mesh role over 802.15.4: red not connected, blue node, green
+// master (Michael, 2026-10-02). The mesh is designed later, so the lens
+// shows NotConnected until then.
+//
+// An indicator recolours only the green pixels inside its box and keeps
+// their shading: each pixel's green level, measured against kOwlGreenPeak,
+// scales the target colour. Green leaves the pixels as drawn. Red is pure
+// red, not the owl's orange-red, so a red indicator stands out from the owl.
+enum class LinkIndicator : uint8_t { NoWatch, Connected };
+enum class MeshIndicator : uint8_t { NotConnected, Node, Master };
+enum class IndicatorColor : uint8_t { Green, Red, Blue };
+
+IndicatorColor linkIndicatorColor(LinkIndicator link);
+IndicatorColor meshIndicatorColor(MeshIndicator mesh);
+
+// Rows top..bottom and columns left..right, inclusive.
+struct PixelBox {
+    uint8_t top;
+    uint8_t bottom;
+    uint8_t left;
+    uint8_t right;
+};
+
+constexpr uint8_t kOwlGreenPeak = 230;
+constexpr Rgb kIndicatorRed{255, 0, 0};
+constexpr Rgb kIndicatorBlue{32, 96, 255};
+
+// True when the RGB565 pixel's green level is above its red and its blue.
+bool isGreenPixel(uint16_t rgb565);
+// The pixel in the indicator colour, shaded as it was; unchanged when it is
+// not green or the colour is Green.
+uint16_t recolorGreenPixel(uint16_t rgb565, IndicatorColor color);
+// pixels: RGB565, little-endian (LVGL's native order), width pixels a row.
+// The box must lie inside the image.
+void recolorOwlIndicator(uint8_t *pixels, uint16_t width, const PixelBox &box, IndicatorColor color);
+
+// --- LayerWand screen: events by band ---------------------------------------
+//
+// Which screen total an event counts toward. BLE events are BLE whatever
+// their band field says. A Wi-Fi event uses its band, or its channel when
+// the band is unknown: 1 to 14 is 2.4 GHz, 32 and up is 5 GHz.
+enum class EventBand : uint8_t { Other, Ble, Wifi2_4GHz, Wifi5GHz };
+
+EventBand eventBand(SourceKind kind, Band band, uint8_t channel);
+
+// Totals since power-on. Not cleared when the watch clears the event list.
+struct BandTotals {
+    uint32_t ble = 0;
+    uint32_t wifi2_4GHz = 0;
+    uint32_t wifi5GHz = 0;
+    uint32_t other = 0;
+
+    void add(EventBand band);
+};
+
+// --- LayerWand screen: other LayerWands nearby ------------------------------
+//
+// Other LayerWands heard advertising the LayerTime service, by Bluetooth
+// address, and how many were heard in the last kWindowMs. A LayerWand
+// advertises while no watch is connected to it. When the mesh exists, its
+// peers replace this count. Full, a new address takes the slot heard
+// longest ago. Safe across millis() wraparound.
+class PeerSightings {
+public:
+    static constexpr uint8_t kCapacity = 32;
+    static constexpr uint32_t kWindowMs = 5u * 60u * 1000u;
+
+    void saw(const uint8_t address[6], uint32_t nowMs);
+    uint8_t count(uint32_t nowMs) const;
+
+private:
+    struct Entry {
+        uint8_t address[6];
+        uint32_t lastMs;
+        bool used;
+    };
+    Entry _entries[kCapacity] = {};
+};
 
 } // namespace tdongle_c5
 } // namespace layertime

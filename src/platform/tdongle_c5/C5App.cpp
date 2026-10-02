@@ -67,6 +67,7 @@
 #include "../../core/logic/ReconSelection.h"
 #include "../../core/logic/ReconStageLog.h"
 #include "../../core/model/LayerTimeCommand.h"
+#include "../../core/ports/EventLog.h"
 
 #include <Arduino.h>
 #include <esp_chip_info.h>
@@ -160,6 +161,19 @@ private:
     void *_context = nullptr;
 };
 
+// The screen's event totals by band, since power-on. Core calls append()
+// once for each new event record, from the candidate sink, so always under
+// the event-log lock; the loop reads the totals as single words.
+class BandTally : public EventLog {
+public:
+    void append(const MonitorEvent &e) override { _totals.add(eventBand(e.sourceKind, e.band, e.channel)); }
+    const BandTotals &totals() const { return _totals; }
+
+private:
+    BandTotals _totals;
+};
+
+BandTally gTally;
 C5BootRecord gBoot; // D3: reset reason and retained boot history
 C5Display gDisplay;
 C5Led gLed;
@@ -302,6 +316,11 @@ void printCounters(const char *when)
                   static_cast<unsigned long>(gLink.framesSent()), static_cast<unsigned long>(gLink.notifyRefused()),
                   static_cast<unsigned long>(gLink.framesDropped()), static_cast<unsigned long>(gLink.busyReplies()),
                   static_cast<unsigned long>(gLink.changeNotifies()));
+    const BandTotals &t = gTally.totals();
+    Serial.printf("[%s] screen totals 5GHz %lu 2.4GHz %lu BLE %lu other %lu | nodes %u\n", when,
+                  static_cast<unsigned long>(t.wifi5GHz), static_cast<unsigned long>(t.wifi2_4GHz),
+                  static_cast<unsigned long>(t.ble), static_cast<unsigned long>(t.other),
+                  static_cast<unsigned>(gRadio.peerCount(millis())));
     Serial.print("frames by channel:");
     for (uint8_t ch = 1; ch <= 14; ++ch) Serial.printf(" %u=%lu", ch, static_cast<unsigned long>(c.framesByChannel[ch]));
     Serial.println();
@@ -379,34 +398,24 @@ void startRun(RunMode mode, uint32_t now)
 
 void showStatus()
 {
-    // Each line must fit the 96 px status column (about 14 characters).
+    // The LayerWand screen (Michael, 2026-10-02). Line 0, "LayerWand", is set
+    // once when the screen starts. Each line must fit the 96 px status
+    // column (about 14 characters). The 5 GHz total stays 0 while the radio
+    // is pinned to 2.4 GHz (C5ReconRadio::begin).
     char line[40];
-    const AcquisitionStatus a = gMonitor.acquisition();
-    const ReconState r = gCore.reconState(); // single-word reads for the LCD
-    if (a.monitoring) {
-        snprintf(line, sizeof(line), "R %s", recon::detectorName(a.selected));
-    } else if (a.earlyWarningEnabled) {
-        snprintf(line, sizeof(line), "%s", a.earlyWarningResting ? "EarlyWarn rest" : "EarlyWarn");
-    } else {
-        snprintf(line, sizeof(line), "Recon off");
-    }
+    const BandTotals &t = gTally.totals(); // single-word reads for the LCD
+    snprintf(line, sizeof(line), "5GHz EV: %lu", static_cast<unsigned long>(t.wifi5GHz));
     gDisplay.setLine(1, line);
-    snprintf(line, sizeof(line), "Ev %u%s", static_cast<unsigned>(r.eventCount), r.alertPending ? " ALERT" : "");
+    snprintf(line, sizeof(line), "2.4GHz EV: %lu", static_cast<unsigned long>(t.wifi2_4GHz));
     gDisplay.setLine(2, line);
-    if (!gBleOk) {
-        gDisplay.setLine(3, "BLE FAILED");
-    } else if (gLink.connected()) {
-        const char *addr = gLink.peerAddress();
-        const size_t n = strlen(addr);
-        snprintf(line, sizeof(line), "Watch %s", n >= 5 ? addr + n - 5 : addr);
-        gDisplay.setLine(3, line);
-    } else {
-        gDisplay.setLine(3, "No watch");
-    }
-    // Uptime, then the reset-reason letter and boot count.
-    snprintf(line, sizeof(line), "%lus %c%lu", static_cast<unsigned long>(millis() / 1000),
-             C5BootRecord::reasonLetter(gBoot.reason()), static_cast<unsigned long>(gBoot.bootCount()));
+    snprintf(line, sizeof(line), "BLE EV: %lu", static_cast<unsigned long>(t.ble));
+    gDisplay.setLine(3, line);
+    snprintf(line, sizeof(line), "NODES: %u", static_cast<unsigned>(gRadio.peerCount(millis())));
     gDisplay.setLine(4, line);
+    // The eye: the watch link. The lens: the mesh role, not connected until
+    // the mesh exists.
+    gDisplay.setIndicators(gLink.connected() ? LinkIndicator::Connected : LinkIndicator::NoWatch,
+                           MeshIndicator::NotConnected);
 }
 
 // Short BOOT press: start the screen the first time, light it, and show the
@@ -487,6 +496,7 @@ void setup()
 
     CorePorts ports;
     ports.monitor = &gLockedMonitor;
+    ports.eventLog = &gTally;
     gCore.attach(ports);
     gServer.setLock(lockEvents, unlockEvents, nullptr);
 

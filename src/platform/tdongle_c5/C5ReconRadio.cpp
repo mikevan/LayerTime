@@ -23,6 +23,7 @@
 
 #include "C5StageLog.h"
 
+#include "../../core/link/LinkFrames.h"
 #include "../../core/logic/BleAdvertClassifier.h"
 #include "../../core/logic/ReconSelection.h"
 #include "../../core/logic/ReconSignatures.h"
@@ -32,6 +33,7 @@
 #include <WiFi.h>
 #include <esp_timer.h>
 #include <esp_wifi.h>
+#include <freertos/FreeRTOS.h>
 #include <soc/soc_caps.h>
 
 #include <string>
@@ -81,6 +83,10 @@ public:
 };
 
 C5BleScanCallbacks gBleScanCallbacks;
+
+// Guards the peer sightings: written on the NimBLE host task, read on the
+// loop task.
+portMUX_TYPE gPeerLock = portMUX_INITIALIZER_UNLOCKED;
 
 Band bandOfChannel(uint8_t channel)
 {
@@ -234,6 +240,16 @@ void C5ReconRadio::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
         _firstAdvertInScan = false;
         if (_stage) _stage->record(recon::Stage::BleAdvert, static_cast<uint8_t>(_currentBleScanDetector), 0, _counters.adverts);
     }
+    // Another LayerWand (NODES on the screen): it advertises the LayerTime
+    // service while no watch is connected to it. Never this dongle itself.
+    static const NimBLEUUID kLayerTimeService(link::kServiceUuid);
+    if (device->isAdvertisingService(kLayerTimeService) &&
+        !device->getAddress().equals(NimBLEDevice::getAddress())) {
+        const uint32_t now = millis();
+        portENTER_CRITICAL(&gPeerLock);
+        _peers.saw(device->getAddress().getVal(), now);
+        portEXIT_CRITICAL(&gPeerLock);
+    }
     const std::string name = device->haveName() ? device->getName() : std::string();
     const std::string address = device->getAddress().toString();
 
@@ -253,6 +269,14 @@ void C5ReconRadio::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
     advert.context = device;
 
     recon::classifyBleAdvert(advert, _currentBleScanDetector, bleCandidateThunk, this);
+}
+
+uint8_t C5ReconRadio::peerCount(uint32_t nowMs) const
+{
+    portENTER_CRITICAL(&gPeerLock);
+    const uint8_t n = _peers.count(nowMs);
+    portEXIT_CRITICAL(&gPeerLock);
+    return n;
 }
 
 bool C5ReconRadio::wants(ReconTarget detector) const
