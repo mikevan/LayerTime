@@ -38,6 +38,14 @@ size_t encodePing(const Ping &p, uint8_t *out);
 size_t encodeHelloAck(const HelloAck &a, uint8_t *out);
 size_t encodeAck(const Ack &a, uint8_t *out);
 size_t encodeError(const Error &e, uint8_t *out);
+size_t encodeCommand(const Command &c, uint8_t *out);
+size_t encodeGetChanged(const GetChanged &g, uint8_t *out);
+size_t encodeGetText(const GetText &g, uint8_t *out);
+size_t encodeResult(const Result &r, uint8_t *out);
+size_t encodeEventSummary(const EventSummary &e, uint8_t *out);
+size_t encodeEnd(const End &e, uint8_t *out);
+// Returns 0 when length is 0 or above kTextMaxChunk.
+size_t encodeText(const Text &t, uint8_t *out);
 
 // Decoders return false when the length is wrong or the type byte does not
 // match. On false the output is untouched.
@@ -47,6 +55,16 @@ bool decodePing(const uint8_t *in, size_t len, Ping &out);
 bool decodeHelloAck(const uint8_t *in, size_t len, HelloAck &out);
 bool decodeAck(const uint8_t *in, size_t len, Ack &out);
 bool decodeError(const uint8_t *in, size_t len, Error &out);
+// COMMAND decodes any length from 3 to kMaxFrame; hasArgument is set when
+// there are 4 or more bytes and argument is byte 3. Which lengths a command
+// accepts is the server's rule (LinkServer), not the frame's.
+bool decodeCommand(const uint8_t *in, size_t len, Command &out);
+bool decodeGetChanged(const uint8_t *in, size_t len, GetChanged &out);
+bool decodeGetText(const uint8_t *in, size_t len, GetText &out);
+bool decodeResult(const uint8_t *in, size_t len, Result &out);
+bool decodeEventSummary(const uint8_t *in, size_t len, EventSummary &out);
+bool decodeEnd(const uint8_t *in, size_t len, End &out);
+bool decodeText(const uint8_t *in, size_t len, Text &out);
 
 // What the Node reports about itself in HELLO_ACK.
 struct NodeIdentity {
@@ -58,8 +76,11 @@ struct NodeIdentity {
 // Answers one Control request with exactly one Data frame. reply must hold
 // kMaxFrame bytes; the return value is the reply length, never 0.
 //   heartbeat: the Node's current heartbeat, echoed in ACK.
-// Ops not bound in this increment are answered with ERROR UnknownOp, as are
-// test-range ops on a release build.
+// This is the Link-only Node (Increment 1): HELLO and PING are answered,
+// and every other op, COMMAND, GET_CHANGED and GET_TEXT included, is
+// answered with ERROR UnknownOp, as are test-range ops on a release build.
+// A Node that runs Recon answers through LinkServer, which hands HELLO,
+// PING and the rest to this function.
 size_t dispatch(const NodeIdentity &node, uint8_t heartbeat, const uint8_t *request, size_t len,
                 uint8_t *reply);
 

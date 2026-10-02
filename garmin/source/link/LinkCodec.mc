@@ -23,8 +23,9 @@ import Toybox.Lang;
 // contracts/link.md. Checked byte for byte against LinkVectors (generated
 // from contracts/vectors/link_frames.json) by test/LinkCodecTests.mc.
 //
-// Numbers wider than 31 bits (tokens, changeSeq, lastAlertEventId) are
-// carried as Long because Monkey C's Number is a signed 32-bit value.
+// Numbers wider than 31 bits (tokens, changeSeq, lastAlertEventId,
+// eventId) are decoded as Long because Monkey C's Number is a signed 32-bit
+// value; LinkClient narrows the ones it keeps (see Link.narrow).
 module Link {
 
     const MAJOR = 0;
@@ -84,6 +85,32 @@ module Link {
     const HELLO_ACK_SIZE = 10;
     const ACK_SIZE = 8;
     const ERROR_SIZE = 3;
+    const GET_CHANGED_SIZE = 6;
+    const GET_TEXT_SIZE = 7;
+    const RESULT_SIZE = 5;
+    const EVENT_SUMMARY_SIZE = 18;
+    const END_SIZE = 9;
+    const TEXT_HEADER_SIZE = 6;
+    const TEXT_MAX_CHUNK = 14;
+
+    const SUMMARY_HAS_SOURCE_ID = 0x01;
+    const SUMMARY_HAS_DETAIL = 0x02;
+    const TEXT_FIELD_SOURCE_ID = 0;
+    const TEXT_FIELD_DETAIL = 1;
+
+    // CommandType values (contracts/vectors/enums.json) the Recon Node
+    // accepts, and CommandResult.
+    const CMD_RECON_START = 1;
+    const CMD_RECON_STOP = 2;
+    const CMD_RECON_CLEAR_EVENTS = 3;
+    const CMD_RECON_ACKNOWLEDGE_ALERT = 4;
+    const CMD_SET_SLEEP_MODE = 11;
+    const CMD_SET_EARLY_WARNING = 12;
+    const RESULT_OK = 0;
+    const RESULT_UNSUPPORTED = 1;
+    const RESULT_INVALID_ARGUMENT = 2;
+    const RESULT_NOT_READY = 3;
+    const RESULT_FAILED = 4;
 
     function serviceUuid() as Uuid { return BluetoothLowEnergy.stringToUuid(UUID_SERVICE); }
     function controlUuid() as Uuid { return BluetoothLowEnergy.stringToUuid(UUID_CONTROL); }
@@ -102,6 +129,29 @@ module Link {
         b[0] = OP_PING;
         b[1] = reqId & 0xFF;
         b.encodeNumber(token, Lang.NUMBER_FORMAT_UINT32, {:offset => 2, :endianness => Lang.ENDIAN_LITTLE});
+        return b;
+    }
+
+    // COMMAND: 3 bytes, or 4 when arg is not null.
+    function encodeCommand(reqId as Number, commandType as Number, arg as Number?) as ByteArray {
+        if (arg == null) { return [OP_COMMAND, reqId & 0xFF, commandType & 0xFF]b; }
+        return [OP_COMMAND, reqId & 0xFF, commandType & 0xFF, arg & 0xFF]b;
+    }
+
+    function encodeGetChanged(reqId as Number, since as Long) as ByteArray {
+        var b = new [GET_CHANGED_SIZE]b;
+        b[0] = OP_GET_CHANGED;
+        b[1] = reqId & 0xFF;
+        b.encodeNumber(since, Lang.NUMBER_FORMAT_UINT32, {:offset => 2, :endianness => Lang.ENDIAN_LITTLE});
+        return b;
+    }
+
+    function encodeGetText(reqId as Number, eventId as Long, field as Number) as ByteArray {
+        var b = new [GET_TEXT_SIZE]b;
+        b[0] = OP_GET_TEXT;
+        b[1] = reqId & 0xFF;
+        b.encodeNumber(eventId, Lang.NUMBER_FORMAT_UINT32, {:offset => 2, :endianness => Lang.ENDIAN_LITTLE});
+        b[6] = field & 0xFF;
         return b;
     }
 
@@ -149,7 +199,57 @@ module Link {
             if (value.size() != ERROR_SIZE) { return null; }
             return {:type => type, :reqId => value[1], :linkStatus => value[2]};
         }
+        if (type == FRAME_RESULT) {
+            if (value.size() != RESULT_SIZE) { return null; }
+            return {:type => type, :reqId => value[1], :linkStatus => value[2],
+                    :commandType => value[3], :commandResult => value[4]};
+        }
+        if (type == FRAME_EVENT_SUMMARY) {
+            if (value.size() != EVENT_SUMMARY_SIZE) { return null; }
+            var rssi = value[12] as Number;
+            if (rssi > 127) { rssi -= 256; }
+            return {
+                :type => type, :reqId => value[1], :linkStatus => value[2],
+                :eventId => u32(value, 3), :detector => value[7], :confidence => value[8],
+                :sourceKind => value[9], :band => value[10], :channel => value[11], :rssi => rssi,
+                :count => u16(value, 13), :ageSeconds => u16(value, 15), :flags => value[17]
+            };
+        }
+        if (type == FRAME_END) {
+            if (value.size() != END_SIZE) { return null; }
+            return {:type => type, :reqId => value[1], :linkStatus => value[2],
+                    :count => value[3], :gap => value[4], :changeSeq => u32(value, 5)};
+        }
+        if (type == FRAME_TEXT) {
+            if (value.size() <= TEXT_HEADER_SIZE || value.size() > MAX_FRAME) { return null; }
+            return {:type => type, :reqId => value[1], :linkStatus => value[2],
+                    :field => value[3], :index => value[4], :total => value[5],
+                    :length => value.size() - TEXT_HEADER_SIZE,
+                    :bytes => value.slice(TEXT_HEADER_SIZE, value.size())};
+        }
         return null;
+    }
+
+    // A u32 carried as Long, narrowed to a Number for the watch's own
+    // bookkeeping. Event ids and change sequences start at 1 each session and
+    // never approach 2^31 in practice; a value past it keeps its low 32 bits,
+    // so equality still holds.
+    function narrow(v as Long or Number) as Number {
+        return (v & 0xFFFFFFFFl).toNumber();
+    }
+
+    // The inverse, for a request field (since, eventId).
+    function widen(v as Number) as Long {
+        return v.toLong() & 0xFFFFFFFFl;
+    }
+
+    function commandResultName(r as Number) as String {
+        if (r == RESULT_OK) { return "OK"; }
+        if (r == RESULT_UNSUPPORTED) { return "Unsupported"; }
+        if (r == RESULT_INVALID_ARGUMENT) { return "Invalid argument"; }
+        if (r == RESULT_NOT_READY) { return "Not ready"; }
+        if (r == RESULT_FAILED) { return "Failed"; }
+        return "Result " + r;
     }
 
     function u16(b as ByteArray, offset as Number) as Number {

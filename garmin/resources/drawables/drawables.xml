@@ -1,3 +1,6 @@
 <drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
     <bitmap id="LauncherIcon" filename="launcher_icon.png" />
+    <!-- The LayerTime owl (assets/LayerTime-owl-transparent.png), 150 px,
+         transparent background: the watch face is always black. -->
+    <bitmap id="OwlHome" filename="owl_home.png" />
 </drawables>

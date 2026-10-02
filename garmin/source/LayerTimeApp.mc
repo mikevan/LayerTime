@@ -26,6 +26,7 @@ import Toybox.WatchUi;
 class LayerTimeApp extends Application.AppBase {
 
     private var _link as LinkClient?;
+    private var _nav as NavTracker?;
 
     public function initialize() {
         AppBase.initialize();
@@ -33,19 +34,30 @@ class LayerTimeApp extends Application.AppBase {
 
     public function onStart(state as Dictionary?) as Void {
         _link = new LinkClient();
-        _link.start();
+        _link.resultObserver = new Lang.Method(Controls, :showResult);
+        _link.gapObserver = new Lang.Method(Controls, :showGap);
+        Env.startLink(_link);
+        _nav = new NavTracker();
+        _nav.start();
     }
 
     public function onStop(state as Dictionary?) as Void {
+        if (_nav != null) {
+            _nav.stop();
+            _nav = null;
+        }
         if (_link != null) {
-            _link.stop();
+            Env.stopLink(_link);
             _link = null;
         }
     }
 
     public function getInitialView() as [Views] or [Views, InputDelegates] {
         var link = _link as LinkClient;
-        var view = new $.LayerTimeView(link);
-        return [view, new $.LayerTimeDelegate(link)];
+        var nav = _nav as NavTracker;
+        // The home screen is the app; the Link diagnostics view is a page
+        // under it (DOWN).
+        var home = new $.HomeView(link, nav);
+        return [home, new $.HomeDelegate(link, home)];
     }
 }

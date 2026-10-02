@@ -23,10 +23,26 @@ import Toybox.WatchUi;
 
 // The Increment 1 transport view: link state, Node name, heartbeat, session,
 // PING round trip, and the probe measurement. This is the transport proof,
-// not the product UI (decision D4 stays open).
+// not the product UI (decision D4 stays open). Reached from the Controls
+// (Link diagnostics). The PING button at the bottom is the one touch target
+// on this page: a tap on it sends a PING, as START does.
 class LayerTimeView extends WatchUi.View {
 
+    private const CYAN = 0x30D0FF;
+
     private var _link as LinkClient;
+    // The PING button of the last draw, [x, y, w, h].
+    private var _pingBox as Array<Number> = [0, 0, 0, 0];
+
+    // True when (x, y) is on the PING button.
+    public function inPing(x as Number, y as Number) as Boolean { return HomeHit.inBox(x, y, _pingBox); }
+
+    // The PING button for a display of width w and height h: 120 x 40,
+    // centred, its top 62 px above the bottom edge (y 392 to 432 on the
+    // 454 px display), below the key hint and inside the circle's chord.
+    public static function pingBox(w as Number, h as Number) as Array<Number> {
+        return [w / 2 - 60, h - 62, 120, 40] as Array<Number>;
+    }
 
     public function initialize(link as LinkClient) {
         View.initialize();
@@ -111,6 +127,14 @@ class LayerTimeView extends WatchUi.View {
 
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, h - line * 2, Graphics.FONT_XTINY, HeartbeatWatch.hint(), Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        var b = pingBox(w, h);
+        _pingBox = b;
+        dc.setColor(CYAN, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(3);
+        dc.drawRoundedRectangle(b[0], b[1], b[2], b[3], 10);
+        dc.setPenWidth(1);
+        dc.drawText(cx, b[1] + b[3] / 2, Graphics.FONT_TINY, "PING", Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     public function onHide() as Void {

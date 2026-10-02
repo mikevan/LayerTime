@@ -22,9 +22,9 @@
 // Numbers here are the contract; contracts/vectors/link_frames.json is the
 // evidence, and test/test_link_codec/ holds this file to it.
 //
-// Increment 1 binds Status, HELLO/HELLO_ACK, PING/ACK and ERROR. The other
-// operations are named so their numbers are fixed, and are answered with
-// UnknownOp until their increments bind them.
+// Increment 1 bound Status, HELLO/HELLO_ACK, PING/ACK and ERROR. The Recon
+// integration (Increment 2B) binds COMMAND/RESULT, GET_CHANGED/EVENT_SUMMARY/
+// END and GET_TEXT/TEXT; LinkServer.h answers them. RX_MARK stays unbound.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -49,9 +49,9 @@ constexpr char kProbeUuid[] = "8ac600f0-a08b-4851-b89f-e6b39081268e"; // test bu
 enum class Op : uint8_t {
     Hello = 0x01,
     Ping = 0x02,
-    Command = 0x03,     // bound in Increment 4
-    GetChanged = 0x04,  // bound in Increment 5
-    GetText = 0x05,     // bound in Increment 5
+    Command = 0x03,
+    GetChanged = 0x04,
+    GetText = 0x05,
     TestFirst = 0xF0,
     RxMark = 0xF1,      // bound in Increment 2B
     TestLast = 0xFE,
@@ -60,10 +60,10 @@ enum class Op : uint8_t {
 enum class FrameType : uint8_t {
     HelloAck = 0x81,
     Ack = 0x82,
-    Result = 0x83,        // Increment 4
-    EventSummary = 0x84,  // Increment 5
-    End = 0x85,           // Increment 5
-    Text = 0x86,          // Increment 5
+    Result = 0x83,
+    EventSummary = 0x84,
+    End = 0x85,
+    Text = 0x86,
     Error = 0x8F,
 };
 
@@ -101,6 +101,24 @@ constexpr size_t kPingSize = 6;
 constexpr size_t kHelloAckSize = 10;
 constexpr size_t kAckSize = 8;
 constexpr size_t kErrorSize = 3;
+constexpr size_t kCommandMinSize = 3;   // op, reqId, commandType
+constexpr size_t kGetChangedSize = 6;
+constexpr size_t kGetTextSize = 7;
+constexpr size_t kResultSize = 5;
+constexpr size_t kEventSummarySize = 18;
+constexpr size_t kEndSize = 9;
+constexpr size_t kTextHeaderSize = 6;
+constexpr size_t kTextMaxChunk = kMaxFrame - kTextHeaderSize; // 14
+
+// GET_TEXT / TEXT field numbers.
+enum class TextField : uint8_t {
+    SourceId = 0,
+    Detail = 1,
+};
+
+// EVENT_SUMMARY.flags bits.
+constexpr uint8_t kSummaryHasSourceId = 0x01;
+constexpr uint8_t kSummaryHasDetail = 0x02;
 
 // The probe payload sizes for the notification-size measurement.
 constexpr size_t kProbeSizes[] = {20, 21, 64, 180};
@@ -152,6 +170,65 @@ struct Ack {
 struct Error {
     uint8_t reqId = 0;
     LinkStatus status = LinkStatus::Ok;
+};
+
+// COMMAND: 3 bytes, or 4 when the command takes an argument.
+struct Command {
+    uint8_t reqId = 0;
+    uint8_t commandType = 0;
+    bool hasArgument = false;
+    uint8_t argument = 0;
+};
+
+struct GetChanged {
+    uint8_t reqId = 0;
+    uint32_t sinceChangeSeq = 0;
+};
+
+struct GetText {
+    uint8_t reqId = 0;
+    uint32_t eventId = 0;
+    uint8_t field = 0;
+};
+
+struct Result {
+    uint8_t reqId = 0;
+    LinkStatus status = LinkStatus::Ok;
+    uint8_t commandType = 0;
+    uint8_t commandResult = 0;
+};
+
+struct EventSummary {
+    uint8_t reqId = 0;
+    LinkStatus status = LinkStatus::Ok;
+    uint32_t eventId = 0;
+    uint8_t detector = 0;
+    uint8_t confidence = 0;
+    uint8_t sourceKind = 0;
+    uint8_t band = 0;
+    uint8_t channel = 0;
+    int8_t rssi = 0;
+    uint16_t count = 0;
+    uint16_t ageSeconds = 0;
+    uint8_t flags = 0;
+};
+
+struct End {
+    uint8_t reqId = 0;
+    LinkStatus status = LinkStatus::Ok;
+    uint8_t count = 0;
+    uint8_t gap = 0;
+    uint32_t changeSeq = 0;
+};
+
+struct Text {
+    uint8_t reqId = 0;
+    LinkStatus status = LinkStatus::Ok;
+    uint8_t field = 0;
+    uint8_t index = 0;
+    uint8_t total = 0;
+    uint8_t length = 0; // 1..kTextMaxChunk
+    uint8_t bytes[kTextMaxChunk] = {};
 };
 
 } // namespace link

@@ -60,6 +60,9 @@ module LinkCodecTests {
         ok = ok && Link.UUID_SERVICE.equals(LinkVectors.UUID_SERVICE) && Link.UUID_CONTROL.equals(LinkVectors.UUID_CONTROL);
         ok = ok && Link.UUID_STATUS.equals(LinkVectors.UUID_STATUS) && Link.UUID_DATA.equals(LinkVectors.UUID_DATA);
         ok = ok && Link.UUID_PROBE.equals(LinkVectors.UUID_PROBE);
+        ok = ok && Link.TEXT_MAX_CHUNK == LinkVectors.TEXTMAXCHUNK;
+        ok = ok && Link.SUMMARY_HAS_SOURCE_ID == LinkVectors.SUMMARYFLAGS_SOURCEID && Link.SUMMARY_HAS_DETAIL == LinkVectors.SUMMARYFLAGS_DETAIL;
+        ok = ok && Link.TEXT_FIELD_SOURCE_ID == LinkVectors.TEXTFIELDS_SOURCEID && Link.TEXT_FIELD_DETAIL == LinkVectors.TEXTFIELDS_DETAIL;
         if (!ok) { logger.error("a constant differs from link_frames.json"); }
         return ok;
     }
@@ -97,6 +100,12 @@ module LinkCodecTests {
                 bytes = Link.encodeHello(f[:reqId] as Number, f[:clientMajor] as Number, f[:clientMinor] as Number);
             } else if (op.equals("PING")) {
                 bytes = Link.encodePing(f[:reqId] as Number, (f[:token] as Numeric).toLong());
+            } else if (op.equals("COMMAND")) {
+                bytes = Link.encodeCommand(f[:reqId] as Number, f[:commandType] as Number, f[:argument] as Number?);
+            } else if (op.equals("GET_CHANGED")) {
+                bytes = Link.encodeGetChanged(f[:reqId] as Number, (f[:sinceChangeSeq] as Numeric).toLong());
+            } else if (op.equals("GET_TEXT")) {
+                bytes = Link.encodeGetText(f[:reqId] as Number, (f[:eventId] as Numeric).toLong(), f[:field] as Number);
             } else {
                 logger.error(name + ": unknown op " + op);
                 ok = false;
@@ -118,7 +127,11 @@ module LinkCodecTests {
             var r = Link.decodeReply(v[:bytes] as ByteArray);
             if (r == null) { logger.error(name + ": decodeReply returned null"); ok = false; continue; }
             var type = v[:type] as String;
-            var expectedType = type.equals("HELLO_ACK") ? Link.FRAME_HELLO_ACK : (type.equals("ACK") ? Link.FRAME_ACK : Link.FRAME_ERROR);
+            var names = ["HELLO_ACK", "ACK", "ERROR", "RESULT", "EVENT_SUMMARY", "END", "TEXT"];
+            var types = [Link.FRAME_HELLO_ACK, Link.FRAME_ACK, Link.FRAME_ERROR, Link.FRAME_RESULT,
+                         Link.FRAME_EVENT_SUMMARY, Link.FRAME_END, Link.FRAME_TEXT];
+            var expectedType = -1;
+            for (var t = 0; t < names.size(); t++) { if (type.equals(names[t])) { expectedType = types[t]; } }
             ok = field(logger, name, :type, expectedType, r[:type] as Object?) && ok;
             ok = field(logger, name, :reqId, f[:reqId] as Object?, r[:reqId] as Object?) && ok;
             ok = field(logger, name, :linkStatus, f[:linkStatus] as Object?, r[:linkStatus] as Object?) && ok;
@@ -131,6 +144,26 @@ module LinkCodecTests {
             } else if (type.equals("ACK")) {
                 ok = field(logger, name, :token, (f[:token] as Numeric).toLong(), r[:token] as Object?) && ok;
                 ok = field(logger, name, :heartbeat, f[:heartbeat] as Object?, r[:heartbeat] as Object?) && ok;
+            } else if (type.equals("RESULT")) {
+                ok = field(logger, name, :commandType, f[:commandType] as Object?, r[:commandType] as Object?) && ok;
+                ok = field(logger, name, :commandResult, f[:commandResult] as Object?, r[:commandResult] as Object?) && ok;
+            } else if (type.equals("EVENT_SUMMARY")) {
+                ok = field(logger, name, :eventId, (f[:eventId] as Numeric).toLong(), r[:eventId] as Object?) && ok;
+                var keys = [:detector, :confidence, :sourceKind, :band, :channel, :rssi, :count, :ageSeconds, :flags];
+                for (var k = 0; k < keys.size(); k++) {
+                    ok = field(logger, name, keys[k], f[keys[k]] as Object?, r[keys[k]] as Object?) && ok;
+                }
+            } else if (type.equals("END")) {
+                ok = field(logger, name, :count, f[:count] as Object?, r[:count] as Object?) && ok;
+                ok = field(logger, name, :gap, f[:gap] as Object?, r[:gap] as Object?) && ok;
+                ok = field(logger, name, :changeSeq, (f[:changeSeq] as Numeric).toLong(), r[:changeSeq] as Object?) && ok;
+            } else if (type.equals("TEXT")) {
+                ok = field(logger, name, :field, f[:field] as Object?, r[:field] as Object?) && ok;
+                ok = field(logger, name, :index, f[:index] as Object?, r[:index] as Object?) && ok;
+                ok = field(logger, name, :total, f[:total] as Object?, r[:total] as Object?) && ok;
+                ok = field(logger, name, :length, f[:length] as Object?, r[:length] as Object?) && ok;
+                var bytes = v[:bytes] as ByteArray;
+                ok = same(logger, name + ".bytes", bytes.slice(Link.TEXT_HEADER_SIZE, bytes.size()), r[:bytes] as ByteArray) && ok;
             }
         }
         return ok;
@@ -142,7 +175,33 @@ module LinkCodecTests {
         ok = ok && Link.decodeReply([0x81, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00]b) == null; // HELLO_ACK too long
         ok = ok && Link.decodeReply([0x7E, 0x01, 0x00]b) == null;           // not a frame type
         ok = ok && Link.decodeReply([]b) == null;
+        ok = ok && Link.decodeReply([0x85, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]b) == null;  // END too short
+        ok = ok && Link.decodeReply([0x86, 0x01, 0x00, 0x01, 0x00, 0x01]b) == null;              // TEXT with no payload
+        ok = ok && Link.decodeReply(new [17]b) == null;
+        var summary = new [18]b;
+        summary[0] = Link.FRAME_EVENT_SUMMARY;
+        ok = ok && Link.decodeReply(summary.slice(0, 17)) == null;                               // EVENT_SUMMARY short
         if (!ok) { logger.error("a bad frame was accepted"); }
+        return ok;
+    }
+
+    (:test)
+    function narrowKeepsValuesAndWidenInverts(logger as Logger) as Boolean {
+        var ok = Link.narrow(7l) == 7 && Link.narrow(0l) == 0 && Link.narrow(2147483647l) == 2147483647;
+        ok = ok && Link.widen(7).equals(7l) && Link.widen(Link.narrow(4294967295l)).equals(4294967295l);
+        if (!ok) { logger.error("narrow/widen broke"); }
+        return ok;
+    }
+
+    (:test)
+    function queueTouchRestartsTheTimeout(logger as Logger) as Boolean {
+        var q = new RequestQueue();
+        var a = {:kind => :write, :reqId => 1};
+        var ok = q.submit(a, 0) == a;
+        q.touch(2500);                                  // a frame of the reply arrived
+        ok = ok && q.expire(3000, 3000) == null;       // not yet: 500 ms since the frame
+        ok = ok && q.expire(5500, 3000) == a;          // 3000 ms after the last frame
+        if (!ok) { logger.error("touch did not restart the timeout"); }
         return ok;
     }
 

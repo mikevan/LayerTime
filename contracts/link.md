@@ -6,11 +6,13 @@ GATT. The C++ binding is `src/core/link/`; the Monkey C binding is
 `garmin/source/link/`. Byte-exact vectors are in `vectors/link_frames.json`,
 and both bindings are tested against them.
 
-This document binds what Slice 1 Increment 1 implements: advertising, the
-service, Status, HELLO, PING, link status values, the session rule, and the
-test-only range. The remaining operations and frames (COMMAND, GET_CHANGED,
-GET_TEXT, RESULT, EVENT_SUMMARY, END, TEXT, RX_MARK) are defined by the Slice
-1 plan and are bound here when their increments implement them.
+Slice 1 Increment 1 bound advertising, the service, Status, HELLO, PING,
+link status values, the session rule, and the test-only range. The Recon
+integration (2026-09-30) binds COMMAND/RESULT, GET_CHANGED/EVENT_SUMMARY/END
+and GET_TEXT/TEXT, and gives Status its live Recon fields. RX_MARK stays
+unbound. A Node that runs no Recon (the Increment 1 Link-only firmware)
+still answers COMMAND, GET_CHANGED and GET_TEXT with ERROR UnknownOp, which
+is how an interface tells the two apart.
 
 ## Rules
 
@@ -18,7 +20,10 @@ GET_TEXT, RESULT, EVENT_SUMMARY, END, TEXT, RX_MARK) are defined by the Slice
    20 bytes and does not negotiate a larger ATT MTU. Nothing here assumes a
    longer frame.
 2. **One outstanding request.** The interface writes one Control request and
-   waits for its reply on Data before writing the next.
+   waits for its reply on Data before writing the next. A reply is one frame,
+   or for GET_CHANGED and GET_TEXT a run of frames that always ends with END.
+   A request written before the previous reply has finished is answered
+   with ERROR Busy.
 3. **Integers are little-endian**, unsigned unless stated.
 4. **Pull, not push.** The Node notifies Status; the interface fetches what it
    needs. Nothing can overflow a queue on either side.
@@ -60,7 +65,7 @@ per attribute. These are fixed.
 | Characteristic | Properties | Direction | Contents |
 |---|---|---|---|
 | Control | Write with response | interface to Node | One request per write |
-| Status | Read, Notify | Node to interface | The 18-byte Status snapshot; read on connect, notified once a second and on every change |
+| Status | Read, Notify | Node to interface | The 18-byte Status snapshot; read on connect, notified once a second, and within 200 ms of a change to any field other than heartbeat |
 | Data | Notify | Node to interface | One reply frame per notification |
 | Probe | Notify | Node to interface | Test builds only: payloads of 20, 21, 64 and 180 bytes for the notification-size measurement |
 
@@ -87,20 +92,20 @@ bytes. A Node rejects a HELLO whose major differs from its own with
 | 4 | Busy | A request arrived while another was still being answered |
 
 Link status is about the link. `CommandResult` (`commands.md`) is about the
-application and travels inside RESULT frames from Increment 4 on.
+application and travels inside RESULT frames.
 
 ## Status snapshot (18 bytes)
 
-| Offset | Size | Field | Increment 1 value |
+| Offset | Size | Field | Value |
 |---|---|---|---|
 | 0 | 1 | linkVersion | `0x01` |
 | 1 | 2 | sessionId | random, non-zero, per power-on |
-| 3 | 4 | changeSeq | counts state and event changes; constant within a session until Increment 4 |
-| 7 | 1 | flags | bit 0 monitoring, bit 1 earlyWarningEnabled, bit 2 earlyWarningResting, bit 3 alertPending, bit 4 sleepMode; 0 |
-| 8 | 1 | selected | ReconTarget; 0 |
-| 9 | 1 | active | ReconTarget; 0 |
-| 10 | 1 | eventCount | 0 |
-| 11 | 4 | lastAlertEventId | 0 |
+| 3 | 4 | changeSeq | starts at 1 each session; +1 whenever flags, selected, active, eventCount or lastAlertEventId change, or an event is created, changes, or is dropped; constant on a Link-only Node |
+| 7 | 1 | flags | bit 0 monitoring, bit 1 earlyWarningEnabled, bit 2 earlyWarningResting, bit 3 alertPending, bit 4 sleepMode; 0 on a Link-only Node |
+| 8 | 1 | selected | ReconTarget; 0 on a Link-only Node |
+| 9 | 1 | active | ReconTarget; 0 on a Link-only Node |
+| 10 | 1 | eventCount | events the Node holds now (at most 40); 0 on a Link-only Node |
+| 11 | 4 | lastAlertEventId | eventId of the most recent event that raised an alert; 0 when none |
 | 15 | 1 | heartbeat | +1 each second, wraps |
 | 16 | 1 | schedule | 0 Simultaneous, 1 Recon, 2 Report; 0 |
 | 17 | 1 | nextReportS | seconds to the next REPORT window, saturating; 0 |
@@ -118,16 +123,60 @@ and echoed in the reply so replies can be matched.
 |---|---|---|---|---|
 | HELLO | `0x01` | 4 | clientMajor u8, clientMinor u8 | HELLO_ACK |
 | PING | `0x02` | 6 | token u32 | ACK |
-| COMMAND | `0x03` | per command | bound in Increment 4 | RESULT |
-| GET_CHANGED | `0x04` | 6 | bound in Increment 5 | EVENT_SUMMARY..., END |
-| GET_TEXT | `0x05` | 7 | bound in Increment 5 | TEXT..., END |
-| test-only | `0xF0`..`0xFE` | | RX_MARK is `0xF1`, bound in Increment 2B | on release builds: ERROR UnknownOp |
+| COMMAND | `0x03` | 3 or 4, per command | commandType u8, then that command's argument | RESULT |
+| GET_CHANGED | `0x04` | 6 | sinceChangeSeq u32 | EVENT_SUMMARY..., END |
+| GET_TEXT | `0x05` | 7 | eventId u32, field u8 | TEXT..., END |
+| test-only | `0xF0`..`0xFE` | | RX_MARK is `0xF1`, not bound | on release builds: ERROR UnknownOp |
 
-Any other op value is rejected with ERROR UnknownOp, and so is an op that
-this document lists but whose increment has not bound it yet (so a Node built
-at Increment 1 answers COMMAND with UnknownOp). A request whose length
+Any other op value is rejected with ERROR UnknownOp. A request whose length
 does not match its op is rejected with ERROR BadLength, using the reqId at
 byte 1 when the request is at least 2 bytes long and reqId 0 otherwise.
+
+### COMMAND
+
+`0x03 | reqId | commandType | argument`. `commandType` is the CommandType
+number from `vectors/enums.json`. The Node accepts these, with exactly these
+lengths:
+
+| CommandType | Value | Length | Argument |
+|---|---|---|---|
+| ReconStart | 1 | 4 | target u8: a ReconTarget from 1 (All) to 16 (GoogleTag) |
+| ReconStop | 2 | 3 | none |
+| ReconClearEvents | 3 | 3 | none |
+| ReconAcknowledgeAlert | 4 | 3 | none |
+| SetSleepMode | 11 | 4 | enabled u8: 0 or 1 |
+| SetEarlyWarning | 12 | 4 | enabled u8: 0 or 1 |
+
+- A known command with any other length: ERROR BadLength.
+- An argument out of range (target 0, which is ReconStop's job; a target
+  above 16, EarlyWarning 17 included, which is SetEarlyWarning's job; an
+  enabled value above 1): RESULT InvalidArgument, and nothing changes.
+- Any other commandType, with a length from 3 to 20: RESULT Unsupported.
+- A COMMAND shorter than 3 bytes: ERROR BadLength.
+
+### GET_CHANGED
+
+`0x04 | reqId | sinceChangeSeq u32`. The Node sends one EVENT_SUMMARY for
+every event it holds whose own change sequence is greater than
+`sinceChangeSeq`, oldest event first, then END. `sinceChangeSeq` 0 returns
+every event. An event's change sequence is the Node's `changeSeq` at the
+moment the event was created or last changed (a repeat sighting changes its
+count, RSSI, channel, age and possibly confidence).
+
+- The Node holds the 40 most recently created events. An interface that
+  keeps a mirror keeps only the `eventCount` highest eventIds of the
+  session; that removes events the Node dropped or cleared without a
+  separate frame.
+- END's `gap` is 1 when an event that changed after `sinceChangeSeq` has
+  already been dropped, so the interface never saw that change.
+
+### GET_TEXT
+
+`0x05 | reqId | eventId u32 | field`, field 0 sourceId, 1 detail. The Node
+sends the field's bytes in TEXT fragments of at most 14 bytes, then END with
+`count` equal to the number of fragments. An unknown eventId, an unknown
+field, or an empty field is answered with END and `count` 0. The bytes are
+the text as the Node stores it, observed over the air, and so untrusted.
 
 ## Data frames
 
@@ -163,10 +212,56 @@ report both versions.
 
 `0x8F | reqId | linkStatus`, for UnknownOp, BadLength and Busy.
 
-### Bound later
+### RESULT, type `0x83`, 5 bytes
 
-RESULT `0x83` (Increment 4); EVENT_SUMMARY `0x84`, END `0x85`, TEXT `0x86`
-(Increment 5). Their layouts are in the Slice 1 plan, section 4.
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 1 | type `0x83` |
+| 1 | 1 | reqId |
+| 2 | 1 | linkStatus Ok |
+| 3 | 1 | commandType, echoed |
+| 4 | 1 | CommandResult: 0 Ok, 1 Unsupported, 2 InvalidArgument, 3 NotReady, 4 Failed (`commands.md`) |
+
+### EVENT_SUMMARY, type `0x84`, 18 bytes
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 1 | type `0x84` |
+| 1 | 1 | reqId |
+| 2 | 1 | linkStatus Ok |
+| 3 | 4 | eventId |
+| 7 | 1 | detector (ReconTarget) |
+| 8 | 1 | confidence |
+| 9 | 1 | sourceKind |
+| 10 | 1 | band |
+| 11 | 1 | channel (0 when unknown or BLE) |
+| 12 | 1 | rssi, signed (i8) |
+| 13 | 2 | count, sightings including the first, saturating at 65535 |
+| 15 | 2 | ageSeconds since last seen, saturating at 65535 |
+| 17 | 1 | flags: bit 0 sourceId present, bit 1 detail present |
+
+### END, type `0x85`, 9 bytes
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 1 | type `0x85` |
+| 1 | 1 | reqId |
+| 2 | 1 | linkStatus Ok |
+| 3 | 1 | count: frames sent before this END |
+| 4 | 1 | gap: 0 or 1 (GET_CHANGED only; 0 for GET_TEXT) |
+| 5 | 4 | changeSeq at the time of the reply |
+
+### TEXT, type `0x86`, 7 to 20 bytes
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 1 | type `0x86` |
+| 1 | 1 | reqId |
+| 2 | 1 | linkStatus Ok |
+| 3 | 1 | field: 0 sourceId, 1 detail |
+| 4 | 1 | index of this fragment, from 0 |
+| 5 | 1 | total fragments |
+| 6 | 1..14 | the fragment's bytes |
 
 ## Probe (test builds only)
 

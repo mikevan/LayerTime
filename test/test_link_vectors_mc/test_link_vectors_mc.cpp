@@ -27,7 +27,7 @@ struct McEntry {
     std::string name;
     std::string tag; // :op or :type when present
     std::vector<uint8_t> bytes;
-    std::map<std::string, unsigned long> fields;
+    std::map<std::string, long long> fields;
 };
 
 struct McFile {
@@ -66,10 +66,11 @@ std::vector<uint8_t> parseByteArray(const std::string &s)
     return out;
 }
 
-// "{:a => 1, :b => 4294967295l}" -> fields. A trailing 'l' marks a Long.
-std::map<std::string, unsigned long> parseFields(const std::string &s)
+// "{:a => 1, :b => 4294967295l, :rssi => -67}" -> fields. A trailing 'l'
+// marks a Long; a leading '-' a negative value (EVENT_SUMMARY's rssi).
+std::map<std::string, long long> parseFields(const std::string &s)
 {
-    std::map<std::string, unsigned long> out;
+    std::map<std::string, long long> out;
     size_t i = s.find('{');
     const size_t end = s.find('}', i);
     while (i != std::string::npos && i < end) {
@@ -80,8 +81,9 @@ std::map<std::string, unsigned long> parseFields(const std::string &s)
         size_t v = arrow + 2;
         while (v < end && s[v] == ' ') ++v;
         size_t e = v;
+        if (e < end && s[e] == '-') ++e;
         while (e < end && isdigit(static_cast<unsigned char>(s[e]))) ++e;
-        out[key] = std::stoul(s.substr(v, e - v));
+        out[key] = std::stoll(s.substr(v, e - v));
         if (e < end && s[e] == 'l') ++e;
         i = e;
     }
@@ -177,7 +179,7 @@ void checkArray(const char *arrayName, const Json &json, const char *tagKey)
                 check::fail(__FILE__, __LINE__, (e.name + " lacks field " + m.first).c_str());
                 continue;
             }
-            CHECK_INT(m.second.asULong(), f->second);
+            CHECK_TRUE(static_cast<long long>(m.second.num) == f->second);
         }
     }
 }
@@ -210,10 +212,11 @@ void versions_and_uuids_match_the_json()
 void sizes_and_named_values_match_the_json()
 {
     const Json &c = vectors()["constants"];
-    const char *scalars[] = {"maxFrame", "statusSize", "linkVersionByte", "serverMajor", "serverMinor"};
+    const char *scalars[] = {"maxFrame", "statusSize", "linkVersionByte", "serverMajor", "serverMinor", "textMaxChunk"};
     for (const char *k : scalars) checkConst(upper(k).c_str(), std::to_string(c[k].asLong()));
 
-    const char *groups[] = {"ops", "frameTypes", "linkStatus", "statusFlags", "schedule", "capabilities"};
+    const char *groups[] = {"ops", "frameTypes", "linkStatus", "statusFlags", "schedule", "capabilities",
+                            "summaryFlags", "textFields"};
     size_t named = 0;
     for (const char *g : groups) {
         for (const auto &m : c[g].members) {
@@ -221,7 +224,7 @@ void sizes_and_named_values_match_the_json()
             ++named;
         }
     }
-    CHECK_TRUE(named >= 30);
+    CHECK_TRUE(named >= 34);
 
     std::string sizes = "[";
     for (size_t i = 0; i < c["probeSizes"].items.size(); ++i) {
@@ -264,6 +267,16 @@ void values_above_int32_carry_the_long_suffix()
     CHECK_TRUE(mc().text.find("3735928559}") == std::string::npos);
 }
 
+// --- Negative values survive the round trip -------------------------------
+
+void negative_fields_are_generated_and_read_back_signed()
+{
+    // EVENT_SUMMARY's rssi is the only signed field; the generator writes it
+    // as a plain negative literal, which fits a Monkey C Number.
+    CHECK_TRUE(mc().text.find(":rssi => -67") != std::string::npos);
+    CHECK_TRUE(mc().text.find(":rssi => -100") != std::string::npos);
+}
+
 int main(int argc, char **argv)
 {
     CHECK_MAIN(argc, argv);
@@ -274,5 +287,6 @@ int main(int argc, char **argv)
     CASE(request_vectors_match_byte_for_byte);
     CASE(reply_vectors_match_byte_for_byte);
     CASE(values_above_int32_carry_the_long_suffix);
+    CASE(negative_fields_are_generated_and_read_back_signed);
     CHECK_SUMMARY();
 }

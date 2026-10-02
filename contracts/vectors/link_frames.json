@@ -1,7 +1,7 @@
 {
   "contractVersion": "0.1",
   "linkVersion": "0.1",
-  "note": "Byte-exact LayerTime Link 0.1 frames. Hex strings, little-endian integers. Every binding must encode 'encode' cases to exactly these bytes and decode 'decode' cases to exactly these fields. 'reject' cases give the request and the ERROR frame the Node must answer with.",
+  "note": "Byte-exact LayerTime Link 0.1 frames. Hex strings, little-endian integers, rssi signed. Every binding must encode 'encode' cases to exactly these bytes and decode 'decode' cases to exactly these fields. 'dispatch' cases give a request and the frame a Link-only Node (no Recon) must answer with; a Recon Node's COMMAND, GET_CHANGED and GET_TEXT answers are tested against its event log in test/test_link_server.",
   "uuids": {
     "base": "8ac687f5-a08b-4851-b89f-e6b39081268e",
     "service": "8ac60001-a08b-4851-b89f-e6b39081268e",
@@ -66,7 +66,16 @@
       21,
       64,
       180
-    ]
+    ],
+    "textMaxChunk": 14,
+    "summaryFlags": {
+      "sourceId": 1,
+      "detail": 2
+    },
+    "textFields": {
+      "sourceId": 0,
+      "detail": 1
+    }
   },
   "status": [
     {
@@ -176,6 +185,63 @@
         "reqId": 0,
         "token": 0
       }
+    },
+    {
+      "name": "command_recon_start_all",
+      "op": "COMMAND",
+      "bytes": "03400101",
+      "fields": {
+        "reqId": 64,
+        "commandType": 1,
+        "argument": 1
+      }
+    },
+    {
+      "name": "command_recon_stop",
+      "op": "COMMAND",
+      "bytes": "034102",
+      "fields": {
+        "reqId": 65,
+        "commandType": 2
+      }
+    },
+    {
+      "name": "command_set_early_warning_on",
+      "op": "COMMAND",
+      "bytes": "03420C01",
+      "fields": {
+        "reqId": 66,
+        "commandType": 12,
+        "argument": 1
+      }
+    },
+    {
+      "name": "get_changed_since_zero",
+      "op": "GET_CHANGED",
+      "bytes": "044300000000",
+      "fields": {
+        "reqId": 67,
+        "sinceChangeSeq": 0
+      }
+    },
+    {
+      "name": "get_changed_since_large",
+      "op": "GET_CHANGED",
+      "bytes": "0444EFBEADDE",
+      "fields": {
+        "reqId": 68,
+        "sinceChangeSeq": 3735928559
+      }
+    },
+    {
+      "name": "get_text_detail",
+      "op": "GET_TEXT",
+      "bytes": "05452A00000001",
+      "fields": {
+        "reqId": 69,
+        "eventId": 42,
+        "field": 1
+      }
     }
   ],
   "replies": [
@@ -234,6 +300,125 @@
       "fields": {
         "reqId": 33,
         "linkStatus": 2
+      }
+    },
+    {
+      "name": "result_ok",
+      "type": "RESULT",
+      "bytes": "8340000100",
+      "fields": {
+        "reqId": 64,
+        "linkStatus": 0,
+        "commandType": 1,
+        "commandResult": 0
+      }
+    },
+    {
+      "name": "result_invalid_argument",
+      "type": "RESULT",
+      "bytes": "8342000C02",
+      "fields": {
+        "reqId": 66,
+        "linkStatus": 0,
+        "commandType": 12,
+        "commandResult": 2
+      }
+    },
+    {
+      "name": "event_summary_wifi_negative_rssi",
+      "type": "EVENT_SUMMARY",
+      "bytes": "8443002A0000000502010106BD0C004B0003",
+      "fields": {
+        "reqId": 67,
+        "linkStatus": 0,
+        "eventId": 42,
+        "detector": 5,
+        "confidence": 2,
+        "sourceKind": 1,
+        "band": 1,
+        "channel": 6,
+        "rssi": -67,
+        "count": 12,
+        "ageSeconds": 75,
+        "flags": 3
+      }
+    },
+    {
+      "name": "event_summary_ble_saturated",
+      "type": "EVENT_SUMMARY",
+      "bytes": "844300040302010A000200009CFFFFFFFF01",
+      "fields": {
+        "reqId": 67,
+        "linkStatus": 0,
+        "eventId": 16909060,
+        "detector": 10,
+        "confidence": 0,
+        "sourceKind": 2,
+        "band": 0,
+        "channel": 0,
+        "rssi": -100,
+        "count": 65535,
+        "ageSeconds": 65535,
+        "flags": 1
+      }
+    },
+    {
+      "name": "end_after_two_with_gap",
+      "type": "END",
+      "bytes": "854300020134120000",
+      "fields": {
+        "reqId": 67,
+        "linkStatus": 0,
+        "count": 2,
+        "gap": 1,
+        "changeSeq": 4660
+      }
+    },
+    {
+      "name": "end_empty",
+      "type": "END",
+      "bytes": "854500000007000000",
+      "fields": {
+        "reqId": 69,
+        "linkStatus": 0,
+        "count": 0,
+        "gap": 0,
+        "changeSeq": 7
+      }
+    },
+    {
+      "name": "text_first_fragment_full",
+      "type": "TEXT",
+      "bytes": "86450001000246726565205075626C6963205769",
+      "fields": {
+        "reqId": 69,
+        "linkStatus": 0,
+        "field": 1,
+        "index": 0,
+        "total": 2,
+        "length": 14
+      }
+    },
+    {
+      "name": "text_last_fragment_short",
+      "type": "TEXT",
+      "bytes": "8645000101024669",
+      "fields": {
+        "reqId": 69,
+        "linkStatus": 0,
+        "field": 1,
+        "index": 1,
+        "total": 2,
+        "length": 2
+      }
+    },
+    {
+      "name": "error_busy",
+      "type": "ERROR",
+      "bytes": "8F4704",
+      "fields": {
+        "reqId": 71,
+        "linkStatus": 4
       }
     }
   ],
@@ -349,7 +534,7 @@
       "reply": "8F0002"
     },
     {
-      "name": "command_op_is_not_bound_yet_unknown_in_increment_1",
+      "name": "command_on_a_link_only_node_is_unknown_op",
       "node": {
         "sessionId": 16290,
         "capabilities": 30,
@@ -358,6 +543,28 @@
       },
       "request": "03300105",
       "reply": "8F3001"
+    },
+    {
+      "name": "get_changed_on_a_link_only_node_is_unknown_op",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "044300000000",
+      "reply": "8F4301"
+    },
+    {
+      "name": "get_text_on_a_link_only_node_is_unknown_op",
+      "node": {
+        "sessionId": 16290,
+        "capabilities": 30,
+        "heartbeat": 42,
+        "testBuild": false
+      },
+      "request": "05452A00000001",
+      "reply": "8F4501"
     }
   ]
 }

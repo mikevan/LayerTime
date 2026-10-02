@@ -5,5 +5,6 @@ project.typecheck = strict
 base.sourcePath = source;test
 # Release build: drop the test-only PING burst (source/link/LinkBurst.mc,
 # (:linktest)) and keep its (:production) stub. linktest.jungle is the
-# measurement build that does the opposite.
-base.excludeAnnotations = linktest
+# measurement build that does the opposite. The simulator preview scenarios
+# (source/Preview.mc, (:preview)) are dropped too; preview.jungle keeps them.
+base.excludeAnnotations = linktest;preview

@@ -19,6 +19,7 @@ module LinkVectors {
     const LINKVERSIONBYTE = 1;
     const SERVERMAJOR = 0;
     const SERVERMINOR = 1;
+    const TEXTMAXCHUNK = 14;
     const OPS_HELLO = 1;
     const OPS_PING = 2;
     const OPS_COMMAND = 3;
@@ -52,6 +53,10 @@ module LinkVectors {
     const CAPABILITIES_DISPLAY = 4;
     const CAPABILITIES_LED = 8;
     const CAPABILITIES_BUTTON = 16;
+    const SUMMARYFLAGS_SOURCEID = 1;
+    const SUMMARYFLAGS_DETAIL = 2;
+    const TEXTFIELDS_SOURCEID = 0;
+    const TEXTFIELDS_DETAIL = 1;
     const PROBE_SIZES = [20, 21, 64, 180] as Array<Number>;
 
     const STATUS = [
@@ -66,6 +71,12 @@ module LinkVectors {
         {:name => "hello_newer_minor", :op => "HELLO", :bytes => [0x01, 0x12, 0x00, 0x09]b, :fields => {:reqId => 18, :clientMajor => 0, :clientMinor => 9}},
         {:name => "ping", :op => "PING", :bytes => [0x02, 0x21, 0xEF, 0xBE, 0xAD, 0xDE]b, :fields => {:reqId => 33, :token => 3735928559l}},
         {:name => "ping_zero_token", :op => "PING", :bytes => [0x02, 0x00, 0x00, 0x00, 0x00, 0x00]b, :fields => {:reqId => 0, :token => 0}},
+        {:name => "command_recon_start_all", :op => "COMMAND", :bytes => [0x03, 0x40, 0x01, 0x01]b, :fields => {:reqId => 64, :commandType => 1, :argument => 1}},
+        {:name => "command_recon_stop", :op => "COMMAND", :bytes => [0x03, 0x41, 0x02]b, :fields => {:reqId => 65, :commandType => 2}},
+        {:name => "command_set_early_warning_on", :op => "COMMAND", :bytes => [0x03, 0x42, 0x0C, 0x01]b, :fields => {:reqId => 66, :commandType => 12, :argument => 1}},
+        {:name => "get_changed_since_zero", :op => "GET_CHANGED", :bytes => [0x04, 0x43, 0x00, 0x00, 0x00, 0x00]b, :fields => {:reqId => 67, :sinceChangeSeq => 0}},
+        {:name => "get_changed_since_large", :op => "GET_CHANGED", :bytes => [0x04, 0x44, 0xEF, 0xBE, 0xAD, 0xDE]b, :fields => {:reqId => 68, :sinceChangeSeq => 3735928559l}},
+        {:name => "get_text_detail", :op => "GET_TEXT", :bytes => [0x05, 0x45, 0x2A, 0x00, 0x00, 0x00, 0x01]b, :fields => {:reqId => 69, :eventId => 42, :field => 1}},
     ] as Array<Dictionary>;
 
     const REPLIES = [
@@ -74,6 +85,15 @@ module LinkVectors {
         {:name => "ack", :type => "ACK", :bytes => [0x82, 0x21, 0x00, 0xEF, 0xBE, 0xAD, 0xDE, 0x2A]b, :fields => {:reqId => 33, :linkStatus => 0, :token => 3735928559l, :heartbeat => 42}},
         {:name => "error_unknown_op", :type => "ERROR", :bytes => [0x8F, 0x05, 0x01]b, :fields => {:reqId => 5, :linkStatus => 1}},
         {:name => "error_bad_length", :type => "ERROR", :bytes => [0x8F, 0x21, 0x02]b, :fields => {:reqId => 33, :linkStatus => 2}},
+        {:name => "result_ok", :type => "RESULT", :bytes => [0x83, 0x40, 0x00, 0x01, 0x00]b, :fields => {:reqId => 64, :linkStatus => 0, :commandType => 1, :commandResult => 0}},
+        {:name => "result_invalid_argument", :type => "RESULT", :bytes => [0x83, 0x42, 0x00, 0x0C, 0x02]b, :fields => {:reqId => 66, :linkStatus => 0, :commandType => 12, :commandResult => 2}},
+        {:name => "event_summary_wifi_negative_rssi", :type => "EVENT_SUMMARY", :bytes => [0x84, 0x43, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x05, 0x02, 0x01, 0x01, 0x06, 0xBD, 0x0C, 0x00, 0x4B, 0x00, 0x03]b, :fields => {:reqId => 67, :linkStatus => 0, :eventId => 42, :detector => 5, :confidence => 2, :sourceKind => 1, :band => 1, :channel => 6, :rssi => -67, :count => 12, :ageSeconds => 75, :flags => 3}},
+        {:name => "event_summary_ble_saturated", :type => "EVENT_SUMMARY", :bytes => [0x84, 0x43, 0x00, 0x04, 0x03, 0x02, 0x01, 0x0A, 0x00, 0x02, 0x00, 0x00, 0x9C, 0xFF, 0xFF, 0xFF, 0xFF, 0x01]b, :fields => {:reqId => 67, :linkStatus => 0, :eventId => 16909060, :detector => 10, :confidence => 0, :sourceKind => 2, :band => 0, :channel => 0, :rssi => -100, :count => 65535, :ageSeconds => 65535, :flags => 1}},
+        {:name => "end_after_two_with_gap", :type => "END", :bytes => [0x85, 0x43, 0x00, 0x02, 0x01, 0x34, 0x12, 0x00, 0x00]b, :fields => {:reqId => 67, :linkStatus => 0, :count => 2, :gap => 1, :changeSeq => 4660}},
+        {:name => "end_empty", :type => "END", :bytes => [0x85, 0x45, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00]b, :fields => {:reqId => 69, :linkStatus => 0, :count => 0, :gap => 0, :changeSeq => 7}},
+        {:name => "text_first_fragment_full", :type => "TEXT", :bytes => [0x86, 0x45, 0x00, 0x01, 0x00, 0x02, 0x46, 0x72, 0x65, 0x65, 0x20, 0x50, 0x75, 0x62, 0x6C, 0x69, 0x63, 0x20, 0x57, 0x69]b, :fields => {:reqId => 69, :linkStatus => 0, :field => 1, :index => 0, :total => 2, :length => 14}},
+        {:name => "text_last_fragment_short", :type => "TEXT", :bytes => [0x86, 0x45, 0x00, 0x01, 0x01, 0x02, 0x46, 0x69]b, :fields => {:reqId => 69, :linkStatus => 0, :field => 1, :index => 1, :total => 2, :length => 2}},
+        {:name => "error_busy", :type => "ERROR", :bytes => [0x8F, 0x47, 0x04]b, :fields => {:reqId => 71, :linkStatus => 4}},
     ] as Array<Dictionary>;
 
 }

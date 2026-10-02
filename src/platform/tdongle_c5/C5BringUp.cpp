@@ -17,8 +17,11 @@
 
 // This file belongs to the tdongle_c5 build environment only. Every build
 // environment compiles all of src/, so the T-Watch Ultra build sees this file
-// as an empty translation unit.
-#if defined(LAYERTIME_TARGET_TDONGLE_C5)
+// as an empty translation unit. The tdongle_c5_recon environment
+// (LAYERTIME_RECON_BASELINE) builds C5ReconBaseline.cpp's setup() and loop()
+// instead of these, and the tdongle_c5_wand environment (LAYERTIME_WAND_APP)
+// builds C5App.cpp's.
+#if defined(LAYERTIME_TARGET_TDONGLE_C5) && !defined(LAYERTIME_RECON_BASELINE) && !defined(LAYERTIME_WAND_APP)
 
 // Slice 1, Increments 0 and 1: T-Dongle-C5 bring-up and the LayerTime Link
 // transport proof.
@@ -37,6 +40,7 @@
 // a dongle from that proof are inert.
 
 #include "BringUpLogic.h"
+#include "C5BootRecord.h"
 #include "C5Display.h"
 #include "C5Led.h"
 #include "C5Link.h"
@@ -60,6 +64,7 @@ constexpr uint8_t kLedBrightness = 4; // of 31; enough to see, not to dazzle
 constexpr uint32_t kReportMs = 10000;
 constexpr uint32_t kSerialWaitMs = 3000;
 
+C5BootRecord gBoot; // D3: reset reason and retained boot history
 C5Display gDisplay;
 C5Led gLed;
 C5Link gLink;
@@ -102,7 +107,11 @@ void showStatus()
              static_cast<unsigned long>(gButtonCount));
 #endif
     gDisplay.setLine(2, line);
-    gDisplay.setLine(3, gLink.advertisedName());
+    // The advertised name, then the reset-reason letter and boot count
+    // (C5BootRecord::reasonLetter): "LT-C5-F412 P3".
+    snprintf(line, sizeof(line), "%s %c%lu", gLink.advertisedName(), C5BootRecord::reasonLetter(gBoot.reason()),
+             static_cast<unsigned long>(gBoot.bootCount()));
+    gDisplay.setLine(3, line);
     snprintf(line, sizeof(line), "Up %lus  S%04X", static_cast<unsigned long>(millis() / 1000),
              static_cast<unsigned>(gLink.sessionId()));
     gDisplay.setLine(4, line);
@@ -110,6 +119,12 @@ void showStatus()
 
 void report(const char *when)
 {
+    // D3: keep this boot's uptime and state where the next boot can read
+    // them, and say why this boot happened.
+    gBoot.touch(millis() / 1000, (gLink.connected() ? 1u : 0u) | (gLink.pingsAnswered() << 8));
+    char boot[120];
+    gBoot.format(boot, sizeof(boot));
+    Serial.printf("[%s] %s\n", when, boot);
     Serial.printf("[%s] uptime %lu s, heap free %lu, PSRAM free %lu, heap %s, button %lu, link %s, "
                   "heartbeat %u, pings %lu, status notifies %lu\n",
                   when, static_cast<unsigned long>(millis() / 1000),
@@ -124,6 +139,7 @@ void report(const char *when)
 
 void setup()
 {
+    gBoot.begin(); // before anything else: the reset reason of this boot
     Serial.begin(115200);
     const uint32_t waitStart = millis();
     while (!Serial && millis() - waitStart < kSerialWaitMs) delay(10);
@@ -132,12 +148,13 @@ void setup()
     pinMode(pins::kBootButton, INPUT); // external 10 k pull-up (R16)
 
     const bool displayOk = gDisplay.begin();
-    gDisplay.setLine(0, "LayerTime C5");
+    // The C5 is LayerWand; LayerTime is the watch (Michael, 2026-09-30).
+    gDisplay.setLine(0, "LayerWand");
 
     esp_chip_info_t chip;
     esp_chip_info(&chip);
     Serial.println();
-    Serial.println("LayerTime T-Dongle-C5 bring-up (Slice 1, Increment 0)");
+    Serial.println("LayerWand (T-Dongle-C5): LayerTime Link 0.1 (Slice 1, Increment 1)");
     Serial.printf("Arduino core %s, ESP-IDF %s\n", ESP_ARDUINO_VERSION_STR, esp_get_idf_version());
     Serial.printf("Chip model %d, revision v%d.%d, %d core(s)\n", static_cast<int>(chip.model),
                   chip.revision / 100, chip.revision % 100, chip.cores);
@@ -145,6 +162,11 @@ void setup()
                   static_cast<unsigned long>(ESP.getFlashChipSize()),
                   static_cast<unsigned long>(ESP.getPsramSize()));
     Serial.printf("Display %s\n", displayOk ? "started" : "FAILED");
+    {
+        char boot[120];
+        gBoot.format(boot, sizeof(boot));
+        Serial.println(boot);
+    }
 
     gHeapOk = heapIntact();
     Serial.printf("Heap before BLE init: %s, free %lu\n", gHeapOk ? "intact" : "CORRUPT",

@@ -69,6 +69,15 @@ public:
     // event (at most once per event), then lets the monitor source schedule
     // its radios. That order is the order ReconService::poll() used.
     void tick(uint32_t nowMs);
+    // The two halves of tick(), in its order, for a platform whose radio
+    // callbacks write the event log from another task: it can hold its own
+    // event-log lock around raiseAlerts() and must not hold it around
+    // pollMonitor(), which drives the radios.
+    void raiseAlerts(uint32_t nowMs);
+    void pollMonitor();
+    // eventId the most recent alert was raised for (by raiseAlerts); 0 when
+    // none has been this session. Kept after the alert is acknowledged.
+    uint32_t lastAlertEventId() const { return _alertRaisedFor; }
 
     // Same as the SetSleepMode command.
     void setSleepMode(bool enabled);

@@ -60,6 +60,12 @@ class RequestQueue {
         return _inFlight;
     }
 
+    // The in-flight item made progress (a frame of a multi-frame reply
+    // arrived): its accounting timeout starts again from nowMs.
+    public function touch(nowMs as Number) as Void {
+        if (_inFlight != null) { _startedAt = nowMs; }
+    }
+
     public function inFlight() as Dictionary? { return _inFlight; }
     public function isBusy() as Boolean { return _inFlight != null; }
     public function isExpired() as Boolean { return _inFlight != null && _expired; }

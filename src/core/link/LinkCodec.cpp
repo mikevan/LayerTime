@@ -18,6 +18,8 @@
 
 #include "LinkCodec.h"
 
+#include <string.h>
+
 namespace layertime {
 namespace link {
 
@@ -122,6 +124,85 @@ size_t encodeError(const Error &e, uint8_t *out)
     return kErrorSize;
 }
 
+size_t encodeCommand(const Command &c, uint8_t *out)
+{
+    out[0] = static_cast<uint8_t>(Op::Command);
+    out[1] = c.reqId;
+    out[2] = c.commandType;
+    if (!c.hasArgument) return kCommandMinSize;
+    out[3] = c.argument;
+    return kCommandMinSize + 1;
+}
+
+size_t encodeGetChanged(const GetChanged &g, uint8_t *out)
+{
+    out[0] = static_cast<uint8_t>(Op::GetChanged);
+    out[1] = g.reqId;
+    put32(out + 2, g.sinceChangeSeq);
+    return kGetChangedSize;
+}
+
+size_t encodeGetText(const GetText &g, uint8_t *out)
+{
+    out[0] = static_cast<uint8_t>(Op::GetText);
+    out[1] = g.reqId;
+    put32(out + 2, g.eventId);
+    out[6] = g.field;
+    return kGetTextSize;
+}
+
+size_t encodeResult(const Result &r, uint8_t *out)
+{
+    out[0] = static_cast<uint8_t>(FrameType::Result);
+    out[1] = r.reqId;
+    out[2] = static_cast<uint8_t>(r.status);
+    out[3] = r.commandType;
+    out[4] = r.commandResult;
+    return kResultSize;
+}
+
+size_t encodeEventSummary(const EventSummary &e, uint8_t *out)
+{
+    out[0] = static_cast<uint8_t>(FrameType::EventSummary);
+    out[1] = e.reqId;
+    out[2] = static_cast<uint8_t>(e.status);
+    put32(out + 3, e.eventId);
+    out[7] = e.detector;
+    out[8] = e.confidence;
+    out[9] = e.sourceKind;
+    out[10] = e.band;
+    out[11] = e.channel;
+    out[12] = static_cast<uint8_t>(e.rssi);
+    put16(out + 13, e.count);
+    put16(out + 15, e.ageSeconds);
+    out[17] = e.flags;
+    return kEventSummarySize;
+}
+
+size_t encodeEnd(const End &e, uint8_t *out)
+{
+    out[0] = static_cast<uint8_t>(FrameType::End);
+    out[1] = e.reqId;
+    out[2] = static_cast<uint8_t>(e.status);
+    out[3] = e.count;
+    out[4] = e.gap;
+    put32(out + 5, e.changeSeq);
+    return kEndSize;
+}
+
+size_t encodeText(const Text &t, uint8_t *out)
+{
+    if (t.length == 0 || t.length > kTextMaxChunk) return 0;
+    out[0] = static_cast<uint8_t>(FrameType::Text);
+    out[1] = t.reqId;
+    out[2] = static_cast<uint8_t>(t.status);
+    out[3] = t.field;
+    out[4] = t.index;
+    out[5] = t.total;
+    memcpy(out + kTextHeaderSize, t.bytes, t.length);
+    return kTextHeaderSize + t.length;
+}
+
 bool decodeStatus(const uint8_t *in, size_t len, StatusSnapshot &out)
 {
     if (len != kStatusSize) return false;
@@ -187,6 +268,85 @@ bool decodeError(const uint8_t *in, size_t len, Error &out)
     return true;
 }
 
+bool decodeCommand(const uint8_t *in, size_t len, Command &out)
+{
+    if (len < kCommandMinSize || len > kMaxFrame || in[0] != static_cast<uint8_t>(Op::Command)) return false;
+    out.reqId = in[1];
+    out.commandType = in[2];
+    out.hasArgument = len > kCommandMinSize;
+    out.argument = out.hasArgument ? in[3] : 0;
+    return true;
+}
+
+bool decodeGetChanged(const uint8_t *in, size_t len, GetChanged &out)
+{
+    if (len != kGetChangedSize || in[0] != static_cast<uint8_t>(Op::GetChanged)) return false;
+    out.reqId = in[1];
+    out.sinceChangeSeq = get32(in + 2);
+    return true;
+}
+
+bool decodeGetText(const uint8_t *in, size_t len, GetText &out)
+{
+    if (len != kGetTextSize || in[0] != static_cast<uint8_t>(Op::GetText)) return false;
+    out.reqId = in[1];
+    out.eventId = get32(in + 2);
+    out.field = in[6];
+    return true;
+}
+
+bool decodeResult(const uint8_t *in, size_t len, Result &out)
+{
+    if (len != kResultSize || in[0] != static_cast<uint8_t>(FrameType::Result)) return false;
+    out.reqId = in[1];
+    out.status = static_cast<LinkStatus>(in[2]);
+    out.commandType = in[3];
+    out.commandResult = in[4];
+    return true;
+}
+
+bool decodeEventSummary(const uint8_t *in, size_t len, EventSummary &out)
+{
+    if (len != kEventSummarySize || in[0] != static_cast<uint8_t>(FrameType::EventSummary)) return false;
+    out.reqId = in[1];
+    out.status = static_cast<LinkStatus>(in[2]);
+    out.eventId = get32(in + 3);
+    out.detector = in[7];
+    out.confidence = in[8];
+    out.sourceKind = in[9];
+    out.band = in[10];
+    out.channel = in[11];
+    out.rssi = static_cast<int8_t>(in[12]);
+    out.count = get16(in + 13);
+    out.ageSeconds = get16(in + 15);
+    out.flags = in[17];
+    return true;
+}
+
+bool decodeEnd(const uint8_t *in, size_t len, End &out)
+{
+    if (len != kEndSize || in[0] != static_cast<uint8_t>(FrameType::End)) return false;
+    out.reqId = in[1];
+    out.status = static_cast<LinkStatus>(in[2]);
+    out.count = in[3];
+    out.gap = in[4];
+    out.changeSeq = get32(in + 5);
+    return true;
+}
+
+bool decodeText(const uint8_t *in, size_t len, Text &out)
+{
+    if (len <= kTextHeaderSize || len > kMaxFrame || in[0] != static_cast<uint8_t>(FrameType::Text)) return false;
+    out.reqId = in[1];
+    out.status = static_cast<LinkStatus>(in[2]);
+    out.field = in[3];
+    out.index = in[4];
+    out.total = in[5];
+    out.length = static_cast<uint8_t>(len - kTextHeaderSize);
+    memcpy(out.bytes, in + kTextHeaderSize, out.length);
+    return true;
+}
+
 size_t dispatch(const NodeIdentity &node, uint8_t heartbeat, const uint8_t *request, size_t len,
                 uint8_t *reply)
 {
@@ -215,9 +375,10 @@ size_t dispatch(const NodeIdentity &node, uint8_t heartbeat, const uint8_t *requ
         return encodeAck(a, reply);
     }
     default:
-        // Command, GetChanged, GetText: named, not bound yet. Test-range ops:
-        // bound in Increment 2B and only on test builds. Everything else:
-        // never defined.
+        // Command, GetChanged, GetText: a Link-only Node runs no Recon, so it
+        // answers them UnknownOp (LinkServer answers them on a Recon Node).
+        // Test-range ops: RX_MARK is not bound. Everything else: never
+        // defined.
         return error(reqId, LinkStatus::UnknownOp, reply);
     }
 }

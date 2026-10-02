@@ -65,6 +65,11 @@ void constants_match_the_vectors()
     const Json &sizes = c["probeSizes"];
     CHECK_INT(static_cast<long>(kProbeSizeCount), static_cast<long>(sizes.items.size()));
     for (size_t i = 0; i < sizes.items.size() && i < kProbeSizeCount; ++i) CHECK_INT(sizes.items[i].asLong(), static_cast<long>(kProbeSizes[i]));
+    CHECK_INT(c["textMaxChunk"].asLong(), static_cast<long>(kTextMaxChunk));
+    CHECK_INT(c["summaryFlags"]["sourceId"].asLong(), kSummaryHasSourceId);
+    CHECK_INT(c["summaryFlags"]["detail"].asLong(), kSummaryHasDetail);
+    CHECK_INT(c["textFields"]["sourceId"].asLong(), static_cast<long>(TextField::SourceId));
+    CHECK_INT(c["textFields"]["detail"].asLong(), static_cast<long>(TextField::Detail));
     const Json &u = vectors()["uuids"];
     CHECK_STR(u["service"].str.c_str(), kServiceUuid);
     CHECK_STR(u["control"].str.c_str(), kControlUuid);
@@ -151,6 +156,42 @@ void requests_encode_and_decode_every_vector()
             CHECK_TRUE(decodePing(in.data(), in.size(), d));
             CHECK_INT(p.reqId, d.reqId);
             CHECK_INT(static_cast<long>(p.token), static_cast<long>(d.token));
+        } else if (v["op"].str == "COMMAND") {
+            Command c;
+            c.reqId = static_cast<uint8_t>(f["reqId"].asLong());
+            c.commandType = static_cast<uint8_t>(f["commandType"].asLong());
+            c.hasArgument = f.members.count("argument") != 0;
+            c.argument = static_cast<uint8_t>(f["argument"].asLong());
+            const size_t n = encodeCommand(c, buf);
+            CHECK_STR(v["bytes"].str.c_str(), toHex(buf, n).c_str());
+            Command d;
+            CHECK_TRUE(decodeCommand(in.data(), in.size(), d));
+            CHECK_INT(c.reqId, d.reqId);
+            CHECK_INT(c.commandType, d.commandType);
+            CHECK_INT(c.hasArgument, d.hasArgument);
+            CHECK_INT(c.argument, d.argument);
+        } else if (v["op"].str == "GET_CHANGED") {
+            GetChanged g;
+            g.reqId = static_cast<uint8_t>(f["reqId"].asLong());
+            g.sinceChangeSeq = static_cast<uint32_t>(f["sinceChangeSeq"].asULong());
+            const size_t n = encodeGetChanged(g, buf);
+            CHECK_STR(v["bytes"].str.c_str(), toHex(buf, n).c_str());
+            GetChanged d;
+            CHECK_TRUE(decodeGetChanged(in.data(), in.size(), d));
+            CHECK_INT(g.reqId, d.reqId);
+            CHECK_INT(static_cast<long>(g.sinceChangeSeq), static_cast<long>(d.sinceChangeSeq));
+        } else if (v["op"].str == "GET_TEXT") {
+            GetText g;
+            g.reqId = static_cast<uint8_t>(f["reqId"].asLong());
+            g.eventId = static_cast<uint32_t>(f["eventId"].asULong());
+            g.field = static_cast<uint8_t>(f["field"].asLong());
+            const size_t n = encodeGetText(g, buf);
+            CHECK_STR(v["bytes"].str.c_str(), toHex(buf, n).c_str());
+            GetText d;
+            CHECK_TRUE(decodeGetText(in.data(), in.size(), d));
+            CHECK_INT(g.reqId, d.reqId);
+            CHECK_INT(static_cast<long>(g.eventId), static_cast<long>(d.eventId));
+            CHECK_INT(g.field, d.field);
         } else {
             CHECK_TRUE(false && "unknown request op in vectors");
         }
@@ -205,6 +246,84 @@ void replies_encode_and_decode_every_vector()
             CHECK_TRUE(decodeError(in.data(), in.size(), d));
             CHECK_INT(e.reqId, d.reqId);
             CHECK_INT(static_cast<int>(e.status), static_cast<int>(d.status));
+        } else if (type == "RESULT") {
+            Result r;
+            r.reqId = static_cast<uint8_t>(f["reqId"].asLong());
+            r.status = static_cast<LinkStatus>(f["linkStatus"].asLong());
+            r.commandType = static_cast<uint8_t>(f["commandType"].asLong());
+            r.commandResult = static_cast<uint8_t>(f["commandResult"].asLong());
+            const size_t n = encodeResult(r, buf);
+            CHECK_STR(v["bytes"].str.c_str(), toHex(buf, n).c_str());
+            Result d;
+            CHECK_TRUE(decodeResult(in.data(), in.size(), d));
+            CHECK_INT(r.reqId, d.reqId);
+            CHECK_INT(r.commandType, d.commandType);
+            CHECK_INT(r.commandResult, d.commandResult);
+        } else if (type == "EVENT_SUMMARY") {
+            EventSummary e;
+            e.reqId = static_cast<uint8_t>(f["reqId"].asLong());
+            e.status = static_cast<LinkStatus>(f["linkStatus"].asLong());
+            e.eventId = static_cast<uint32_t>(f["eventId"].asULong());
+            e.detector = static_cast<uint8_t>(f["detector"].asLong());
+            e.confidence = static_cast<uint8_t>(f["confidence"].asLong());
+            e.sourceKind = static_cast<uint8_t>(f["sourceKind"].asLong());
+            e.band = static_cast<uint8_t>(f["band"].asLong());
+            e.channel = static_cast<uint8_t>(f["channel"].asLong());
+            e.rssi = static_cast<int8_t>(f["rssi"].asLong());
+            e.count = static_cast<uint16_t>(f["count"].asULong());
+            e.ageSeconds = static_cast<uint16_t>(f["ageSeconds"].asULong());
+            e.flags = static_cast<uint8_t>(f["flags"].asLong());
+            const size_t n = encodeEventSummary(e, buf);
+            CHECK_STR(v["bytes"].str.c_str(), toHex(buf, n).c_str());
+            EventSummary d;
+            CHECK_TRUE(decodeEventSummary(in.data(), in.size(), d));
+            CHECK_INT(e.reqId, d.reqId);
+            CHECK_INT(static_cast<long>(e.eventId), static_cast<long>(d.eventId));
+            CHECK_INT(e.detector, d.detector);
+            CHECK_INT(e.confidence, d.confidence);
+            CHECK_INT(e.sourceKind, d.sourceKind);
+            CHECK_INT(e.band, d.band);
+            CHECK_INT(e.channel, d.channel);
+            CHECK_INT(f["rssi"].asLong(), d.rssi); // signed on the wire
+            CHECK_INT(e.count, d.count);
+            CHECK_INT(e.ageSeconds, d.ageSeconds);
+            CHECK_INT(e.flags, d.flags);
+        } else if (type == "END") {
+            End e;
+            e.reqId = static_cast<uint8_t>(f["reqId"].asLong());
+            e.status = static_cast<LinkStatus>(f["linkStatus"].asLong());
+            e.count = static_cast<uint8_t>(f["count"].asLong());
+            e.gap = static_cast<uint8_t>(f["gap"].asLong());
+            e.changeSeq = static_cast<uint32_t>(f["changeSeq"].asULong());
+            const size_t n = encodeEnd(e, buf);
+            CHECK_STR(v["bytes"].str.c_str(), toHex(buf, n).c_str());
+            End d;
+            CHECK_TRUE(decodeEnd(in.data(), in.size(), d));
+            CHECK_INT(e.reqId, d.reqId);
+            CHECK_INT(e.count, d.count);
+            CHECK_INT(e.gap, d.gap);
+            CHECK_INT(static_cast<long>(e.changeSeq), static_cast<long>(d.changeSeq));
+        } else if (type == "TEXT") {
+            // The payload is the frame's bytes after the 6-byte header.
+            Text t;
+            t.reqId = static_cast<uint8_t>(f["reqId"].asLong());
+            t.status = static_cast<LinkStatus>(f["linkStatus"].asLong());
+            t.field = static_cast<uint8_t>(f["field"].asLong());
+            t.index = static_cast<uint8_t>(f["index"].asLong());
+            t.total = static_cast<uint8_t>(f["total"].asLong());
+            t.length = static_cast<uint8_t>(f["length"].asLong());
+            CHECK_INT(in.size(), kTextHeaderSize + t.length);
+            memcpy(t.bytes, in.data() + kTextHeaderSize, t.length);
+            const size_t n = encodeText(t, buf);
+            CHECK_STR(v["bytes"].str.c_str(), toHex(buf, n).c_str());
+            Text d;
+            CHECK_TRUE(decodeText(in.data(), in.size(), d));
+            CHECK_INT(t.reqId, d.reqId);
+            CHECK_INT(t.field, d.field);
+            CHECK_INT(t.index, d.index);
+            CHECK_INT(t.total, d.total);
+            CHECK_INT(t.length, d.length);
+            CHECK_INT(0, memcmp(t.bytes, d.bytes, t.length));
         } else {
             CHECK_TRUE(false && "unknown reply type in vectors");
         }
@@ -221,6 +340,46 @@ void decoders_reject_the_wrong_type_byte()
     CHECK_FALSE(decodePing(hello, kHelloSize, p));
     Error e;
     CHECK_FALSE(decodeError(ack, kErrorSize, e));
+    End end;
+    CHECK_FALSE(decodeEnd(ack, kEndSize, end));
+    Result r;
+    CHECK_FALSE(decodeResult(ack, kResultSize, r));
+}
+
+void new_decoders_reject_wrong_lengths()
+{
+    uint8_t buf[kMaxFrame + 1] = {};
+    buf[0] = static_cast<uint8_t>(Op::Command);
+    Command c;
+    CHECK_FALSE(decodeCommand(buf, 2, c));
+    CHECK_TRUE(decodeCommand(buf, 3, c));
+    CHECK_FALSE(c.hasArgument);
+    CHECK_TRUE(decodeCommand(buf, kMaxFrame, c));
+    CHECK_TRUE(c.hasArgument);
+    CHECK_FALSE(decodeCommand(buf, kMaxFrame + 1, c));
+    buf[0] = static_cast<uint8_t>(Op::GetChanged);
+    GetChanged g;
+    CHECK_FALSE(decodeGetChanged(buf, 5, g));
+    CHECK_FALSE(decodeGetChanged(buf, 7, g));
+    buf[0] = static_cast<uint8_t>(Op::GetText);
+    GetText t;
+    CHECK_FALSE(decodeGetText(buf, 6, t));
+    CHECK_FALSE(decodeGetText(buf, 8, t));
+    buf[0] = static_cast<uint8_t>(FrameType::EventSummary);
+    EventSummary s;
+    CHECK_FALSE(decodeEventSummary(buf, 17, s));
+    CHECK_FALSE(decodeEventSummary(buf, 19, s));
+    buf[0] = static_cast<uint8_t>(FrameType::Text);
+    Text x;
+    CHECK_FALSE(decodeText(buf, kTextHeaderSize, x));   // a TEXT carries at least one byte
+    CHECK_TRUE(decodeText(buf, kMaxFrame, x));
+    CHECK_INT(static_cast<long>(kTextMaxChunk), x.length);
+    CHECK_FALSE(decodeText(buf, kMaxFrame + 1, x));
+    // A TEXT with no payload or more than 14 bytes is never encoded.
+    Text empty;
+    CHECK_INT(0, static_cast<long>(encodeText(empty, buf)));
+    empty.length = kTextMaxChunk + 1;
+    CHECK_INT(0, static_cast<long>(encodeText(empty, buf)));
 }
 
 // --- Dispatch -------------------------------------------------------------
@@ -249,6 +408,12 @@ void every_frame_the_node_can_send_fits_twenty_bytes()
     CHECK_TRUE(kErrorSize <= kMaxFrame);
     CHECK_TRUE(kHelloSize <= kMaxFrame);
     CHECK_TRUE(kPingSize <= kMaxFrame);
+    CHECK_TRUE(kResultSize <= kMaxFrame);
+    CHECK_TRUE(kEventSummarySize <= kMaxFrame);
+    CHECK_TRUE(kEndSize <= kMaxFrame);
+    CHECK_TRUE(kTextHeaderSize + kTextMaxChunk == kMaxFrame);
+    CHECK_TRUE(kGetChangedSize <= kMaxFrame);
+    CHECK_TRUE(kGetTextSize <= kMaxFrame);
     // A request of the maximum frame size with an unknown op still gets a
     // 3-byte ERROR, never anything longer.
     uint8_t req[kMaxFrame];
@@ -283,6 +448,7 @@ int main(int argc, char **argv)
     CASE(requests_encode_and_decode_every_vector);
     CASE(replies_encode_and_decode_every_vector);
     CASE(decoders_reject_the_wrong_type_byte);
+    CASE(new_decoders_reject_wrong_lengths);
     CASE(the_node_answers_every_dispatch_vector_exactly);
     CASE(every_frame_the_node_can_send_fits_twenty_bytes);
     CASE(probe_payloads_have_the_documented_shape);

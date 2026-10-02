@@ -62,9 +62,10 @@ def render(vectors):
     out.append(f'    const LINK_VERSION = "{vectors["linkVersion"]}";')
     for k, v in vectors["uuids"].items():
         out.append(f'    const UUID_{k.upper()} = "{v}";')
-    for k in ("maxFrame", "statusSize", "linkVersionByte", "serverMajor", "serverMinor"):
+    for k in ("maxFrame", "statusSize", "linkVersionByte", "serverMajor", "serverMinor", "textMaxChunk"):
         out.append(f"    const {k.upper()} = {c[k]};")
-    for group in ("ops", "frameTypes", "linkStatus", "statusFlags", "schedule", "capabilities"):
+    for group in ("ops", "frameTypes", "linkStatus", "statusFlags", "schedule", "capabilities", "summaryFlags",
+                  "textFields"):
         for k, v in c[group].items():
             out.append(f"    const {group.upper()}_{k.upper()} = {v};")
     out.append("    const PROBE_SIZES = [" + ", ".join(str(s) for s in c["probeSizes"]) + "] as Array<Number>;")
@@ -86,11 +87,14 @@ def render(vectors):
                    "lastAlertEventId", "heartbeat", "schedule", "nextReportS"]
     dict_lines("STATUS", vectors["status"], status_keys, lambda e: [("bytes", byte_array(e["bytes"]))])
     dict_lines("REQUESTS", vectors["requests"],
-               ["reqId", "clientMajor", "clientMinor", "token"],
+               ["reqId", "clientMajor", "clientMinor", "token", "commandType", "argument", "sinceChangeSeq",
+                "eventId", "field"],
                lambda e: [("op", f'"{e["op"]}"'), ("bytes", byte_array(e["bytes"]))])
     dict_lines("REPLIES", vectors["replies"],
                ["reqId", "linkStatus", "serverMajor", "serverMinor", "sessionId", "capabilities", "maxFrame",
-                "token", "heartbeat"],
+                "token", "heartbeat", "commandType", "commandResult", "eventId", "detector", "confidence",
+                "sourceKind", "band", "channel", "rssi", "count", "ageSeconds", "flags", "gap", "changeSeq",
+                "field", "index", "total", "length"],
                lambda e: [("type", f'"{e["type"]}"'), ("bytes", byte_array(e["bytes"]))])
     out.append("}")
     return "\n".join(out) + "\n"

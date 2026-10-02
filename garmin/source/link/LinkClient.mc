@@ -22,11 +22,17 @@ import Toybox.System;
 import Toybox.Timer;
 import Toybox.WatchUi;
 
-// The LayerTime Link client (Slice 1 Increment 1): discovers a Node by
-// service UUID, pairs, registers the profile, enables notifications, says
-// HELLO, watches the Status heartbeat, answers the wearer's PINGs with a
-// round-trip time, and reconnects when the link drops. Detects a new Node
-// session (a C5 power cycle) through sessionId.
+// The LayerTime Link client: discovers a Node by service UUID, pairs,
+// registers the profile, enables notifications, says HELLO, watches the
+// Status heartbeat, answers the wearer's PINGs with a round-trip time, and
+// reconnects when the link drops. Detects a new Node session (a LayerWand
+// power cycle) through sessionId.
+//
+// Recon integration (Increment 2B): keeps the ReconMirror in step with the
+// Node through GET_CHANGED whenever Status's changeSeq moves, fetches event
+// text with GET_TEXT, and sends the Recon Controls as COMMANDs. Replies to
+// GET_CHANGED and GET_TEXT are runs of frames ending with END; each frame
+// restarts the request's accounting timeout.
 //
 // Protocol bytes come from Link (LinkCodec.mc); ordering of GATT operations
 // from RequestQueue. This class is the only place that touches
@@ -44,6 +50,8 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
     }
 
     private const REQUEST_TIMEOUT_MS = 3000;   // accounting only (F2)
+    private const SYNC_MIN_INTERVAL_MS = 1000; // at most one GET_CHANGED a second
+    private const STALE_MS = 3000;             // Status older than this is stale on the face
     private const HEARTBEAT_LOST_MS = 5000;
     private const RESCAN_AFTER_LOST_MS = 5000;
     private const SCAN_WATCHDOG_MS = 15000;    // correction B
@@ -81,6 +89,64 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
     public var probeExpected as Number = -1;
     public var disconnects as Number = 0;
     private var _lostAtMs as Number = 0;
+
+    // The rest of the Status snapshot (contracts/link.md), kept from the
+    // latest decode for the home screen: Recon flags, selection, event
+    // count, the alert event id, and the change sequence. The two u32
+    // fields are narrowed to Number (Link.narrow) so == compares values.
+    public var flags as Number = 0;
+    public var selected as Number = 0;
+    public var active as Number = 0;
+    public var eventCount as Number = 0;
+    public var lastAlertEventId as Number = 0;
+    public var changeSeq as Number = 0;
+
+    // The Recon event list, kept by GET_CHANGED.
+    public var mirror as ReconMirror = new ReconMirror();
+    // Called once per RESULT: the command type and its CommandResult, or
+    // -1 when the command got no RESULT (timeout, write failure, ERROR).
+    public var resultObserver as Method(commandType as Number, result as Number) as Void? = null;
+    // Called when a GET_TEXT completes, so a detail page can redraw.
+    public var textObserver as Method(eventId as Number) as Void? = null;
+    // Called once each time a GET_CHANGED reply reports a gap: detections
+    // were dropped on the Node before the watch fetched them.
+    public var gapObserver as Method() as Void? = null;
+    // False when the connected Node runs no Recon: its HELLO_ACK reports
+    // neither monitor capability, or it answered GET_CHANGED with ERROR
+    // UnknownOp (the Increment 1 Link-only Node). No GET_CHANGED is sent then.
+    // Reset on every new connection.
+    public var reconAvailable as Boolean = true;
+    public var commandsSent as Number = 0;
+    public var syncs as Number = 0;
+    public var strayFrames as Number = 0;
+    private var _syncQueued as Boolean = false;
+    private var _lastSyncMs as Number = 0;
+    private var _textQueued as Boolean = false;
+    // True while the client is looking for a Node (scanning, pairing or
+    // setting up), as opposed to READY or lost.
+    public function isSearching() as Boolean {
+        return _state == STATE_SCANNING || _state == STATE_PAIRING || _state == STATE_SETUP || _state == STATE_REGISTERING;
+    }
+    // Milliseconds since the last Status decode, or -1 before the first.
+    public function statusAgeMs() as Number {
+        return lastStatusMs != 0 ? System.getTimer() - lastStatusMs : -1;
+    }
+
+    // What the face shows about the link: :ready (Status fresh), :stale
+    // (connected, but no Status for STALE_MS), :reconnecting (lost a Node it
+    // had, looking again), :searching (never connected this run), :failed
+    // (the BLE profile could not be registered).
+    public function phase() as Symbol {
+        var forced = Env.forcedPhase(); // preview build only; null otherwise
+        if (forced != null) { return forced; }
+        if (_state == STATE_READY) {
+            var age = statusAgeMs();
+            return (age < 0 || age > STALE_MS) ? :stale : :ready;
+        }
+        if (_state == STATE_IDLE) { return :failed; }
+        if (sessionId != 0 || disconnects > 0) { return :reconnecting; }
+        return :searching;
+    }
 
     // Called once per PING when it completes: the round trip in ms, or -1
     // when it was lost (timeout, token mismatch, or an ERROR reply). The
@@ -156,7 +222,11 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
         return "Link lost";
     }
 
-    public function isReady() as Boolean { return _state == STATE_READY; }
+    public function isReady() as Boolean {
+        var forced = Env.forcedPhase(); // preview build only; null otherwise
+        if (forced != null) { return forced == :ready || forced == :stale; }
+        return _state == STATE_READY;
+    }
 
     // --- Actions ------------------------------------------------------------
 
@@ -168,6 +238,30 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
         pingsSent++;
         enqueue({:kind => :write, :op => Link.OP_PING, :reqId => reqId, :token => token,
                  :bytes => Link.encodePing(reqId, token)});
+        return true;
+    }
+
+    // Sends one Recon Control. arg is null for the commands without one.
+    // Returns false when not connected.
+    public function sendCommand(commandType as Number, arg as Number?) as Boolean {
+        if (_state != STATE_READY || _control == null) { return false; }
+        var reqId = takeReqId();
+        commandsSent++;
+        enqueue({:kind => :write, :op => Link.OP_COMMAND, :reqId => reqId, :commandType => commandType,
+                 :bytes => Link.encodeCommand(reqId, commandType, arg)});
+        return true;
+    }
+
+    // Asks the Node for one text field of an event (GET_TEXT); the answer
+    // lands in the mirror. Returns false when not connected, or when a text
+    // request is already waiting.
+    public function fetchText(eventId as Number, field as Number) as Boolean {
+        if (_state != STATE_READY || _control == null || _textQueued) { return false; }
+        _textQueued = true;
+        var reqId = takeReqId();
+        enqueue({:kind => :write, :op => Link.OP_GET_TEXT, :reqId => reqId, :eventId => eventId, :field => field,
+                 :chunks => [] as Array<ByteArray>,
+                 :bytes => Link.encodeGetText(reqId, Link.widen(eventId), field)});
         return true;
     }
 
@@ -216,6 +310,7 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
             disconnects++;
             _lostAtMs = System.getTimer();
             _state = STATE_LOST;
+            abandonQueued();
             _queue.clear();
             requestPending = false;   // the stack has dropped everything with the link
             _issued = null;
@@ -249,10 +344,14 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
         if (status != BluetoothLowEnergy.STATUS_SUCCESS) {
             lastError = "Write failed (" + status + ")";
             // The reply will never come; free the queue now.
+            var failed = _queue.inFlight();
+            if (failed != null) { itemDone(failed, false); }
             completeAndSendNext();
         } else if (_queue.isExpired()) {
             // The write is done but its reply did not arrive within the
             // accounting timeout; the stack is free now, so move on (F2).
+            var late = _queue.inFlight();
+            if (late != null) { itemDone(late, false); }
             completeAndSendNext();
         }
         // Otherwise the write is complete when its reply arrives on Data.
@@ -283,8 +382,12 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
             // whose ACK never came), the slot is free and the queue moves on.
             lastError = "Request timed out";
             if (dropped[:op] == Link.OP_PING) { notifyPing(-1); }
-            if (!requestPending) { completeAndSendNext(); }
+            if (!requestPending) {
+                itemDone(dropped, false);
+                completeAndSendNext();
+            }
         }
+        maybeSync(now);
         if (_state == STATE_READY && lastStatusMs != 0 && now - lastStatusMs > HEARTBEAT_LOST_MS) {
             lastError = "No heartbeat for " + ((now - lastStatusMs) / 1000) + " s";
         }
@@ -329,6 +432,8 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
 
     private function setUpConnection(device as Device) as Void {
         _state = STATE_SETUP;
+        reconAvailable = true;
+        abandonQueued();
         _queue.clear();
         requestPending = false;   // a new connection: the stack starts clean
         _issued = null;
@@ -441,9 +546,50 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
             return false;
         }
         heartbeat = s[:heartbeat] as Number;
+        flags = s[:flags] as Number;
+        selected = s[:selected] as Number;
+        active = s[:active] as Number;
+        eventCount = s[:eventCount] as Number;
+        lastAlertEventId = Link.narrow(s[:lastAlertEventId] as Long);
+        changeSeq = Link.narrow(s[:changeSeq] as Long);
         lastStatusMs = System.getTimer();
         noteSession(s[:sessionId] as Number);
+        mirror.prune(eventCount, changeSeq);
+        maybeSync(lastStatusMs);
         return true;
+    }
+
+    // Asks for what changed when Status's changeSeq has moved past the
+    // mirror, at most once a second and never with one already queued.
+    private function maybeSync(nowMs as Number) as Void {
+        if (_state != STATE_READY || _control == null || _syncQueued || !reconAvailable) { return; }
+        if (mirror.synced && mirror.syncedSeq == changeSeq) { return; }
+        if (_lastSyncMs != 0 && nowMs - _lastSyncMs < SYNC_MIN_INTERVAL_MS) { return; }
+        _syncQueued = true;
+        _lastSyncMs = nowMs;
+        syncs++;
+        var reqId = takeReqId();
+        enqueue({:kind => :write, :op => Link.OP_GET_CHANGED, :reqId => reqId,
+                 :bytes => Link.encodeGetChanged(reqId, Link.widen(mirror.since()))});
+    }
+
+    // A request finished, answered (ok) or not. Clears its bookkeeping so the
+    // next one can be sent, and tells the command observer about a command
+    // that got no RESULT.
+    private function itemDone(item as Dictionary, ok as Boolean) as Void {
+        var op = item[:op];
+        if (op == Link.OP_GET_CHANGED) { _syncQueued = false; }
+        else if (op == Link.OP_GET_TEXT) { _textQueued = false; }
+        else if (op == Link.OP_COMMAND && !ok && resultObserver != null) {
+            resultObserver.invoke(item[:commandType] as Number, -1);
+        }
+    }
+
+    // Everything queued or in flight is dropped (disconnect or new
+    // connection): release the flags that keep requests unique.
+    private function abandonQueued() as Void {
+        _syncQueued = false;
+        _textQueued = false;
     }
 
     private function applyReply(value as ByteArray) as Void {
@@ -454,15 +600,37 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
             return;
         }
         if (inFlight == null || inFlight[:reqId] != reply[:reqId]) {
-            lastError = "Unexpected reply id " + (reply[:reqId] as Number);
+            // A frame of a reply that already timed out, or a stray: counted,
+            // not treated as an error of the current request.
+            strayFrames++;
             return;
         }
-        var type = reply[:type];
+        var type = reply[:type] as Number;
         var status = reply[:linkStatus] as Number;
+        var now = System.getTimer();
+
+        // The frames of a multi-frame reply before its END: keep them and
+        // keep waiting.
+        if (type == Link.FRAME_EVENT_SUMMARY) {
+            mirror.apply(reply, now);
+            _queue.touch(now);
+            return;
+        }
+        if (type == Link.FRAME_TEXT) {
+            var chunks = inFlight[:chunks] as Array<ByteArray>?;
+            if (chunks != null) { chunks.add(reply[:bytes] as ByteArray); }
+            _queue.touch(now);
+            return;
+        }
+
         var pingResult = inFlight[:op] == Link.OP_PING ? -1 : null;
+        var resend = null;
+        var commandResult = null;
+        var gapSeen = false;
         if (type == Link.FRAME_HELLO_ACK) {
             serverVersion = (reply[:serverMajor] as Number).toString() + "." + (reply[:serverMinor] as Number).toString();
             capabilities = reply[:capabilities] as Number;
+            reconAvailable = (capabilities & (Link.CAP_LOCAL_WIFI_MONITOR | Link.CAP_LOCAL_BLE_MONITOR)) != 0;
             noteSession(reply[:sessionId] as Number);
             if (status == Link.STATUS_OK) {
                 _state = STATE_READY;
@@ -474,19 +642,55 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
             // Long compares by value only through equals(); == may compare references.
             if ((reply[:token] as Long).equals(inFlight[:token] as Long)) {
                 acksReceived++;
-                lastRttMs = System.getTimer() - (inFlight[:sentAt] as Number);
+                lastRttMs = now - (inFlight[:sentAt] as Number);
                 pingResult = lastRttMs;
             } else {
                 lastError = "ACK token mismatch";
             }
+        } else if (type == Link.FRAME_RESULT) {
+            commandResult = reply[:commandResult] as Number;
+            if (commandResult != Link.RESULT_OK) {
+                lastError = "Command " + (reply[:commandType] as Number) + ": " + Link.commandResultName(commandResult);
+            } else if ((reply[:commandType] as Number) == Link.CMD_RECON_CLEAR_EVENTS) {
+                mirror.clearGaps();
+            }
+        } else if (type == Link.FRAME_END) {
+            if (inFlight[:op] == Link.OP_GET_CHANGED) {
+                mirror.complete(reply);
+                if ((reply[:gap] as Number) != 0) { gapSeen = true; }
+            } else if (inFlight[:op] == Link.OP_GET_TEXT) {
+                var chunks = inFlight[:chunks] as Array<ByteArray>;
+                var all = []b;
+                for (var i = 0; i < chunks.size(); i++) { all.addAll(chunks[i]); }
+                var id = inFlight[:eventId] as Number;
+                mirror.setText(id, inFlight[:field] as Number, ReconMirror.printable(all));
+                if (textObserver != null) { textObserver.invoke(id); }
+            }
         } else if (type == Link.FRAME_ERROR) {
             lastError = "Node: " + Link.statusName(status);
+            // A HELLO that met a reply still draining on the Node is said
+            // again; the connection is not ready without it.
+            if (inFlight[:op] == Link.OP_HELLO && status == Link.STATUS_BUSY) { resend = inFlight; }
+            // A Node without Recon: stop asking.
+            if (inFlight[:op] == Link.OP_GET_CHANGED && status == Link.STATUS_UNKNOWN_OP) { reconAvailable = false; }
         }
         // Complete first, then report: an observer that sends the next PING
         // must find the queue free, so the next request is issued only after
         // this one has fully finished (one outstanding operation).
+        var answered = commandResult != null || type == Link.FRAME_END || type == Link.FRAME_HELLO_ACK || type == Link.FRAME_ACK;
+        itemDone(inFlight, answered);
         completeAndSendNext();
+        if (resend != null) {
+            var reqId = takeReqId();
+            enqueue({:kind => :write, :op => Link.OP_HELLO, :reqId => reqId,
+                     :bytes => Link.encodeHello(reqId, Link.MAJOR, Link.MINOR)});
+        }
+        if (commandResult != null && resultObserver != null) {
+            resultObserver.invoke(reply[:commandType] as Number, commandResult);
+        }
         if (pingResult != null) { notifyPing(pingResult); }
+        if (gapSeen && gapObserver != null) { gapObserver.invoke(); }
+        if (type == Link.FRAME_END || type == Link.FRAME_HELLO_ACK) { maybeSync(now); }
     }
 
     private function notifyPing(rttMs as Number) as Void {
@@ -500,5 +704,7 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
             newSession = true;
         }
         sessionId = id;
+        // Rule 6: a new session's events are not the old session's.
+        mirror.reset(id);
     }
 }

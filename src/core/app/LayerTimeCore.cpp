@@ -134,6 +134,12 @@ CommandResult LayerTimeCore::execute(const LayerTimeCommand &command)
 
 void LayerTimeCore::tick(uint32_t nowMs)
 {
+    raiseAlerts(nowMs);
+    pollMonitor();
+}
+
+void LayerTimeCore::raiseAlerts(uint32_t nowMs)
+{
     if (_events.alertPending() && _alertRaisedFor != _events.lastEventId()) {
         _alertRaisedFor = _events.lastEventId();
         if (_ports.alerts) {
@@ -144,7 +150,10 @@ void LayerTimeCore::tick(uint32_t nowMs)
             _ports.alerts->raise(alert);
         }
     }
+}
 
+void LayerTimeCore::pollMonitor()
+{
     if (_ports.monitor) _ports.monitor->poll();
 }
 

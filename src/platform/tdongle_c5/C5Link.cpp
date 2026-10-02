@@ -27,6 +27,8 @@
 #include <NimBLEDevice.h>
 #include <esp_mac.h>
 #include <esp_random.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <string.h>
 
 #include "core/link/LinkCodec.h"
@@ -37,6 +39,8 @@ namespace tdongle_c5 {
 namespace {
 
 constexpr uint32_t kHeartbeatMs = 1000;
+// contracts/link.md: Status is notified within 200 ms of a change.
+constexpr uint32_t kChangeNotifyMs = 200;
 
 C5Link *gLink = nullptr;
 NimBLEServer *gServer = nullptr;
@@ -81,9 +85,20 @@ uint16_t nonZeroSessionId()
 
 } // namespace
 
+void C5Link::lockIo() const
+{
+    if (_io) xSemaphoreTake(static_cast<SemaphoreHandle_t>(_io), portMAX_DELAY);
+}
+
+void C5Link::unlockIo() const
+{
+    if (_io) xSemaphoreGive(static_cast<SemaphoreHandle_t>(_io));
+}
+
 bool C5Link::begin(uint16_t capabilities)
 {
     gLink = this;
+    _io = xSemaphoreCreateMutex();
     _identity.sessionId = nonZeroSessionId();
     _identity.capabilities = capabilities;
 #if defined(LAYERTIME_LINK_TEST)
@@ -133,16 +148,97 @@ bool C5Link::begin(uint16_t capabilities)
 
 void C5Link::service(uint32_t nowMs)
 {
-    if (nowMs - _lastBeatMs < kHeartbeatMs) return;
-    _lastBeatMs = nowMs;
-    ++_status.heartbeat;
-    notifyStatus();
+    if (nowMs - _lastBeatMs >= kHeartbeatMs) {
+        _lastBeatMs = nowMs;
+        lockIo();
+        ++_status.heartbeat;
+        unlockIo();
+        notifyStatus(nowMs);
+        return;
+    }
+    if (_statusDirty && nowMs - _lastStatusNotifyMs >= kChangeNotifyMs) {
+        ++_changeNotifies;
+        notifyStatus(nowMs);
+    }
 }
 
-void C5Link::notifyStatus()
+void C5Link::updateStatus()
+{
+    if (_server == nullptr) return;
+    link::StatusSnapshot next;
+    _server->fillStatus(next);
+    lockIo();
+    const bool changed = next.changeSeq != _status.changeSeq || next.flags != _status.flags ||
+                         next.selected != _status.selected || next.active != _status.active ||
+                         next.eventCount != _status.eventCount ||
+                         next.lastAlertEventId != _status.lastAlertEventId;
+    if (changed) {
+        _status.changeSeq = next.changeSeq;
+        _status.flags = next.flags;
+        _status.selected = next.selected;
+        _status.active = next.active;
+        _status.eventCount = next.eventCount;
+        _status.lastAlertEventId = next.lastAlertEventId;
+    }
+    unlockIo();
+    if (changed) _statusDirty = true;
+}
+
+void C5Link::pushFrame(const uint8_t *frame, size_t len, void *self)
+{
+    C5Link *me = static_cast<C5Link *>(self);
+    me->lockIo();
+    // A reply to a central that has since gone is dropped, so the next
+    // central does not find the pipe busy with it.
+    if (me->_answeringConnection == me->_connection) me->_pipe.push(frame, len);
+    me->unlockIo();
+}
+
+void C5Link::serviceRequests(uint32_t nowMs)
+{
+    if (_server == nullptr) return;
+    uint8_t request[link::kMaxFrame];
+    lockIo();
+    const size_t n = _pipe.take(request);
+    const uint8_t heartbeat = _status.heartbeat;
+    _answeringConnection = _connection;
+    unlockIo();
+    if (n > 0) {
+        // The server takes the event-log lock where it needs it; the io lock
+        // is not held here, and pushFrame takes it per frame.
+        _server->handle(_identity, heartbeat, request, n, nowMs, pushFrame, this);
+        lockIo();
+        _pipe.finish();
+        unlockIo();
+        ++_requestsAnswered;
+    }
+    for (uint8_t i = 0; i < kFramesPerService; ++i) {
+        uint8_t frame[link::kMaxFrame];
+        lockIo();
+        const size_t len = _pipe.front(frame);
+        unlockIo();
+        if (len == 0) break;
+        if (!_connected) break;
+        if (!gData->notify(frame, len)) {
+            // NimBLE is out of buffers: keep the frame and try next pass.
+            ++_notifyRefused;
+            break;
+        }
+        lockIo();
+        _pipe.pop();
+        unlockIo();
+        ++_framesSent;
+    }
+}
+
+void C5Link::notifyStatus(uint32_t nowMs)
 {
     uint8_t frame[link::kMaxFrame];
+    lockIo();
     const size_t n = link::encodeStatus(_status, frame);
+    _statusDirty = false;
+    _lastStatusNotifyMs = nowMs;
+    unlockIo();
     gStatus->setValue(frame, static_cast<uint16_t>(n));
     if (_connected) {
         gStatus->notify();
@@ -157,17 +253,45 @@ void C5Link::onConnected(const char *peer, uint16_t)
     strncpy(_peer, peer, sizeof(_peer) - 1);
     _peer[sizeof(_peer) - 1] = '\0';
     _connected = true;
-    notifyStatus();
+    notifyStatus(millis());
 }
 
 void C5Link::onDisconnected()
 {
     _connected = false;
     _peer[0] = '\0';
+    // The central is gone: a waiting request and unsent reply frames go with
+    // it. A reply in progress in the loop finishes into an empty pipe.
+    lockIo();
+    _pipe.clear();
+    ++_connection;
+    unlockIo();
 }
 
 void C5Link::onControlWritten(const uint8_t *data, size_t len)
 {
+    if (_server != nullptr && len >= 1) {
+        const uint8_t op = data[0];
+        const bool deferred = op == static_cast<uint8_t>(link::Op::Command) ||
+                              op == static_cast<uint8_t>(link::Op::GetChanged) ||
+                              op == static_cast<uint8_t>(link::Op::GetText);
+        lockIo();
+        const bool busy = _pipe.busy();
+        const bool accepted = !busy && deferred && _pipe.offer(data, len);
+        unlockIo();
+        if (busy || (deferred && !accepted)) {
+            // Rule 2: one outstanding request. (A deferred request longer
+            // than a frame also lands here; the loop never sees it.)
+            uint8_t reply[link::kMaxFrame];
+            link::Error e;
+            e.reqId = len >= 2 ? data[1] : 0;
+            e.status = busy ? link::LinkStatus::Busy : link::LinkStatus::BadLength;
+            if (busy) ++_busyReplies;
+            gData->notify(reply, link::encodeError(e, reply));
+            return;
+        }
+        if (accepted) return; // the loop answers it
+    }
     uint8_t reply[link::kMaxFrame];
     const size_t n = link::dispatch(_identity, _status.heartbeat, data, len, reply);
     if (n >= 2 && len == link::kPingSize && data[0] == static_cast<uint8_t>(link::Op::Ping) &&

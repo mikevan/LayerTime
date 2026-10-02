@@ -99,6 +99,14 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -Istubs -I../src -o tests_watch_face_units 
 service's file-local pieces. Do not also pass `ReconService.cpp` on
 that command line.
 
+Since Slice 1 Increment 2A the T-Watch Ultra is frozen reference code:
+`ReconService` and the suites above stay as they were and are not part of
+the C5/Garmin acceptance path. The Recon schedule `ReconService` runs was
+expressed in core as `src/core/logic/ReconScheduler` behind the
+`src/core/ports/ReconRadio` port, and the C5 (`src/platform/tdongle_c5`) is
+its consumer. `test_recon_scheduler` below pins that schedule on its own;
+`test_recon` still characterizes the T-Ultra's original.
+
 Since Phase 0 Step 4 the Recon event history, the alert, and the Recon
 commands are in core (`src/core/app`, `src/core/logic/MonitorEventLog`),
 reached through the T-Ultra adapters in `src/platform/twatch_ultra`. The
@@ -159,6 +167,12 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_ble_classifier test_ble_c
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_alert_policy test_alert_policy/test_alert_policy.cpp ../src/core/logic/AlertPolicy.cpp
 ./tests_alert_policy
 
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_recon_scheduler test_recon_scheduler/test_recon_scheduler.cpp ../src/core/logic/ReconScheduler.cpp ../src/core/logic/ReconSelection.cpp
+./tests_recon_scheduler
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_recon_stage_log test_recon_stage_log/test_recon_stage_log.cpp ../src/core/logic/ReconStageLog.cpp
+./tests_recon_stage_log
+
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_mesh_conversations test_mesh_conversations/test_mesh_conversations.cpp ../src/core/logic/MeshConversations.cpp
 ./tests_mesh_conversations
 
@@ -218,12 +232,23 @@ whether it is current). Both suites share `link_vectors_json.h`. Run from
 `test/`, because the vectors are read from `../contracts/vectors/` and
 `../garmin/`.
 
+`test_link_server` covers the Recon Node's side, added with the Recon
+integration (Increment 2B): the change sequence (`ChangeTracker`), the
+COMMAND, GET_CHANGED and GET_TEXT answers and the live Status fields
+(`LinkServer`) against `LayerTimeCore` with a fake monitor source, including
+the gap across the 40-event wrap, a clear, text fragments, and the event-log
+lock never being held around a command that reaches the radios; and rule 2's
+one outstanding request on the Node (`LinkPipe`).
+
 ```
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_link_codec test_link_codec/test_link_codec.cpp ../src/core/link/LinkCodec.cpp
 ./tests_link_codec
 
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_link_vectors_mc test_link_vectors_mc/test_link_vectors_mc.cpp
 ./tests_link_vectors_mc
+
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_link_server test_link_server/test_link_server.cpp ../src/core/link/LinkServer.cpp ../src/core/link/ChangeTracker.cpp ../src/core/link/LinkCodec.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+./tests_link_server
 ```
 
 ## Core and platform boundary
