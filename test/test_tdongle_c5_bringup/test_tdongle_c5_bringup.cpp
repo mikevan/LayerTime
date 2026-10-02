@@ -1,6 +1,7 @@
 // Host tests for the hardware-free logic behind the T-Dongle-C5 bring-up
 // firmware (Slice 1, Increment 0): the APA102 frame, the button debouncer,
-// the advertised test name, and the MiB report.
+// the LayerWand button gestures (Increment 2B), the advertised test name, and
+// the MiB report.
 //
 // Build command: see test/README.md, "T-Dongle-C5".
 
@@ -18,7 +19,9 @@ void apa102_frame_is_start_led_end()
 {
     uint8_t f[kApa102FrameBytes];
     encodeApa102(Rgb{0x11, 0x22, 0x33}, 7, f);
-    CHECK_INT(9, kApa102FrameBytes);
+    CHECK_INT(12, kApa102FrameBytes);
+    // A whole number of 32-bit words, so consecutive updates stay aligned.
+    CHECK_INT(0, static_cast<int>(kApa102FrameBytes % 4));
     // 32-bit start frame of zeros.
     CHECK_INT(0x00, f[0]);
     CHECK_INT(0x00, f[1]);
@@ -29,8 +32,11 @@ void apa102_frame_is_start_led_end()
     CHECK_INT(0x33, f[5]);
     CHECK_INT(0x22, f[6]);
     CHECK_INT(0x11, f[7]);
-    // End frame leaves the data line low.
+    // Trailing 32 zero bits (SK9822 reset frame); leaves the data line low.
     CHECK_INT(0x00, f[8]);
+    CHECK_INT(0x00, f[9]);
+    CHECK_INT(0x00, f[10]);
+    CHECK_INT(0x00, f[11]);
 }
 
 void apa102_brightness_is_clamped_to_five_bits()
@@ -103,6 +109,73 @@ void the_debouncer_survives_millis_wraparound()
 
 // --- Advertised name -----------------------------------------------------
 
+// --- Button gestures (LayerWand: short press wakes the screen, long press
+// dumps the run) ------------------------------------------------------------
+
+int g(ButtonGestures &b, bool pressed, uint32_t now) { return static_cast<int>(b.update(pressed, now)); }
+const int kNone = static_cast<int>(ButtonGesture::None);
+const int kShort = static_cast<int>(ButtonGesture::Short);
+const int kLong = static_cast<int>(ButtonGesture::Long);
+
+void a_short_press_reports_short_once_after_the_release_settles()
+{
+    ButtonGestures b;
+    CHECK_INT(kNone, g(b, true, 100));
+    CHECK_INT(kNone, g(b, true, 130));   // pressed and settled
+    CHECK_INT(kNone, g(b, true, 400));
+    CHECK_INT(kNone, g(b, false, 500));  // release starts
+    CHECK_INT(kNone, g(b, false, 529));  // not settled yet
+    CHECK_INT(kShort, g(b, false, 530)); // settled: Short
+    CHECK_INT(kNone, g(b, false, 600));  // once
+}
+
+void a_long_press_reports_long_once_while_held_and_nothing_on_release()
+{
+    ButtonGestures b;
+    CHECK_INT(kNone, g(b, true, 1000));
+    CHECK_INT(kNone, g(b, true, 1030));
+    CHECK_INT(kNone, g(b, true, 1000 + ButtonGestures::kLongPressMs - 1));
+    CHECK_INT(kLong, g(b, true, 1000 + ButtonGestures::kLongPressMs));
+    CHECK_INT(kNone, g(b, true, 5000));  // once
+    CHECK_INT(kNone, g(b, false, 6000));
+    CHECK_INT(kNone, g(b, false, 6100)); // no Short after a Long
+    // Re-armed: the next short press counts.
+    CHECK_INT(kNone, g(b, true, 7000));
+    CHECK_INT(kNone, g(b, true, 7040));
+    CHECK_INT(kNone, g(b, false, 7100));
+    CHECK_INT(kShort, g(b, false, 7140));
+}
+
+void a_bounce_shorter_than_the_debounce_time_is_not_a_press()
+{
+    ButtonGestures b;
+    CHECK_INT(kNone, g(b, true, 100));
+    CHECK_INT(kNone, g(b, false, 110));  // released after 10 ms
+    CHECK_INT(kNone, g(b, false, 200));
+    CHECK_INT(kNone, g(b, false, 300));  // never reported
+}
+
+void a_release_bounce_does_not_end_the_press()
+{
+    ButtonGestures b;
+    CHECK_INT(kNone, g(b, true, 100));
+    CHECK_INT(kNone, g(b, true, 140));   // down
+    CHECK_INT(kNone, g(b, false, 200));  // brief bounce
+    CHECK_INT(kNone, g(b, true, 210));   // back down before settling
+    CHECK_INT(kNone, g(b, true, 400));
+    CHECK_INT(kNone, g(b, false, 500));
+    CHECK_INT(kShort, g(b, false, 540)); // one Short for the whole press
+}
+
+void gestures_survive_millis_wraparound()
+{
+    ButtonGestures b;
+    const uint32_t nearWrap = 0xFFFFFFF0u;
+    CHECK_INT(kNone, g(b, true, nearWrap));
+    CHECK_INT(kNone, g(b, true, nearWrap + 40));
+    CHECK_INT(kLong, g(b, true, nearWrap + ButtonGestures::kLongPressMs)); // wraps past zero
+}
+
 void the_test_name_uses_the_last_two_mac_bytes_in_upper_case_hex()
 {
     const uint8_t mac[6] = {0x7C, 0xDF, 0xA1, 0x00, 0x3F, 0xA2};
@@ -141,6 +214,11 @@ int main(int argc, char **argv)
     CASE(a_bounce_shorter_than_the_debounce_time_is_ignored);
     CASE(release_rearms_and_the_next_press_counts_again);
     CASE(the_debouncer_survives_millis_wraparound);
+    CASE(a_short_press_reports_short_once_after_the_release_settles);
+    CASE(a_long_press_reports_long_once_while_held_and_nothing_on_release);
+    CASE(a_bounce_shorter_than_the_debounce_time_is_not_a_press);
+    CASE(a_release_bounce_does_not_end_the_press);
+    CASE(gestures_survive_millis_wraparound);
     CASE(the_test_name_uses_the_last_two_mac_bytes_in_upper_case_hex);
     CASE(the_test_name_keeps_leading_zeros);
     CASE(whole_mib_rounds_down);

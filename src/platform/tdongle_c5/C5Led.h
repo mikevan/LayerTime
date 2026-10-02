@@ -17,7 +17,19 @@
 
 #pragma once
 
-// The T-Dongle-C5's single APA102 RGB LED, clocked out by GPIO.
+// The T-Dongle-C5's single APA102 RGB LED.
+//
+// On the boards tested (both LayerWands, Michael, 2026-10-01) the LED takes
+// its clock and data from the LCD's SPI bus (clock GPIO 6, data GPIO 2), not
+// from GPIO 4 and 5 as LILYGO's schematic V1.1 and pin table show: nothing
+// sent on GPIO 4 or 5 ever reached it (our driver, LILYGO's own APA102
+// driver, and a single-wire driver), it stayed dark while the LCD was never
+// started, every LCD transfer changed it, and an off frame sent over SPI
+// with the LCD deselected turned it off.
+//
+// So frames go out over SPI with the LCD's chip select held high (the LCD
+// ignores them), and every LCD transfer scrambles the LED: whoever writes
+// the LCD must call show() again afterwards (C5Display::transfers()).
 
 #include "BringUpLogic.h"
 
@@ -26,6 +38,8 @@ namespace tdongle_c5 {
 
 class C5Led {
 public:
+    // Holds the LCD deselected, starts the SPI bus on the LCD's pins if the
+    // LCD has not (starting it clocks nothing), and turns the LED off.
     void begin();
     void show(const Rgb &color, uint8_t brightness);
     void off();

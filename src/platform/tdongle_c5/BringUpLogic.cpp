@@ -36,6 +36,9 @@ void encodeApa102(const Rgb &color, uint8_t brightness, uint8_t out[kApa102Frame
     out[6] = color.green;
     out[7] = color.red;
     out[8] = 0x00;
+    out[9] = 0x00;
+    out[10] = 0x00;
+    out[11] = 0x00;
 }
 
 Rgb bringUpCycleColor(uint32_t step)
@@ -58,6 +61,33 @@ bool ButtonDebouncer::update(bool pressed, uint32_t nowMs)
     if (nowMs - _rawSinceMs < kDebounceMs) return false;
     _stablePressed = pressed;
     return pressed;
+}
+
+ButtonGesture ButtonGestures::update(bool pressed, uint32_t nowMs)
+{
+    if (pressed != _lastRaw) {
+        _lastRaw = pressed;
+        _rawSinceMs = nowMs;
+        return ButtonGesture::None;
+    }
+    const bool settled = nowMs - _rawSinceMs >= kDebounceMs;
+    if (!_down) {
+        if (pressed && settled) {
+            _down = true;
+            _longSent = false;
+        }
+        return ButtonGesture::None;
+    }
+    if (!pressed) {
+        if (!settled) return ButtonGesture::None;
+        _down = false;
+        return _longSent ? ButtonGesture::None : ButtonGesture::Short;
+    }
+    if (!_longSent && nowMs - _rawSinceMs >= kLongPressMs) {
+        _longSent = true;
+        return ButtonGesture::Long;
+    }
+    return ButtonGesture::None;
 }
 
 void formatAdvertisedName(const uint8_t mac[6], char out[kAdvertisedNameSize])

@@ -86,7 +86,18 @@ namespace {
 constexpr uint32_t kReportMs = 10000;
 constexpr uint32_t kDisplayMs = 1000;
 constexpr uint32_t kSerialWaitMs = 3000;
-constexpr uint8_t kLedBrightness = 2;
+constexpr uint8_t kLedBrightness = 1;
+// The status LED stays dark so the LayerWand can be concealed (Michael,
+// 2026-10-01). Set true to restore blue at boot and red on each new
+// detection, at kLedBrightness. Either way the LED's state is sent again
+// after every LCD transfer, because the LED shares the LCD's SPI bus
+// (C5Led.h).
+constexpr bool kLedEnabled = false;
+// Concealment (Michael, 2026-10-01). The screen stays dark and unstarted until
+// a short BOOT press wakes it for kScreenWakeMs, showing a snapshot of the
+// status at the press (no redraws while lit). A long press (held
+// ButtonGestures::kLongPressMs) dumps the run, as a press did before.
+constexpr uint32_t kScreenWakeMs = 10000;
 constexpr uint32_t kStageCapacity = 65536; // as in Increment 2A
 
 enum class RunMode : uint8_t { Stopped = 0, EarlyWarning = 1, Manual = 2 };
@@ -152,7 +163,7 @@ private:
 C5BootRecord gBoot; // D3: reset reason and retained boot history
 C5Display gDisplay;
 C5Led gLed;
-ButtonDebouncer gButton;
+ButtonGestures gButton;
 C5StageLog gStage;
 C5ReconRadio gRadio;
 C5MonitorSource gMonitor(gRadio);
@@ -165,6 +176,14 @@ RunMode gMode = RunMode::Stopped;
 uint32_t gRun = 0;
 uint32_t gRunStartMs = 0;
 uint32_t gButtonCount = 0;
+bool gDisplayStarted = false;
+bool gDisplayOk = false;
+bool gScreenAwake = false;
+uint32_t gScreenWokeMs = 0;
+// What the LED should show when kLedEnabled, and the LCD transfer count it
+// was last sent after.
+Rgb gLedColor{0, 0, 32};
+uint32_t gLedSentAfterTransfers = 0;
 uint32_t gLastReportMs = 0;
 uint32_t gLastDisplayMs = 0;
 uint32_t gLastLoopMs = 0;
@@ -328,7 +347,7 @@ void dumpRun()
                       static_cast<unsigned>(r.a16), static_cast<unsigned long>(r.a32));
         if ((i & 255) == 255) {
             Serial.flush();
-            gDisplay.service();
+            if (gScreenAwake) gDisplay.service();
         }
     }
     Serial.println("=== run dump end");
@@ -390,6 +409,42 @@ void showStatus()
     gDisplay.setLine(4, line);
 }
 
+// Short BOOT press: start the screen the first time, light it, and show the
+// current status (it is drawn on the next service()).
+void wakeScreen(uint32_t now)
+{
+    if (!gDisplayStarted) {
+        gDisplayStarted = true;
+        gDisplayOk = gDisplay.begin();
+        gDisplay.setLine(0, "LayerWand");
+        Serial.printf("Display %s\n", gDisplayOk ? "started" : "FAILED");
+    } else {
+        gDisplay.setBacklight(true);
+    }
+    gScreenAwake = true;
+    gScreenWokeMs = now;
+    showStatus();
+    Serial.println("Screen on");
+}
+
+// Sends the LED its state: off, or gLedColor when kLedEnabled.
+void applyLed()
+{
+    if (kLedEnabled) gLed.show(gLedColor, kLedBrightness);
+    else gLed.off();
+    gLedSentAfterTransfers = gDisplay.transfers();
+}
+
+// kScreenWakeMs after the press: backlight off and no more LCD transfers;
+// the LED was already sent its state after the last one.
+void sleepScreen()
+{
+    gDisplay.setBacklight(false);
+    gScreenAwake = false;
+    applyLed();
+    Serial.println("Screen dark");
+}
+
 } // namespace
 
 void setup()
@@ -401,12 +456,12 @@ void setup()
 
     gEventLock = xSemaphoreCreateMutex();
 
+    // The LED shares the LCD's SPI bus (C5Led.h): start the bus, then send
+    // the LED its state, so it is dark from boot even if it powered up lit.
     gLed.begin();
-    gLed.show(Rgb{0, 0, 32}, kLedBrightness);
+    applyLed();
     pinMode(pins::kBootButton, INPUT); // external 10 k pull-up (R16)
 
-    const bool displayOk = gDisplay.begin();
-    gDisplay.setLine(0, "LayerWand");
 
     esp_chip_info_t chip;
     esp_chip_info(&chip);
@@ -417,7 +472,7 @@ void setup()
                   chip.revision / 100, chip.revision % 100, chip.cores);
     Serial.printf("Flash %lu bytes, PSRAM %lu bytes\n", static_cast<unsigned long>(ESP.getFlashChipSize()),
                   static_cast<unsigned long>(ESP.getPsramSize()));
-    Serial.printf("Display %s\n", displayOk ? "started" : "FAILED");
+    Serial.println("Display: dark until a short BOOT press (concealment)");
     {
         char boot[120];
         gBoot.format(boot, sizeof(boot));
@@ -481,12 +536,18 @@ void loop()
     gLastLoopMs = now;
 
     const bool pressed = digitalRead(pins::kBootButton) == LOW;
-    if (gButton.update(pressed, now)) {
+    const ButtonGesture gesture = gButton.update(pressed, now);
+    if (gesture == ButtonGesture::Short) {
         ++gButtonCount;
-        Serial.printf("Button press %lu\n", static_cast<unsigned long>(gButtonCount));
+        Serial.printf("Button press %lu (short): screen on\n", static_cast<unsigned long>(gButtonCount));
+        wakeScreen(now);
+    } else if (gesture == ButtonGesture::Long) {
+        ++gButtonCount;
+        Serial.printf("Button press %lu (long): run dump\n", static_cast<unsigned long>(gButtonCount));
         dumpRun();
         return;
     }
+    if (gScreenAwake && now - gScreenWokeMs >= kScreenWakeMs) sleepScreen();
 
     // Core's tick, in its order: the alert half under the event-log lock,
     // then the monitor's schedule outside it.
@@ -516,7 +577,7 @@ void loop()
         if (gWasConnected) ++gConnects; else ++gDisconnects;
         Serial.printf("Link %s %s at %lu ms\n", gWasConnected ? "connected to" : "disconnected, advertising again;",
                       gWasConnected ? gLink.peerAddress() : "", static_cast<unsigned long>(now));
-        showStatus();
+        if (!gScreenAwake) showStatus(); // no redraw while lit (snapshot)
     }
 
     const AcquisitionStatus acq = gMonitor.acquisition();
@@ -553,7 +614,8 @@ void loop()
         Serial.printf("event %lu %s %s %s rssi %d ch %u\n", static_cast<unsigned long>(latest.eventId),
                       recon::detectorName(latest.detector), latest.sourceId, latest.detail,
                       static_cast<int>(latest.rssi), static_cast<unsigned>(latest.channel));
-        gLed.show(Rgb{32, 0, 0}, kLedBrightness);
+        gLedColor = Rgb{32, 0, 0};
+        applyLed();
     }
 
     if (now - gLastReportMs >= kReportMs) {
@@ -563,12 +625,19 @@ void loop()
         printCounters("periodic");
     }
 
-    if (now - gLastDisplayMs >= kDisplayMs) {
+    // While the screen is lit it holds the snapshot wakeScreen() drew: every
+    // redraw also flashes the LED (it shares the LCD's bus), so the status is
+    // drawn once per press (Michael, 2026-10-01). While dark, the labels keep
+    // up without sending anything, ready for the next press.
+    if (!gScreenAwake && now - gLastDisplayMs >= kDisplayMs) {
         gLastDisplayMs = now;
         showStatus();
     }
 
-    gDisplay.service();
+    if (gScreenAwake) gDisplay.service();
+    // Any LCD transfer (here, or in a run dump) scrambled the LED; send it
+    // its state again.
+    if (gDisplay.transfers() != gLedSentAfterTransfers) applyLed();
     delay(5);
 }
 

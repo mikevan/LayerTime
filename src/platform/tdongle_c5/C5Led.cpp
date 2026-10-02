@@ -24,30 +24,24 @@
 #include "TDongleC5Pins.h"
 
 #include <Arduino.h>
+#include <SPI.h>
 
 namespace layertime {
 namespace tdongle_c5 {
 
 namespace {
 
-// MSB first; data is sampled on the rising clock edge.
-void clockOut(uint8_t byte)
-{
-    for (int bit = 7; bit >= 0; --bit) {
-        digitalWrite(pins::kLedData, (byte >> bit) & 1 ? HIGH : LOW);
-        digitalWrite(pins::kLedClock, HIGH);
-        digitalWrite(pins::kLedClock, LOW);
-    }
-}
+// 1 MHz, mode 0: data is valid on the rising clock edge, where the APA102
+// samples it. A 96-bit frame takes about 0.1 ms.
+const SPISettings kLedSpi(1000000, MSBFIRST, SPI_MODE0);
 
 } // namespace
 
 void C5Led::begin()
 {
-    pinMode(pins::kLedClock, OUTPUT);
-    pinMode(pins::kLedData, OUTPUT);
-    digitalWrite(pins::kLedClock, LOW);
-    digitalWrite(pins::kLedData, LOW);
+    digitalWrite(pins::kLcdCs, HIGH);
+    pinMode(pins::kLcdCs, OUTPUT);
+    SPI.begin(pins::kLcdSck, -1, pins::kLcdMosi, -1); // returns at once if already started
     off();
 }
 
@@ -55,8 +49,10 @@ void C5Led::show(const Rgb &color, uint8_t brightness)
 {
     uint8_t frame[kApa102FrameBytes];
     encodeApa102(color, brightness, frame);
-    for (uint8_t b : frame) clockOut(b);
-    digitalWrite(pins::kLedData, LOW);
+    SPI.beginTransaction(kLedSpi);
+    digitalWrite(pins::kLcdCs, HIGH); // the LCD must not take these bytes
+    SPI.writeBytes(frame, sizeof(frame));
+    SPI.endTransaction();
 }
 
 void C5Led::off()

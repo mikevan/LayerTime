@@ -42,6 +42,9 @@ uint8_t gDrawBuffer[pins::kLcdNativeHeight * kBufferRows * 2];
 
 lv_obj_t *gLines[C5Display::kLineCount] = {};
 
+// Every LCD transfer; the LED shares this bus and is scrambled by each one.
+uint32_t gTransfers = 0;
+
 // Layout, landscape 160 x 80: the owl on the left, status text on the right.
 // The owl is 56 x 56, centred vertically; the text column starts at x = 62
 // and runs to the right edge, 96 px, which fits 14 to 15 characters of
@@ -66,6 +69,7 @@ void transfer(const uint8_t *cmd, size_t cmdSize, const uint8_t *param, size_t p
     }
     digitalWrite(pins::kLcdCs, HIGH);
     SPI.endTransaction();
+    ++gTransfers;
 }
 
 void sendCommand(lv_display_t *, const uint8_t *cmd, size_t cmdSize, const uint8_t *param,
@@ -150,6 +154,11 @@ void C5Display::setLine(uint8_t line, const char *text)
 void C5Display::service()
 {
     lv_timer_handler();
+}
+
+uint32_t C5Display::transfers() const
+{
+    return gTransfers;
 }
 
 void C5Display::setBacklight(bool on)

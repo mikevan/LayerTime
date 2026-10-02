@@ -43,6 +43,11 @@ public:
     void service();
 
     void setBacklight(bool on);
+
+    // How many SPI transfers the LCD has made. The status LED shares the bus
+    // and is scrambled by every one (C5Led.h), so a change means the LED must
+    // be sent its state again.
+    uint32_t transfers() const;
 };
 
 } // namespace tdongle_c5
