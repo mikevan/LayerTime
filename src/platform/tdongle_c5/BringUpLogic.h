@@ -195,5 +195,24 @@ private:
     Entry _entries[kCapacity] = {};
 };
 
+// --- LayerWand channel plan (commit 2, 2026-10-02) -------------------------
+//
+// Michael's scan order: every 5 GHz channel, lowest to highest, then every
+// 2.4 GHz channel, lowest to highest (BLE follows the pass in the
+// scheduler). The candidates are every channel ESP-IDF names for the
+// ESP32-C5 (wifi_5g_channel_bit_t, and 2.4 GHz 1 to 14); the plan keeps the
+// ones the radio accepts under the regulatory rules it is running with.
+constexpr uint8_t kWifi5GHzCandidates[] = {36,  40,  44,  48,  52,  56,  60,  64,  100, 104,
+                                           108, 112, 116, 120, 124, 128, 132, 136, 140, 144,
+                                           149, 153, 157, 161, 165, 169, 173, 177};
+constexpr uint8_t kWifi2_4GHzCandidates[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+
+// True when the radio accepts the channel.
+using ChannelAccepted = bool (*)(uint8_t channel, void *context);
+
+// Fills out with the accepted candidates, 5 GHz first, each band lowest to
+// highest, stopping at capacity. Returns how many it wrote.
+uint8_t buildChannelPlan(ChannelAccepted accepted, void *context, uint8_t *out, uint8_t capacity);
+
 } // namespace tdongle_c5
 } // namespace layertime

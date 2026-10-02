@@ -88,6 +88,15 @@ C5BleScanCallbacks gBleScanCallbacks;
 // loop task.
 portMUX_TYPE gPeerLock = portMUX_INITIALIZER_UNLOCKED;
 
+bool channelAccepted(uint8_t channel, void *)
+{
+    if (esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) != ESP_OK) return false;
+    uint8_t primary = 0;
+    wifi_second_chan_t second = WIFI_SECOND_CHAN_NONE;
+    if (esp_wifi_get_channel(&primary, &second) != ESP_OK) return false;
+    return primary == channel;
+}
+
 Band bandOfChannel(uint8_t channel)
 {
     if (channel >= 1 && channel <= 14) return Band::Band2_4GHz;
@@ -97,17 +106,30 @@ Band bandOfChannel(uint8_t channel)
 
 } // namespace
 
-void C5ReconRadio::begin()
+void C5ReconRadio::begin(bool dualBand)
 {
     WiFi.mode(WIFI_STA);
     WiFi.disconnect(false, false);
 #if SOC_WIFI_SUPPORT_5G
-    // The existing Recon model is the 2.4 GHz channel plan 1 to 11. Pin the
-    // dual-band radio there so esp_wifi_set_channel means what it means on
-    // the T-Ultra. Decision for Increment 2A; 5 GHz observation is not part
-    // of this baseline.
-    esp_wifi_set_band_mode(WIFI_BAND_MODE_2G_ONLY);
+    // The 2A baseline keeps the 2.4 GHz channel plan 1 to 11, pinned there so
+    // esp_wifi_set_channel means what it means on the T-Ultra. The LayerWand
+    // listens on both bands (Michael, 2026-10-02).
+    esp_wifi_set_band_mode(dualBand ? WIFI_BAND_MODE_AUTO : WIFI_BAND_MODE_2G_ONLY);
+#else
+    (void)dualBand;
 #endif
+}
+
+uint8_t C5ReconRadio::probeChannelPlan(uint8_t *out, uint8_t capacity)
+{
+    // Probed with promiscuous receive on, the mode Recon uses, and no frame
+    // callback attached.
+    esp_wifi_set_promiscuous_rx_cb(nullptr);
+    esp_wifi_set_promiscuous(true);
+    const uint8_t n = buildChannelPlan(channelAccepted, nullptr, out, capacity);
+    esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+    esp_wifi_set_promiscuous(false);
+    return n;
 }
 
 void C5ReconRadio::setCandidateSink(recon::CandidateSink sink, void *context)
@@ -125,25 +147,25 @@ void C5ReconRadio::resetDetectorState()
 
 // ---- ReconRadio ---------------------------------------------------------------
 
-void C5ReconRadio::startWifiMonitoring()
+void C5ReconRadio::startWifiMonitoring(uint8_t channel)
 {
     WiFi.mode(WIFI_STA);
     WiFi.disconnect(false, false);
     _activeInstance = this;
     esp_wifi_set_promiscuous(false);
     esp_wifi_set_promiscuous_rx_cb(reinterpret_cast<wifi_promiscuous_cb_t>(promiscuousThunk));
-    // The scheduler's hop cursor restarts at channel 1 with the radio.
-    esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
-    _channel = 1;
+    // The scheduler's hop cursor restarts at its plan's first channel.
+    if (esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) != ESP_OK) ++_counters.channelRefusals;
+    _channel = channel;
     _firstFrameOnChannel = true;
     if (esp_wifi_set_promiscuous(true) != ESP_OK) _activeInstance = nullptr;
     ++_counters.wifiStarts;
-    if (_stage) _stage->record(recon::Stage::WifiStart, 1, 0, _activeInstance != nullptr);
+    if (_stage) _stage->record(recon::Stage::WifiStart, channel, 0, _activeInstance != nullptr);
 }
 
 void C5ReconRadio::setWifiChannel(uint8_t channel)
 {
-    esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+    if (esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) != ESP_OK) ++_counters.channelRefusals;
     _channel = channel;
     _firstFrameOnChannel = true;
     ++_counters.hops;
@@ -218,7 +240,7 @@ void C5ReconRadio::onPromiscuousPacket(void *buf, int type)
     auto *packet = static_cast<wifi_promiscuous_pkt_t *>(buf);
     const uint8_t channel = packet->rx_ctrl.channel;
     ++_counters.frames;
-    if (channel < 15) ++_counters.framesByChannel[channel];
+    if (channel <= kMaxWifiChannel) ++_counters.framesByChannel[channel];
     if (_firstFrameOnChannel) {
         _firstFrameOnChannel = false;
         if (_stage) _stage->record(recon::Stage::WifiFrame, channel, 0, _counters.frames);

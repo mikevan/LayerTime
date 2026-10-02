@@ -34,11 +34,11 @@ struct FakeRadio : ReconRadio {
     ReconTarget scanFor = ReconTarget::None;
 
     uint32_t settleMs = 0; // clock time the platform spends inside a call
-    void startWifiMonitoring() override
+    void startWifiMonitoring(uint8_t c) override
     {
         calls.push_back("wifi-start");
         wifiOn = true;
-        channel = 1;
+        channel = c;
         g_now += settleMs;
     }
     void stopWifiMonitoring() override { calls.push_back("wifi-stop"); wifiOn = false; }
@@ -384,6 +384,238 @@ void restarting_wifi_restarts_the_hop_clock_from_the_radio_clock()
     CHECK_INT(19, r.hops());
 }
 
+// ------------------------------------------------------------ LayerWand plan, FullPass, random rest
+
+uint32_t g_randomValue = 0;
+uint32_t fixedRandom() { return g_randomValue; }
+
+std::vector<uint32_t> g_randomSequence;
+size_t g_randomNext = 0;
+uint32_t sequenceRandom()
+{
+    const uint32_t v = g_randomSequence[g_randomNext % g_randomSequence.size()];
+    ++g_randomNext;
+    return v;
+}
+
+void the_reference_plan_is_1_to_11_and_a_custom_plan_replaces_it()
+{
+    Rig r;
+    CHECK_INT(11, r.s.planCount());
+    CHECK_INT(1, r.s.planChannel(0));
+    CHECK_INT(11, r.s.planChannel(10));
+    CHECK_TRUE(r.s.sweepMode() == SweepMode::Timed);
+    const uint8_t plan[] = {36, 40, 149, 1, 6};
+    CHECK_TRUE(r.s.setChannelPlan(plan, 5));
+    CHECK_INT(5, r.s.planCount());
+    CHECK_INT(36, r.s.planChannel(0));
+    CHECK_INT(6, r.s.planChannel(4));
+    CHECK_INT(0, r.s.planChannel(5));
+    // Too long: refused, plan kept.
+    uint8_t tooLong[ReconScheduler::kMaxPlanChannels + 1] = {};
+    for (uint8_t &c : tooLong) c = 1;
+    CHECK_FALSE(r.s.setChannelPlan(tooLong, ReconScheduler::kMaxPlanChannels + 1));
+    CHECK_INT(5, r.s.planCount());
+    // Empty restores the reference plan.
+    CHECK_TRUE(r.s.setChannelPlan(nullptr, 0));
+    CHECK_INT(11, r.s.planCount());
+    CHECK_INT(1, r.s.planChannel(0));
+}
+
+void a_custom_plan_starts_on_its_first_channel_and_hops_in_order()
+{
+    Rig r;
+    const uint8_t plan[] = {36, 40, 1, 2};
+    r.s.setChannelPlan(plan, 4);
+    r.s.start(ReconTarget::Deauth);
+    CHECK_STR("wifi-start", r.last().c_str());
+    CHECK_INT(36, r.radio.channel);
+    CHECK_INT(36, r.s.wifiChannel());
+    r.after(650);
+    CHECK_STR("hop 40", r.last().c_str());
+    r.after(650);
+    CHECK_STR("hop 1", r.last().c_str());
+    r.after(650);
+    CHECK_STR("hop 2", r.last().c_str());
+    r.after(650); // Wi-Fi only wraps to the first channel
+    CHECK_STR("hop 36", r.last().c_str());
+    CHECK_INT(1, r.s.passes());
+    CHECK_INT(2600, r.s.lastPassMs());
+}
+
+void full_pass_all_runs_one_pass_then_ble_then_the_next_pass()
+{
+    Rig r;
+    const uint8_t plan[] = {36, 40, 1};
+    r.s.setChannelPlan(plan, 3);
+    r.s.setSweepMode(SweepMode::FullPass);
+    r.s.start(ReconTarget::All);
+    CHECK_INT(36, r.radio.channel);
+    CHECK_INT(static_cast<int>(ReconTarget::Deauth), static_cast<int>(r.s.status().active));
+    r.after(650);
+    CHECK_STR("hop 40", r.last().c_str());
+    r.after(650);
+    CHECK_STR("hop 1", r.last().c_str());
+    r.after(649);
+    CHECK_STR("hop 1", r.last().c_str()); // the last channel's dwell is not up
+    r.after(1);
+    // Pass done: Wi-Fi off, one BLE scan.
+    CHECK_INT(1, r.s.passes());
+    CHECK_INT(1950, r.s.lastPassMs());
+    CHECK_STR("ble-start 1 1800", r.last().c_str());
+    CHECK_STR("wifi-stop", r.radio.calls[r.radio.calls.size() - 2].c_str());
+    CHECK_INT(static_cast<int>(ReconTarget::Flock), static_cast<int>(r.s.status().active));
+    r.after(1799);
+    CHECK_STR("ble-start 1 1800", r.last().c_str());
+    r.after(1);
+    // Scan over: the next pass starts on the first channel.
+    CHECK_STR("wifi-start", r.last().c_str());
+    CHECK_INT(36, r.radio.channel);
+    CHECK_INT(static_cast<int>(ReconTarget::Deauth), static_cast<int>(r.s.status().active));
+    // No 12 s timer in FullPass: a long pass is not cut short.
+    const uint8_t longPlan[] = {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120,
+                                124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165, 1, 2};
+    Rig r2;
+    r2.s.setChannelPlan(longPlan, sizeof(longPlan));
+    r2.s.setSweepMode(SweepMode::FullPass);
+    r2.s.start(ReconTarget::All);
+    for (int i = 0; i < 26; ++i) r2.after(650);
+    CHECK_STR("hop 2", r2.last().c_str()); // 16.9 s in, still on Wi-Fi
+    r2.after(650);
+    CHECK_STR("ble-start 1 1800", r2.last().c_str());
+    CHECK_INT(27 * 650, r2.s.lastPassMs());
+}
+
+void full_pass_early_warning_runs_one_pass_then_ble_then_rests_60_s()
+{
+    Rig r;
+    const uint8_t plan[] = {36, 1};
+    r.s.setChannelPlan(plan, 2);
+    r.s.setSweepMode(SweepMode::FullPass);
+    r.s.setEarlyWarningEnabled(true);
+    CHECK_STR("wifi-start", r.last().c_str());
+    CHECK_INT(36, r.radio.channel);
+    CHECK_TRUE(r.s.sweepingForBackground());
+    r.after(650);
+    CHECK_STR("hop 1", r.last().c_str());
+    r.after(650);
+    CHECK_STR("ble-start 17 1800", r.last().c_str());
+    CHECK_FALSE(r.s.sweepingForBackground());
+    r.after(1800);
+    CHECK_TRUE(r.s.status().earlyWarningResting);
+    CHECK_INT(0, r.s.restJitterMs()); // no random source: no jitter
+    const size_t callsAtRest = r.radio.calls.size();
+    r.after(59999);
+    CHECK_INT(callsAtRest, r.radio.calls.size());
+    r.after(1);
+    CHECK_STR("wifi-start", r.last().c_str());
+    CHECK_INT(36, r.radio.channel);
+}
+
+void a_random_source_lengthens_each_rest_by_up_to_10_s()
+{
+    Rig r;
+    g_randomValue = 7000;
+    r.s.setRandom(fixedRandom);
+    r.s.setEarlyWarningEnabled(true); // Timed mode: the reference sweep
+    r.after(10000);
+    CHECK_STR("ble-start 17 1800", r.last().c_str());
+    r.after(1800);
+    CHECK_TRUE(r.s.status().earlyWarningResting);
+    CHECK_INT(7000, r.s.restJitterMs());
+    r.after(60000);
+    CHECK_TRUE(r.s.status().earlyWarningResting); // 60 s is not enough now
+    r.after(6999);
+    CHECK_TRUE(r.s.status().earlyWarningResting);
+    r.after(1);
+    CHECK_STR("wifi-start", r.last().c_str());
+    // The extra is never more than kRestJitterMaxMs, whatever the random value.
+    const uint32_t values[] = {0, 1, 10000, 10001, 123456789, 0xFFFFFFFFu};
+    for (uint32_t v : values) {
+        Rig q;
+        g_randomValue = v;
+        q.s.setRandom(fixedRandom);
+        q.s.setEarlyWarningEnabled(true);
+        q.after(10000);
+        q.after(1800);
+        CHECK_TRUE(q.s.restJitterMs() <= ReconScheduler::kRestJitterMaxMs);
+        CHECK_INT(v % (ReconScheduler::kRestJitterMaxMs + 1), q.s.restJitterMs());
+    }
+}
+
+void full_pass_all_with_a_random_source_dwells_longer_on_the_last_channel()
+{
+    Rig r;
+    g_randomValue = 1500;
+    r.s.setRandom(fixedRandom);
+    const uint8_t plan[] = {36, 1};
+    r.s.setChannelPlan(plan, 2);
+    r.s.setSweepMode(SweepMode::FullPass);
+    r.s.start(ReconTarget::All);
+    r.after(650);
+    CHECK_STR("hop 1", r.last().c_str());
+    r.after(650 + 1499);
+    CHECK_STR("hop 1", r.last().c_str());
+    r.after(1);
+    CHECK_STR("ble-start 1 1800", r.last().c_str());
+    // Bounded by kPassJitterMaxMs.
+    Rig q;
+    g_randomValue = 0xFFFFFFFFu;
+    q.s.setRandom(fixedRandom);
+    q.s.setChannelPlan(plan, 2);
+    q.s.setSweepMode(SweepMode::FullPass);
+    q.s.start(ReconTarget::All);
+    q.after(650);
+    q.after(650 + ReconScheduler::kPassJitterMaxMs);
+    CHECK_STR("ble-start 1 1800", q.last().c_str());
+}
+
+// Two LayerWands booted at the same moment. Without a random source their
+// BLE scans start at the same offset every cycle forever; with one, the
+// offset keeps changing, so one is not stuck listening while the other is
+// busy on Wi-Fi.
+uint32_t scanOffsetSpread(bool withRandom)
+{
+    FakeRadio a;
+    FakeRadio b;
+    g_now = 1000;
+    ReconScheduler sa{a, clock};
+    ReconScheduler sb{b, clock};
+    if (withRandom) {
+        g_randomSequence = {9000, 2000, 6500, 300, 8100, 4400, 1200, 7700};
+        g_randomNext = 0;
+        sa.setRandom(sequenceRandom);
+        sb.setRandom(sequenceRandom); // interleaved draws: each wand gets different values
+    }
+    sa.setEarlyWarningEnabled(true);
+    sb.setEarlyWarningEnabled(true);
+    std::vector<uint32_t> startsA, startsB;
+    size_t seenA = 0, seenB = 0;
+    for (int step = 0; step < 12000; ++step) { // 600 s in 50 ms steps
+        g_now += 50;
+        a.tick();
+        b.tick();
+        sa.poll(g_now);
+        sb.poll(g_now);
+        for (; seenA < a.calls.size(); ++seenA) if (a.calls[seenA].rfind("ble-start", 0) == 0) startsA.push_back(g_now);
+        for (; seenB < b.calls.size(); ++seenB) if (b.calls[seenB].rfind("ble-start", 0) == 0) startsB.push_back(g_now);
+    }
+    const size_t n = startsA.size() < startsB.size() ? startsA.size() : startsB.size();
+    uint32_t lo = 0xFFFFFFFFu, hi = 0;
+    for (size_t i = 0; i < n; ++i) {
+        const uint32_t d = startsA[i] > startsB[i] ? startsA[i] - startsB[i] : startsB[i] - startsA[i];
+        if (d < lo) lo = d;
+        if (d > hi) hi = d;
+    }
+    return n == 0 ? 0 : hi - lo;
+}
+
+void two_wands_booted_together_drift_apart_only_with_a_random_source()
+{
+    CHECK_INT(0, scanOffsetSpread(false));
+    CHECK_TRUE(scanOffsetSpread(true) > ReconScheduler::kBleScanMs);
+}
+
 int main(int argc, char **argv)
 {
     CHECK_MAIN(argc, argv);
@@ -404,5 +636,12 @@ int main(int argc, char **argv)
     CASE(stop_idles_both_radios_and_forgets_the_selection_but_not_the_enable);
     CASE(starting_none_is_a_stop);
     CASE(restarting_wifi_restarts_the_hop_clock_from_the_radio_clock);
+    CASE(the_reference_plan_is_1_to_11_and_a_custom_plan_replaces_it);
+    CASE(a_custom_plan_starts_on_its_first_channel_and_hops_in_order);
+    CASE(full_pass_all_runs_one_pass_then_ble_then_the_next_pass);
+    CASE(full_pass_early_warning_runs_one_pass_then_ble_then_rests_60_s);
+    CASE(a_random_source_lengthens_each_rest_by_up_to_10_s);
+    CASE(full_pass_all_with_a_random_source_dwells_longer_on_the_last_channel);
+    CASE(two_wands_booted_together_drift_apart_only_with_a_random_source);
     CHECK_SUMMARY();
 }

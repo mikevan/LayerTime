@@ -44,14 +44,17 @@ class ReconRadio {
 public:
     virtual ~ReconRadio() = default;
 
-    // Puts the Wi-Fi radio into promiscuous receive on channel 1 with the
-    // platform's frame callback attached. The scheduler resets its hop
-    // cursor to 1 when it calls this. Safe to call while already monitoring.
-    virtual void startWifiMonitoring() = 0;
+    // Puts the Wi-Fi radio into promiscuous receive on `channel` with the
+    // platform's frame callback attached. The scheduler passes its plan's
+    // first channel (1 in the reference plan) and resets its hop cursor to
+    // it. Safe to call while already monitoring.
+    virtual void startWifiMonitoring(uint8_t channel) = 0;
     // Leaves promiscuous receive and detaches the frame callback. Safe to
     // call when not monitoring.
     virtual void stopWifiMonitoring() = 0;
-    // Moves the promiscuous receiver to a 2.4 GHz channel (1 to 11).
+    // Moves the promiscuous receiver to a channel in the scheduler's plan
+    // (the reference plan is 2.4 GHz 1 to 11; a dual-band platform's plan
+    // may include 5 GHz channels).
     virtual void setWifiChannel(uint8_t channel) = 0;
 
     // Starts one passive BLE scan of durationMs for `detector` (the

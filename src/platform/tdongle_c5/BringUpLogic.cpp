@@ -233,6 +233,22 @@ uint8_t PeerSightings::count(uint32_t nowMs) const
     return n;
 }
 
+// --- Channel plan ----------------------------------------------------------------
+
+uint8_t buildChannelPlan(ChannelAccepted accepted, void *context, uint8_t *out, uint8_t capacity)
+{
+    uint8_t n = 0;
+    for (uint8_t ch : kWifi5GHzCandidates) {
+        if (n >= capacity) return n;
+        if (accepted(ch, context)) out[n++] = ch;
+    }
+    for (uint8_t ch : kWifi2_4GHzCandidates) {
+        if (n >= capacity) return n;
+        if (accepted(ch, context)) out[n++] = ch;
+    }
+    return n;
+}
+
 } // namespace tdongle_c5
 } // namespace layertime
 

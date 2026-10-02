@@ -394,6 +394,60 @@ void peer_sightings_survive_millis_wraparound()
     CHECK_INT(0, s.count(nearWrap + PeerSightings::kWindowMs));
 }
 
+// --- LayerWand channel plan -------------------------------------------------------
+
+bool acceptAll(uint8_t, void *) { return true; }
+bool acceptNone(uint8_t, void *) { return false; }
+// The world-safe default as far as it is known: 2.4 GHz 1 to 11 only.
+bool accept1To11(uint8_t ch, void *) { return ch >= 1 && ch <= 11; }
+// Some 5 GHz channels and 2.4 GHz 1 to 13; counts the probes.
+bool acceptSome(uint8_t ch, void *context)
+{
+    ++*static_cast<int *>(context);
+    return ch == 36 || ch == 40 || ch == 149 || ch == 165 || (ch >= 1 && ch <= 13);
+}
+
+void the_plan_is_5_ghz_first_then_2_4_ghz_each_lowest_to_highest()
+{
+    uint8_t plan[64];
+    int probes = 0;
+    const uint8_t n = buildChannelPlan(acceptSome, &probes, plan, sizeof(plan));
+    CHECK_INT(17, n);
+    CHECK_INT(42, probes); // every candidate asked once
+    const uint8_t expected[] = {36, 40, 149, 165, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+    for (uint8_t i = 0; i < 17; ++i) CHECK_INT(expected[i], plan[i]);
+}
+
+void every_candidate_accepted_gives_28_then_14_in_order()
+{
+    uint8_t plan[64];
+    CHECK_INT(42, buildChannelPlan(acceptAll, nullptr, plan, sizeof(plan)));
+    CHECK_INT(36, plan[0]);
+    CHECK_INT(177, plan[27]);
+    CHECK_INT(1, plan[28]);
+    CHECK_INT(14, plan[41]);
+    for (uint8_t i = 1; i < 28; ++i) CHECK_TRUE(plan[i] > plan[i - 1]);
+    for (uint8_t i = 29; i < 42; ++i) CHECK_TRUE(plan[i] > plan[i - 1]);
+}
+
+void no_5_ghz_accepted_leaves_only_2_4_ghz_and_none_accepted_leaves_nothing()
+{
+    uint8_t plan[64];
+    CHECK_INT(11, buildChannelPlan(accept1To11, nullptr, plan, sizeof(plan)));
+    CHECK_INT(1, plan[0]);
+    CHECK_INT(11, plan[10]);
+    CHECK_INT(0, buildChannelPlan(acceptNone, nullptr, plan, sizeof(plan)));
+}
+
+void the_plan_stops_at_capacity()
+{
+    uint8_t plan[5] = {0, 0, 0, 0, 0};
+    CHECK_INT(5, buildChannelPlan(acceptAll, nullptr, plan, 5));
+    CHECK_INT(52, plan[4]);
+    // The scheduler holds 48, more than the 42 candidates.
+    CHECK_TRUE(sizeof(kWifi5GHzCandidates) + sizeof(kWifi2_4GHzCandidates) <= 48);
+}
+
 int main(int argc, char **argv)
 {
     CHECK_MAIN(argc, argv);
@@ -425,5 +479,9 @@ int main(int argc, char **argv)
     CASE(a_peer_not_heard_for_five_minutes_is_not_counted);
     CASE(when_full_a_new_peer_takes_the_slot_heard_longest_ago);
     CASE(peer_sightings_survive_millis_wraparound);
+    CASE(the_plan_is_5_ghz_first_then_2_4_ghz_each_lowest_to_highest);
+    CASE(every_candidate_accepted_gives_28_then_14_in_order);
+    CASE(no_5_ghz_accepted_leaves_only_2_4_ghz_and_none_accepted_leaves_nothing);
+    CASE(the_plan_stops_at_capacity);
     CHECK_SUMMARY();
 }

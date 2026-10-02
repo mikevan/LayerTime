@@ -51,6 +51,8 @@ public:
     // Tears both radios down without touching the early-warning enable.
     void stop() { _scheduler.stop(); }
     const recon::ReconScheduler &scheduler() const { return _scheduler; }
+    // For setup only: the channel plan, sweep mode, and random source.
+    recon::ReconScheduler &scheduler() { return _scheduler; }
 
 private:
     static uint32_t clockThunk() { return millis(); }

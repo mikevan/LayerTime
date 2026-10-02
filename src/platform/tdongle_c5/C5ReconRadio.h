@@ -29,8 +29,10 @@
 // Two things differ because the radio does:
 //
 //   * The C5's Wi-Fi is dual band. The existing Recon model hops channels
-//     1 to 11 on 2.4 GHz, so the band mode is pinned to 2.4 GHz before the
-//     capture starts. 5 GHz is not observed in Increment 2A.
+//     1 to 11 on 2.4 GHz, so the 2A baseline pins the band mode to 2.4 GHz.
+//     The LayerWand (commit 2, 2026-10-02) runs both bands: begin(true)
+//     sets the band mode to 2.4 GHz plus 5 GHz, and probeChannelPlan()
+//     lists the channels the radio accepts, 5 GHz first.
 //   * The band a frame is stamped with is read from its channel rather than
 //     assumed, since the T-Ultra's assumption does not hold here.
 //
@@ -63,6 +65,8 @@ class C5StageLog;
 
 class C5ReconRadio : public recon::ReconRadio {
 public:
+    static constexpr uint8_t kMaxWifiChannel = 177;
+
     struct Counters {
         uint32_t wifiStarts = 0;
         uint32_t wifiStops = 0;
@@ -70,16 +74,27 @@ public:
         uint32_t bleScanStarts = 0;
         uint32_t bleScanEnds = 0;
         uint32_t frames = 0;
-        uint32_t framesByChannel[15] = {0}; // index = channel, 0 unused
+        uint32_t framesByChannel[kMaxWifiChannel + 1] = {0}; // index = channel, 0 unused
+        uint32_t channelRefusals = 0; // esp_wifi_set_channel calls that failed
         uint32_t adverts = 0;
         uint32_t candidates = 0;
         uint32_t candidatesByDetector[18] = {0}; // index = ReconTarget value
         uint32_t sinkMaxUs = 0;                  // longest core sink call
     };
 
-    // Brings the Wi-Fi driver up in station mode, disconnected, pinned to
-    // 2.4 GHz. NimBLE starts on the first BLE scan, as on the T-Ultra.
-    void begin();
+    // Brings the Wi-Fi driver up in station mode, disconnected. dualBand
+    // false pins it to 2.4 GHz (the 2A baseline); true allows 2.4 GHz and
+    // 5 GHz (the LayerWand). NimBLE starts on the first BLE scan, as on the
+    // T-Ultra.
+    void begin(bool dualBand = false);
+
+    // The LayerWand channel plan: every candidate channel the radio accepts
+    // with promiscuous receive on, 5 GHz first, lowest to highest
+    // (BringUpLogic buildChannelPlan). A channel counts as accepted when
+    // esp_wifi_set_channel succeeds and the radio then reports that
+    // channel. Call after begin() and before Recon starts; leaves the radio
+    // on channel 1 with promiscuous receive off. Returns the count.
+    uint8_t probeChannelPlan(uint8_t *out, uint8_t capacity);
 
     // The scheduler whose state gates the classifiers (ReconSelection::wants).
     void bindScheduler(const recon::ReconScheduler *scheduler) { _scheduler = scheduler; }
@@ -94,7 +109,7 @@ public:
     void resetDetectorState();
 
     // ReconRadio.
-    void startWifiMonitoring() override;
+    void startWifiMonitoring(uint8_t channel) override;
     void stopWifiMonitoring() override;
     void setWifiChannel(uint8_t channel) override;
     void startBleScan(ReconTarget detector, uint32_t durationMs) override;

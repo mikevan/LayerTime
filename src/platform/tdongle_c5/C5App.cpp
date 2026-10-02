@@ -49,6 +49,14 @@
 // whenever the Recon mode changes (early warning, manual, stopped). The
 // BOOT button dumps the current run's stage records without changing the
 // mode; the mode is the watch's to change.
+//
+// Scan order (commit 2, Michael, 2026-10-02): the Wi-Fi radio runs on both
+// bands. At boot the LayerWand probes which channels its radio accepts and
+// hands core's scheduler a plan of every accepted 5 GHz channel, lowest to
+// highest, then every accepted 2.4 GHz channel, lowest to highest, in
+// SweepMode::FullPass: a full pass, then BLE. The hardware random number
+// generator varies each early-warning rest (and the end of each ALL pass)
+// so two LayerWands cannot stay locked in step and miss each other.
 
 #if defined(LAYERTIME_TARGET_TDONGLE_C5) && defined(LAYERTIME_WAND_APP)
 
@@ -73,6 +81,7 @@
 #include <esp_chip_info.h>
 #include <esp_heap_caps.h>
 #include <esp_idf_version.h>
+#include <esp_random.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -214,6 +223,19 @@ bool gWasConnected = false;
 AcquisitionStatus gLastAcq;
 recon::IntervalHistogram gLoopPeriod;
 recon::IntervalHistogram gHopInterval;
+// Full passes of the channel plan (Wi-Fi start to the last channel's end),
+// and the time from one pass's end to the next (pass, BLE, and any rest).
+recon::IntervalHistogram gPassTime;
+recon::IntervalHistogram gPassToPass;
+uint32_t gLastPasses = 0;
+uint32_t gLastPassEndMs = 0;
+uint8_t gPlan[recon::ReconScheduler::kMaxPlanChannels];
+uint8_t gPlanCount = 0;
+
+uint32_t hardwareRandom()
+{
+    return esp_random();
+}
 
 bool heapIntact()
 {
@@ -321,11 +343,21 @@ void printCounters(const char *when)
                   static_cast<unsigned long>(t.wifi5GHz), static_cast<unsigned long>(t.wifi2_4GHz),
                   static_cast<unsigned long>(t.ble), static_cast<unsigned long>(t.other),
                   static_cast<unsigned>(gRadio.peerCount(millis())));
+    const recon::ReconScheduler &sched = gMonitor.scheduler();
+    Serial.printf("[%s] plan %u channels | passes %lu last %lu ms | rest jitter %lu ms | channel refusals %lu\n", when,
+                  static_cast<unsigned>(sched.planCount()), static_cast<unsigned long>(sched.passes()),
+                  static_cast<unsigned long>(sched.lastPassMs()), static_cast<unsigned long>(sched.restJitterMs()),
+                  static_cast<unsigned long>(c.channelRefusals));
     Serial.print("frames by channel:");
-    for (uint8_t ch = 1; ch <= 14; ++ch) Serial.printf(" %u=%lu", ch, static_cast<unsigned long>(c.framesByChannel[ch]));
+    for (uint8_t i = 0; i < sched.planCount(); ++i) {
+        const uint8_t ch = sched.planChannel(i);
+        Serial.printf(" %u=%lu", ch, static_cast<unsigned long>(c.framesByChannel[ch]));
+    }
     Serial.println();
     printHistogram("loop period ms", gLoopPeriod);
     printHistogram("hop interval ms", gHopInterval);
+    printHistogram("pass ms", gPassTime);
+    printHistogram("pass to pass ms", gPassToPass);
 }
 
 // Copies the events out under the lock and prints them after it.
@@ -388,6 +420,9 @@ void startRun(RunMode mode, uint32_t now)
     gRadio.clearCounters();
     gLoopPeriod.clear();
     gHopInterval.clear();
+    gPassTime.clear();
+    gPassToPass.clear();
+    gLastPassEndMs = 0;
     gLastHopCount = 0;
     gLastHopMs = 0;
     gStage.record(recon::Stage::RunStart, 0, 0, static_cast<uint32_t>(mode));
@@ -400,8 +435,8 @@ void showStatus()
 {
     // The LayerWand screen (Michael, 2026-10-02). Line 0, "LayerWand", is set
     // once when the screen starts. Each line must fit the 96 px status
-    // column (about 14 characters). The 5 GHz total stays 0 while the radio
-    // is pinned to 2.4 GHz (C5ReconRadio::begin).
+    // column (about 14 characters). The 5 GHz total counts only if the
+    // channel plan holds 5 GHz channels (the boot line "Channel plan").
     char line[40];
     const BandTotals &t = gTally.totals(); // single-word reads for the LCD
     snprintf(line, sizeof(line), "5GHz EV: %lu", static_cast<unsigned long>(t.wifi5GHz));
@@ -492,7 +527,24 @@ void setup()
     Serial.printf("Stage log: %s, %lu records of %u bytes\n", gStageOk ? "ring in PSRAM" : "PSRAM allocation FAILED",
                   static_cast<unsigned long>(gStage.capacity()), static_cast<unsigned>(sizeof(recon::StageRecord)));
     gRadio.setStageLog(&gStage);
-    gRadio.begin(); // Wi-Fi first, as in 2A
+    gRadio.begin(true); // Wi-Fi first, as in 2A; both bands
+    // The channel plan: what this radio accepts under the regulatory rules it
+    // runs with (no country is set here, so nothing new is written to
+    // flash), 5 GHz first. An empty probe leaves the reference plan.
+    gPlanCount = gRadio.probeChannelPlan(gPlan, recon::ReconScheduler::kMaxPlanChannels);
+    {
+        recon::ReconScheduler &sched = gMonitor.scheduler();
+        sched.setChannelPlan(gPlan, gPlanCount);
+        sched.setSweepMode(recon::SweepMode::FullPass);
+        sched.setRandom(hardwareRandom);
+        uint8_t n5 = 0;
+        for (uint8_t i = 0; i < sched.planCount(); ++i) if (sched.planChannel(i) >= 32) ++n5;
+        Serial.printf("Channel plan: %u channels (%u at 5 GHz, %u at 2.4 GHz)%s:", static_cast<unsigned>(sched.planCount()),
+                      static_cast<unsigned>(n5), static_cast<unsigned>(sched.planCount() - n5),
+                      gPlanCount == 0 ? ", PROBE FOUND NONE, reference plan" : "");
+        for (uint8_t i = 0; i < sched.planCount(); ++i) Serial.printf(" %u", static_cast<unsigned>(sched.planChannel(i)));
+        Serial.println();
+    }
 
     CorePorts ports;
     ports.monitor = &gLockedMonitor;
@@ -514,14 +566,14 @@ void setup()
                   static_cast<unsigned>(gLink.sessionId()));
     Serial.printf("Heap after BLE init: %s, free %lu\n", heapAfterBle ? "intact" : "CORRUPT",
                   static_cast<unsigned long>(ESP.getFreeHeap()));
-    Serial.printf("Schedule: hop %lu ms, BLE cycle %lu ms, BLE scan %lu ms, BLE-only rescan %lu ms, "
-                  "early warning %lu ms sweep / %lu ms rest\n",
+    Serial.printf("Schedule: hop %lu ms, a full pass then a %lu ms BLE scan, BLE-only rescan %lu ms, "
+                  "early warning rest %lu ms + 0 to %lu ms, ALL last channel + 0 to %lu ms\n",
                   static_cast<unsigned long>(recon::ReconScheduler::kChannelHopMs),
-                  static_cast<unsigned long>(recon::ReconScheduler::kBleCycleMs),
                   static_cast<unsigned long>(recon::ReconScheduler::kBleScanMs),
                   static_cast<unsigned long>(recon::ReconScheduler::kBleOnlyRescanMs),
-                  static_cast<unsigned long>(recon::ReconScheduler::kEarlyWarningActiveMs),
-                  static_cast<unsigned long>(recon::ReconScheduler::kEarlyWarningRestMs));
+                  static_cast<unsigned long>(recon::ReconScheduler::kEarlyWarningRestMs),
+                  static_cast<unsigned long>(recon::ReconScheduler::kRestJitterMaxMs),
+                  static_cast<unsigned long>(recon::ReconScheduler::kPassJitterMaxMs));
     Serial.println("Recon starts in early warning and runs with or without a watch. BOOT button: dump the current run.");
 
     // Early warning is core's default setting; apply it, and start run 1.
@@ -607,6 +659,14 @@ void loop()
         if (gLastHopMs != 0 && hops == gLastHopCount + 1) gHopInterval.add(now - gLastHopMs);
         gLastHopCount = hops;
         gLastHopMs = now;
+    }
+
+    const uint32_t passes = gMonitor.scheduler().passes();
+    if (passes != gLastPasses) {
+        gLastPasses = passes;
+        gPassTime.add(gMonitor.scheduler().lastPassMs());
+        if (gLastPassEndMs != 0) gPassToPass.add(now - gLastPassEndMs);
+        gLastPassEndMs = now;
     }
 
     // New events, copied out under the lock and logged after it.
