@@ -1,6 +1,6 @@
 // The S3 Plus target's boundary, checked on the source tree itself.
 //
-// devices/lilygo-s3plus/ is its own project beside src/, the way garmin/ is. Its code may
+// devices/lilygo-s3plus/ is its own project beside src/, the way devices/garmin-tactix/ is. Its code may
 // reach the shared, hardware-independent core (src/core/) and its own files,
 // and nothing else in the repository: never another target's platform code
 // (src/platform/...), never src/main.cpp. In the other direction, nothing

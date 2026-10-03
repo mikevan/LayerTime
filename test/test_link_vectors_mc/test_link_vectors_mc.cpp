@@ -1,5 +1,5 @@
 // The generated Monkey C copy of the LayerTime Link vectors,
-// garmin/source/link/LinkVectors.mc, against contracts/vectors/link_frames.json.
+// devices/garmin-tactix/source/link/LinkVectors.mc, against contracts/vectors/link_frames.json.
 //
 // Monkey C cannot read the JSON at run time, so tools/gen_link_vectors_mc.py
 // compiles the vectors into the Connect IQ app as constants. This suite reads
@@ -20,7 +20,7 @@
 
 namespace {
 
-const char *kMcPath = "../garmin/source/link/LinkVectors.mc";
+const char *kMcPath = "../devices/garmin-tactix/source/link/LinkVectors.mc";
 
 // One `{:name => "...", ...}` entry of STATUS, REQUESTS or REPLIES.
 struct McEntry {

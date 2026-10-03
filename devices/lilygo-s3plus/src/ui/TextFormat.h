@@ -21,10 +21,10 @@
 // The words the S3 Plus screens show, built from core and GNSS state. Pure,
 // tested with g++ (devices/lilygo-s3plus/test/test_s3plus_text).
 //
-// The watch face follows the Garmin face's design (garmin/source/
+// The watch face follows the Garmin face's design (devices/garmin-tactix/source/
 // HomeView.mc): battery dots, a WATCH temperature ring and the next solar
 // event, GPS and DONGLE icons, and the Recon bracket with the Garmin's own
-// wording (garmin/source/ReconNames.mc). The GPS page reads as the T-Ultra's.
+// wording (devices/garmin-tactix/source/ReconNames.mc). The GPS page reads as the T-Ultra's.
 
 #include <stddef.h>
 #include <stdint.h>

@@ -18,7 +18,7 @@
 
 #pragma once
 
-// The S3 Plus watch face, after the Garmin face's design (garmin/source/
+// The S3 Plus watch face, after the Garmin face's design (devices/garmin-tactix/source/
 // HomeView.mc), laid out for 240 x 240:
 //
 //   * battery dots across the top (24, lit left to right; red at 20% or

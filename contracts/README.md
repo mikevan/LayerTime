@@ -51,7 +51,7 @@ A binding conforms when its enum values, fixed sizes, defaults, and profile
 match the vectors in this folder. For the C++ binding, that is checked by
 `test/test_core_model/`, and the Link codec by `test/test_link_codec/`; the
 Monkey C Link codec is checked against the same frames by
-`garmin/test/LinkCodecTests.mc`. Vectors are data. When a vector and a binding
+`devices/garmin-tactix/test/LinkCodecTests.mc`. Vectors are data. When a vector and a binding
 disagree, the binding is wrong unless the contract is deliberately changed.
 
 ## Targets
@@ -63,9 +63,9 @@ target is the definition of LayerTime.
 | Target | Profile | Binding | Platform code | State |
 |---|---|---|---|---|
 | T-Watch Ultra (`twatch-ultra`) | `vectors/profile_twatch_ultra.json` | C++, `src/core/` | `src/platform/twatch_ultra/` | Running. Screens, hardware services, and the adapters behind the core's ports. |
-| tactix 8 AMOLED (`tactix-amoled`) | `vectors/profile_tactix_amoled.json` | Monkey C, `garmin/` | Connect IQ Device App, `garmin/` | Skeleton (Slice 1 Increment 0). The binding and the LayerTime Link client are Slice 1 work. |
+| tactix 8 AMOLED (`tactix-amoled`) | `vectors/profile_tactix_amoled.json` | Monkey C, `devices/garmin-tactix/` | Connect IQ Device App, `devices/garmin-tactix/` | Skeleton (Slice 1 Increment 0). The binding and the LayerTime Link client are Slice 1 work. |
 | T-Dongle-C5 (`tdongle-c5`) | `vectors/profile_tdongle_c5.json` | C++, `src/core/` | `devices/lilygo-layerwand/` (its own pioarduino project) | Bring-up firmware (Slice 1 Increment 0). The LayerTime Node: it runs the Recon engine and serves the tactix over LayerTime Link. |
-| T-Watch S3 Plus (`twatch-s3plus`) | `vectors/profile_twatch_s3plus.json` | C++, `src/core/` | `devices/lilygo-s3plus/` (its own pioarduino project, opened like `garmin/`) | Phase 0 build proof. The all-in-one watch with the T-Ultra's functionality: hardware adapters behind the core's ports, services, and screens. Recon first; mesh deferred. |
+| T-Watch S3 Plus (`twatch-s3plus`) | `vectors/profile_twatch_s3plus.json` | C++, `src/core/` | `devices/lilygo-s3plus/` (its own pioarduino project, opened like `devices/garmin-tactix/`) | Phase 0 build proof. The all-in-one watch with the T-Ultra's functionality: hardware adapters behind the core's ports, services, and screens. Recon first; mesh deferred. |
 
 In the C++ binding, `src/core/` holds the model, the application logic, and
 the ports a platform plugs into. It depends on nothing but the C and C++

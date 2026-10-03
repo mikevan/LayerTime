@@ -1,10 +1,10 @@
 # LayerTime watch app: build the PRODUCTION app (monkey.jungle) for the
 # tactix 7 AMOLED (Connect IQ device epix2pro51mm), sign it with the
-# repository's own developer key (garmin\developer_key; read in place,
+# repository's own developer key (devices\garmin-tactix\developer_key; read in place,
 # never copied or moved), and install it on the watch over USB.
 #
 # What it does, stopping at the first failure and saying which step failed:
-#   1. Builds garmin\bin\LayerTime.prg from monkey.jungle, release mode (-r),
+#   1. Builds devices\garmin-tactix\bin\LayerTime.prg from monkey.jungle, release mode (-r),
 #      with the SDK the Connect IQ SDK Manager marks current.
 #   2. Checks the PRG is the production build: it must carry LayerTime's app
 #      id and must NOT contain the preview build's or the linktest build's
@@ -22,7 +22,7 @@
 # affected. It never deletes anything on the watch.
 #
 # Run (from any PowerShell window, watch connected by its USB cable):
-#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\tools\layertime_install.ps1"
+#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\devices\garmin-tactix\tools\layertime_install.ps1"
 
 param(
     [string]$RepoDir = 'C:\workspace\TUltra-Project\LayerTime'
@@ -32,7 +32,7 @@ $ErrorActionPreference = 'Stop'
 function Step([string]$t) { Write-Host ''; Write-Host ('== ' + $t) -ForegroundColor Cyan }
 function Fail([string]$t) { Write-Host ''; Write-Host ('FAILED: ' + $t) -ForegroundColor White -BackgroundColor DarkRed; exit 1 }
 
-# LayerTime's Connect IQ app id (garmin\manifest.xml), as the PRG stores it.
+# LayerTime's Connect IQ app id (devices\garmin-tactix\manifest.xml), as the PRG stores it.
 $appIdHex = '138526A970794AFB8318DF0370265696'
 $appId = [byte[]]::new(16)
 for ($i = 0; $i -lt 16; $i++) { $appId[$i] = [Convert]::ToByte($appIdHex.Substring(2 * $i, 2), 16) }
@@ -60,12 +60,12 @@ $sdk = (Get-Content $cfg -Raw).Trim().TrimEnd('\')
 $bin = Join-Path $sdk 'bin'
 if (-not (Test-Path (Join-Path $bin 'monkeyc.bat'))) { Fail "monkeyc.bat not found in $bin" }
 if ($null -eq (Get-Command java -ErrorAction SilentlyContinue)) { Fail 'java is not on PATH; the SDK compiler needs it.' }
-$garmin = Join-Path $RepoDir 'garmin'
+$garmin = Join-Path $RepoDir 'devices\garmin-tactix'
 $key = Join-Path $garmin 'developer_key'
 if (-not (Test-Path $key)) { Fail "developer key not found at $key" }
 $manifest = Get-Content (Join-Path $garmin 'manifest.xml') -Raw
-if ($manifest -notmatch ('id="' + $appIdHex + '"')) { Fail 'garmin\manifest.xml does not carry the LayerTime app id this script expects.' }
-if ($manifest -notmatch 'product id="epix2pro51mm"') { Fail 'garmin\manifest.xml does not target epix2pro51mm.' }
+if ($manifest -notmatch ('id="' + $appIdHex + '"')) { Fail 'devices\garmin-tactix\manifest.xml does not carry the LayerTime app id this script expects.' }
+if ($manifest -notmatch 'product id="epix2pro51mm"') { Fail 'devices\garmin-tactix\manifest.xml does not target epix2pro51mm.' }
 Write-Host "SDK: $sdk"
 Write-Host "Key: $key"
 

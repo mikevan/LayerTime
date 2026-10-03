@@ -525,7 +525,7 @@ void twatch_s3plus_profile_obeys_effective_rule()
     CHECK_STR("twatch-s3plus", stringValue(j, whole(j), "profileId").c_str());
     // Drafted before any hardware proof: intent is recorded in target on every field.
     // The binding (devices/lilygo-s3plus/src/S3PlusProfile.h) is checked against this vector by
-    // devices/lilygo-s3plus/test/test_s3plus_profile, as garmin/ checks its own binding.
+    // devices/lilygo-s3plus/test/test_s3plus_profile, as devices/garmin-tactix/ checks its own binding.
     Span caps = object(j, whole(j), "capabilities");
     for (const char *f : kCapabilityFields) CHECK_TRUE(hasKey(j, object(j, caps, f), "target"));
 }

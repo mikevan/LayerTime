@@ -217,14 +217,14 @@ The LayerTime Link 0.1 wire format of `contracts/link.md`, added in Slice 1
 Increment 1. `test_link_codec` runs the C++ codec and the Node dispatcher in
 `src/core/link` against every byte-exact vector in
 `contracts/vectors/link_frames.json`. `test_link_vectors_mc` reads the
-generated Monkey C copy of those vectors, `garmin/source/link/LinkVectors.mc`,
+generated Monkey C copy of those vectors, `devices/garmin-tactix/source/link/LinkVectors.mc`,
 back with its own parser and checks it against the same JSON, so the Connect
-IQ conformance tests (`garmin/test/LinkCodecTests.mc`, run in the Connect IQ
+IQ conformance tests (`devices/garmin-tactix/test/LinkCodecTests.mc`, run in the Connect IQ
 simulator) are always working from the same bytes; a stale copy fails here
 first. `tools/gen_link_vectors_mc.py` regenerates that file (`--check` reports
 whether it is current). Both suites share `link_vectors_json.h`. Run from
 `test/`, because the vectors are read from `../contracts/vectors/` and
-`../garmin/`.
+`../devices/garmin-tactix/`.
 
 `test_link_server` covers the Recon Node's side, added with the Recon
 integration (Increment 2B): the change sequence (`ChangeTracker`), the

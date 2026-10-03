@@ -24,7 +24,7 @@ import Toybox.Lang;
 //
 // An item is a Dictionary the caller understands; the queue only orders them.
 //
-// Finding F2 (garmin/README.md): expiry is accounting only. expire() reports
+// Finding F2 (devices/garmin-tactix/README.md): expiry is accounting only. expire() reports
 // an in-flight item that has waited too long, once, but does NOT free the
 // slot; only complete() (driven by the stack's completion callback or by a
 // disconnect) does. The caller decides, from the stack's own state, whether

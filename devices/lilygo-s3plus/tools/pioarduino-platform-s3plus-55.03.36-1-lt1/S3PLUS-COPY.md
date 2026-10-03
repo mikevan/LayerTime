@@ -29,7 +29,7 @@ Measured 2026-10-01 with pioarduino Core 6.2.0 in a clean core directory:
 ## How the S3 Plus uses it
 
 `devices/lilygo-s3plus/platformio.ini` (the S3 Plus project, opened on its own like
-`garmin/`) references this folder and sets `core_dir = ~/.platformio-s3plus`.
+`devices/garmin-tactix/`) references this folder and sets `core_dir = ~/.platformio-s3plus`.
 So the S3 Plus installs its platform link, packages, Python environment, and
 cache in its own core directory, never in the shared `~/.platformio` the
 T-Watch Ultra and the T-Dongle-C5 use. The renamed folder is a second layer:

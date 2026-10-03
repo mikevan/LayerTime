@@ -1,7 +1,7 @@
 # LayerTime on the LilyGo T-Watch S3 Plus
 
 The all-in-one LayerTime watch with the SX1262 radio, with the T-Watch Ultra's
-functionality. This folder is the whole target, organized like `garmin/`:
+functionality. This folder is the whole target, organized like `devices/garmin-tactix/`:
 
 | Folder or file | Holds |
 |---|---|
@@ -13,8 +13,8 @@ functionality. This folder is the whole target, organized like `garmin/`:
 | `LICENSE` | GPL-3.0, for this area |
 | `resources/` | Images and fonts (created with the first one) |
 | `test/` | S3 Plus host tests |
-| `bin/` | Build output and libraries (git-ignored, like `garmin/bin/`) |
-| `.vscode/` | Editor settings (git-ignored, like `garmin/.vscode/`) |
+| `bin/` | Build output and libraries (git-ignored, like `devices/garmin-tactix/bin/`) |
+| `.vscode/` | Editor settings (git-ignored, like `devices/garmin-tactix/.vscode/`) |
 
 Outside this folder it uses only: `src/core/` (shared, hardware-independent,
 compiled unchanged through the project's source filter), `boards/` and
@@ -83,7 +83,7 @@ off (mesh is deferred).
 
 What the wearer sees:
 
-* **Home (0.2.3):** after the Garmin face's design (`garmin/source/
+* **Home (0.2.3):** after the Garmin face's design (`devices/garmin-tactix/source/
   HomeView.mc`), laid out for 240 x 240: 24 battery dots across the top
   over "BAT 87%" (both red at 20% or below); the owl, large, with the GPS
   and DONGLE icons beside its ears; the time and the date flanked by a

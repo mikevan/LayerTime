@@ -15,7 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""Generate garmin/source/link/LinkVectors.mc from contracts/vectors/link_frames.json.
+"""Generate devices/garmin-tactix/source/link/LinkVectors.mc from contracts/vectors/link_frames.json.
 
 Monkey C cannot read a JSON file from the repository at run time, so the
 LayerTime Link vectors are compiled into the Connect IQ app as constants.
@@ -33,7 +33,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "contracts/vectors/link_frames.json"
-OUTPUT = ROOT / "garmin/source/link/LinkVectors.mc"
+OUTPUT = ROOT / "devices/garmin-tactix/source/link/LinkVectors.mc"
 
 
 def byte_array(hexstr):

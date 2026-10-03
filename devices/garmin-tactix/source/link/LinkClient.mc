@@ -152,7 +152,7 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
     // when it was lost (timeout, token mismatch, or an ERROR reply). The
     // test-only burst (LinkBurst.mc) hooks here; production leaves it null.
     public var pingObserver as Method(rttMs as Number) as Void? = null;
-    // Finding F2 (garmin/README.md): true from the moment any GATT request
+    // Finding F2 (devices/garmin-tactix/README.md): true from the moment any GATT request
     // (CCCD write, Status read, Control write) is handed to the stack until
     // the stack's own completion callback for it, or a disconnect. While it
     // is true nothing else is issued: the 3 s timeout only accounts, and a

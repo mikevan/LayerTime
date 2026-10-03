@@ -3,7 +3,7 @@
 Contract version 0.1, Slice 1 draft. The wire format between a LayerTime Node
 (the T-Dongle-C5) and a LayerTime interface (the Garmin tactix) over BLE
 GATT. The C++ binding is `src/core/link/`; the Monkey C binding is
-`garmin/source/link/`. Byte-exact vectors are in `vectors/link_frames.json`,
+`devices/garmin-tactix/source/link/`. Byte-exact vectors are in `vectors/link_frames.json`,
 and both bindings are tested against them.
 
 Slice 1 Increment 1 bound advertising, the service, Status, HELLO, PING,

@@ -3,12 +3,12 @@
 #
 # Uses the Connect IQ SDK the SDK Manager marks current
 # (%APPDATA%\Garmin\ConnectIQ\current-sdk.cfg), the repository's own
-# developer key (garmin\developer_key, never copied or moved), and the
+# developer key (devices\garmin-tactix\developer_key, never copied or moved), and the
 # SDK's monkeyc.bat, simulator.exe and monkeydo.bat. Stops at the first
 # failure and says which step failed.
 #
 # Run (from any PowerShell window):
-#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\tools\layertime_sim.ps1"
+#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\devices\garmin-tactix\tools\layertime_sim.ps1"
 # Add one of:
 #   -Preview   the preview build (preview.jungle): fixed home-screen scenarios
 #              (normal, alert, disconnected, stale weather, missing data); a tap
@@ -39,7 +39,7 @@ foreach ($f in @('monkeyc.bat', 'monkeydo.bat', 'simulator.exe', 'monkeybrains.j
 Write-Host "SDK: $sdk"
 if ($null -eq (Get-Command java -ErrorAction SilentlyContinue)) { Fail 'java is not on PATH; the SDK tools need it.' }
 
-$garmin = Join-Path $RepoDir 'garmin'
+$garmin = Join-Path $RepoDir 'devices\garmin-tactix'
 $key = Join-Path $garmin 'developer_key'
 if (([int]$LinkTest.IsPresent + [int]$Preview.IsPresent + [int]$Test.IsPresent) -gt 1) { Fail 'use at most one of -LinkTest, -Preview, -Test.' }
 $jungle = 'monkey.jungle'

@@ -141,7 +141,7 @@ bool batteryIsLow(int percent)
 
 void formatReconMode(const ReconState &state, char *out, size_t outSize)
 {
-    // The Garmin face's wording (garmin/source/ReconNames.mc modeText), so
+    // The Garmin face's wording (devices/garmin-tactix/source/ReconNames.mc modeText), so
     // every LayerTime device says the same thing.
     if (state.monitoring) snprintf(out, outSize, "RECON %s", recon::detectorShortName(state.selected));
     else if (state.earlyWarningEnabled)
@@ -151,7 +151,7 @@ void formatReconMode(const ReconState &state, char *out, size_t outSize)
 
 void formatDetections(unsigned count, char *out, size_t outSize)
 {
-    // garmin/source/ReconNames.mc countText.
+    // devices/garmin-tactix/source/ReconNames.mc countText.
     if (count == 1) snprintf(out, outSize, "1 DETECTION");
     else snprintf(out, outSize, "%u DETECTIONS", count);
 }

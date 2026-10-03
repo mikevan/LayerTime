@@ -17,7 +17,7 @@ PASS needs the full window, no Status gap over 2000 ms, and no disconnect;
 it logs `hb,start`, `hb,gap,<n>,<ms>` for gaps over 2000 ms,
 `hb,disconnect,<count>`, and `hb,end,PASS|FAIL,...` with duration, received,
 intervals, min, mean, p95, max, gaps, and disconnects. `source/link/LinkVectors.mc` is
-generated from `contracts/vectors/link_frames.json` by
+generated from `contracts/vectors/link_frames.json` by the repository's
 `tools/gen_link_vectors_mc.py`; do not edit it by hand.
 
 Increment 2B adds the LayerTime product screens for LayerWand's Recon: the
@@ -35,7 +35,7 @@ moves to the next one. `tools/layertime_sim.ps1 -Preview` builds and runs
 it, and `-Test` runs the unit tests.
 
 Requires Connect IQ SDK 9.2.0 or later and the Monkey C extension for
-VS Code. Open this `garmin/` folder as the workspace root, or add it as a
+VS Code. Open this `devices/garmin-tactix/` folder as the workspace root, or add it as a
 folder, so the extension sees `manifest.xml`.
 
 ## Build and run in the simulator
