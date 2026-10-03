@@ -16,7 +16,7 @@
 # so the reset evidence and the retry are in the same file.
 #
 # Run (from any PowerShell window; leave the window open for the whole run):
-#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\tools\layerwand_baseline_log.ps1"
+#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\devices\lilygo-layerwand\tools\layerwand_baseline_log.ps1"
 # Stop with Ctrl+C when the script says both runs are dumped.
 #
 # Sequence: plug LayerWand in, start this script, do nothing else. Run A

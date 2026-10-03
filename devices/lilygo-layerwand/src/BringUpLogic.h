@@ -24,7 +24,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "../../core/model/MonitorEvent.h"
+#include "core/model/MonitorEvent.h"
 
 namespace layertime {
 namespace tdongle_c5 {

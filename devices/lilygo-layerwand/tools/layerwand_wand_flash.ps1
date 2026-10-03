@@ -14,14 +14,15 @@
 #
 # Run without -Serial to list the LayerWands that are plugged in (port and
 # USB serial number; no port is opened):
-#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\tools\layerwand_wand_flash.ps1"
+#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\devices\lilygo-layerwand\tools\layerwand_wand_flash.ps1"
 # Then flash the second LayerWand:
-#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\tools\layerwand_wand_flash.ps1" -Serial <serial>
+#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\devices\lilygo-layerwand\tools\layerwand_wand_flash.ps1" -Serial <serial>
 
 param(
     [string]$Serial = '',
     [string]$RepoDir = 'C:\workspace\TUltra-Project\LayerTime'
 )
+$ProjectDir = Join-Path $RepoDir 'devices\lilygo-layerwand'
 
 $ErrorActionPreference = 'Stop'
 
@@ -70,7 +71,7 @@ Write-Host "Target: serial $Serial on $portName"
 Step 'Checking the toolchain and the repository'
 $python = Join-Path $env:USERPROFILE '.platformio\penv\Scripts\python.exe'
 if (-not (Test-Path $python)) { Fail "pioarduino core python not found at $python" }
-if (-not (Test-Path (Join-Path $RepoDir 'platformio.ini'))) { Fail "platformio.ini not found in $RepoDir" }
+if (-not (Test-Path (Join-Path $ProjectDir 'platformio.ini'))) { Fail "platformio.ini not found in $ProjectDir" }
 $core = & $python -c "import platformio; print(platformio.__title__ + ' ' + platformio.__version__)" 2>&1
 if ($LASTEXITCODE -ne 0) { Fail "the core in the penv did not answer: $core" }
 Write-Host "Core: $core"
@@ -83,15 +84,15 @@ $probe.RtsEnable = $false
 try { $probe.Open(); $probe.Close() } catch { Fail "$portName is busy ($($_.Exception.Message)). If this is the baseline LayerWand under its logger, you named the wrong device; nothing was flashed." }
 
 Step 'Building tdongle_c5_wand (Recon and LayerTime Link, architecture A)'
-& $python -m platformio run -d $RepoDir -e tdongle_c5_wand
+& $python -m platformio run -d $ProjectDir -e tdongle_c5_wand
 if ($LASTEXITCODE -ne 0) { Fail 'tdongle_c5_wand did not build. Nothing was flashed.' }
 
 Step "Uploading tdongle_c5_wand to serial $Serial on $portName"
-& $python -m platformio run -d $RepoDir -e tdongle_c5_wand -t upload --upload-port $portName
+& $python -m platformio run -d $ProjectDir -e tdongle_c5_wand -t upload --upload-port $portName
 if ($LASTEXITCODE -ne 0) { Fail 'upload did not complete. Check the cable and the port, then run again.' }
 
 Write-Host ''
 Write-Host "DONE: the LayerWand with serial $Serial is running tdongle_c5_wand." -ForegroundColor Green
 Write-Host 'Next: start its logger with'
-Write-Host ('  powershell -ExecutionPolicy Bypass -File "' + (Join-Path $RepoDir 'tools\layerwand_wand_log.ps1') + '" -Serial ' + $Serial)
+Write-Host ('  powershell -ExecutionPolicy Bypass -File "' + (Join-Path $RepoDir 'devices\lilygo-layerwand\tools\layerwand_wand_log.ps1') + '" -Serial ' + $Serial)
 exit 0

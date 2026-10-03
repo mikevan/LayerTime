@@ -26,7 +26,7 @@
 // platform supplies is this: six primitives on the physical radios. The
 // scheduler never sees a driver; a platform implements these six calls and
 // keeps its settle delays, driver handles and callback plumbing to itself.
-// The T-Dongle-C5 (platform/tdongle_c5/C5ReconRadio) is the implementation.
+// The T-Dongle-C5 (devices/lilygo-layerwand/src/C5ReconRadio) is the implementation.
 //
 // Frame and advertisement acquisition is not part of this port. A platform
 // hands what its radios receive to the core classifiers itself

@@ -50,11 +50,11 @@
 
 #include "BringUpLogic.h"
 
-#include "../../core/logic/ReconCandidate.h"
-#include "../../core/logic/ReconScheduler.h"
-#include "../../core/logic/WifiFrameClassifier.h"
-#include "../../core/model/MonitorEvent.h"
-#include "../../core/ports/ReconRadio.h"
+#include "core/logic/ReconCandidate.h"
+#include "core/logic/ReconScheduler.h"
+#include "core/logic/WifiFrameClassifier.h"
+#include "core/model/MonitorEvent.h"
+#include "core/ports/ReconRadio.h"
 
 class NimBLEAdvertisedDevice;
 

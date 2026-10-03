@@ -26,7 +26,7 @@
 
 #include <stdint.h>
 
-#include "../../core/logic/ReconStageLog.h"
+#include "core/logic/ReconStageLog.h"
 
 #include <esp_heap_caps.h>
 #include <esp_timer.h>

@@ -26,7 +26,7 @@
 # says why that boot happened, so an open-time reset is visible in the log.
 #
 # Run (leave the window open; stop with Ctrl+C):
-#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\tools\layerwand_wand_log.ps1" -Serial <serial>
+#   powershell -ExecutionPolicy Bypass -File "C:\workspace\TUltra-Project\LayerTime\devices\lilygo-layerwand\tools\layerwand_wand_log.ps1" -Serial <serial>
 
 param(
     [string]$Serial = '',

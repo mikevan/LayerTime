@@ -70,12 +70,12 @@
 #include "C5StageLog.h"
 #include "TDongleC5Pins.h"
 
-#include "../../core/app/LayerTimeCore.h"
-#include "../../core/link/LinkServer.h"
-#include "../../core/logic/ReconSelection.h"
-#include "../../core/logic/ReconStageLog.h"
-#include "../../core/model/LayerTimeCommand.h"
-#include "../../core/ports/EventLog.h"
+#include "core/app/LayerTimeCore.h"
+#include "core/link/LinkServer.h"
+#include "core/logic/ReconSelection.h"
+#include "core/logic/ReconStageLog.h"
+#include "core/model/LayerTimeCommand.h"
+#include "core/ports/EventLog.h"
 
 #include <Arduino.h>
 #include <esp_chip_info.h>

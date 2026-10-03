@@ -15,8 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// Built by the tdongle_c5 environment and by the host tests. The T-Watch
-// Ultra build, which compiles all of src/, sees an empty translation unit.
+// Built by the tdongle_c5 environments (devices/lilygo-layerwand) and by the
+// host tests. The guard below dates from when every environment compiled all
+// of src/, and is kept as a safety net.
 #if !defined(ARDUINO) || defined(LAYERTIME_TARGET_TDONGLE_C5)
 
 #include "BringUpLogic.h"

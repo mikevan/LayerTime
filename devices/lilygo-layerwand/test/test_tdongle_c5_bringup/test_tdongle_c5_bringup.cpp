@@ -4,13 +4,13 @@
 // MiB report, and the LayerWand screen: the owl's eye and lens indicators, the
 // event totals by band, and the count of other LayerWands nearby.
 //
-// Build command: see test/README.md, "T-Dongle-C5".
+// Build command: see devices/lilygo-layerwand/README.md, "Host tests".
 
 #include "check.h"
 
 #include <cstring>
 
-#include "platform/tdongle_c5/BringUpLogic.h"
+#include "BringUpLogic.h"
 
 using namespace layertime::tdongle_c5;
 using layertime::Band;

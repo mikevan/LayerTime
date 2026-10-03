@@ -103,7 +103,7 @@ Since Slice 1 Increment 2A the T-Watch Ultra is frozen reference code:
 `ReconService` and the suites above stay as they were and are not part of
 the C5/Garmin acceptance path. The Recon schedule `ReconService` runs was
 expressed in core as `src/core/logic/ReconScheduler` behind the
-`src/core/ports/ReconRadio` port, and the C5 (`src/platform/tdongle_c5`) is
+`src/core/ports/ReconRadio` port, and the C5 (`devices/lilygo-layerwand/src`) is
 its consumer. `test_recon_scheduler` below pins that schedule on its own;
 `test_recon` still characterizes the T-Ultra's original.
 
@@ -205,17 +205,11 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_mesh_transports test_mesh
 ./tests_mesh_transports
 ```
 
-## T-Dongle-C5
+## T-Dongle-C5 (LayerWand)
 
-The hardware-free logic behind the C5 bring-up firmware in
-`src/platform/tdongle_c5/` (Slice 1 Increment 0): the APA102 LED frame, the
-button debouncer, the advertised test name, and the MiB report. Run from
-`test/`.
-
-```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_tdongle_c5_bringup test_tdongle_c5_bringup/test_tdongle_c5_bringup.cpp ../src/platform/tdongle_c5/BringUpLogic.cpp
-./tests_tdongle_c5_bringup
-```
+The LayerWand's host tests moved with it to `devices/lilygo-layerwand/test/`
+in layout step 2 (2026-10-02). The build command is in
+`devices/lilygo-layerwand/README.md`, "Host tests".
 
 ## LayerTime Link
 
@@ -259,7 +253,7 @@ way the compiler resolves it (the including file's directory, then the
 is spelled. `src/core` may reach only `src/core` and the C and C++ standard
 library. Everything specific to one device lives under
 `src/platform/<target>/`; only platform code and `src/main.cpp` reach it, and
-one target never reaches into another (`twatch_ultra` and `tdongle_c5` today). Added in Phase 0 Step 7, when the
+one target never reaches into another (`twatch_ultra` today; the LayerWand and the S3 Plus live under `devices/`). Added in Phase 0 Step 7, when the
 T-Ultra's app, services, screens, and settings structs moved under
 `src/platform/twatch_ultra/`. Run from `test/`, because it reads `../src`.
 

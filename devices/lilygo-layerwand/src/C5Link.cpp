@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// This file belongs to the tdongle_c5 build environment only. Every build
-// environment compiles all of src/, so the T-Watch Ultra build sees this file
-// as an empty translation unit.
+// This file belongs to the tdongle_c5 build environments only
+// (devices/lilygo-layerwand/platformio.ini). The guard below dates from when
+// every environment compiled all of src/, and is kept as a safety net.
 #if defined(LAYERTIME_TARGET_TDONGLE_C5)
 
 #include "C5Link.h"

@@ -15,18 +15,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// This file belongs to the tdongle_c5 build environments only; the T-Watch
-// Ultra build sees it as an empty translation unit.
+// This file belongs to the tdongle_c5 build environments only
+// (devices/lilygo-layerwand/platformio.ini). The guard below dates from when
+// every environment compiled all of src/, and is kept as a safety net.
 #if defined(LAYERTIME_TARGET_TDONGLE_C5)
 
 #include "C5ReconRadio.h"
 
 #include "C5StageLog.h"
 
-#include "../../core/link/LinkFrames.h"
-#include "../../core/logic/BleAdvertClassifier.h"
-#include "../../core/logic/ReconSelection.h"
-#include "../../core/logic/ReconSignatures.h"
+#include "core/link/LinkFrames.h"
+#include "core/logic/BleAdvertClassifier.h"
+#include "core/logic/ReconSelection.h"
+#include "core/logic/ReconSignatures.h"
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>

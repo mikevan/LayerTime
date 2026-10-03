@@ -21,8 +21,8 @@
 // C5ReconRadio. The schedule is core's; the six radio primitives behind it
 // are the C5's.
 
-#include "../../core/logic/ReconScheduler.h"
-#include "../../core/ports/MonitorSource.h"
+#include "core/logic/ReconScheduler.h"
+#include "core/ports/MonitorSource.h"
 #include "C5ReconRadio.h"
 
 #include <Arduino.h>

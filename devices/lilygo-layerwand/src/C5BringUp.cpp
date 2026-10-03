@@ -15,9 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// This file belongs to the tdongle_c5 build environment only. Every build
-// environment compiles all of src/, so the T-Watch Ultra build sees this file
-// as an empty translation unit. The tdongle_c5_recon environment
+// This file belongs to the tdongle_c5 build environments only
+// (devices/lilygo-layerwand/platformio.ini). The guard below dates from when
+// every environment compiled all of src/, and is kept as a safety net. The tdongle_c5_recon environment
 // (LAYERTIME_RECON_BASELINE) builds C5ReconBaseline.cpp's setup() and loop()
 // instead of these, and the tdongle_c5_wand environment (LAYERTIME_WAND_APP)
 // builds C5App.cpp's.
