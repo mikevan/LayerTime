@@ -64,6 +64,11 @@ public:
     void fillStatus(StatusSnapshot &s) const;
     uint32_t changeSeq() const { return _tracker.changeSeq(); }
 
+    // The platform reports whether its events reach permanent storage. When
+    // they do not (no SD card log), Status carries kFlagNoSdLog from the
+    // next refresh() on, and changeSeq moves.
+    void setMemoryOnly(bool memoryOnly) { _memoryOnly = memoryOnly; }
+
     // Answers one Control request. Every reply frame goes to sink, in
     // order: one frame, or for GET_CHANGED and GET_TEXT a run ending with
     // END. nowMs is the Node's uptime, for EVENT_SUMMARY's age.
@@ -98,6 +103,7 @@ private:
     LockFn _unlock = nullptr;
     void *_lockContext = nullptr;
     Counters _counters;
+    bool _memoryOnly = false;
 };
 
 // Status.flags from the core's Recon state and sleep setting.

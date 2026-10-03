@@ -47,7 +47,8 @@
       "earlyWarningEnabled": 2,
       "earlyWarningResting": 4,
       "alertPending": 8,
-      "sleepMode": 16
+      "sleepMode": 16,
+      "noSdLog": 32
     },
     "schedule": {
       "Simultaneous": 0,

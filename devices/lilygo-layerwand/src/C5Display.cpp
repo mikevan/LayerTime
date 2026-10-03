@@ -128,7 +128,7 @@ bool C5Display::begin()
     digitalWrite(pins::kLcdRst, HIGH);
     delay(120);
 
-    SPI.begin(pins::kLcdSck, -1, pins::kLcdMosi, -1);
+    SPI.begin(pins::kLcdSck, pins::kSdMiso, pins::kLcdMosi, -1); // MISO for the SD card (C5SdLog.h)
 
     lv_init();
     lv_tick_set_cb(tickMs);

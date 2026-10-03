@@ -118,6 +118,7 @@ void LinkServer::refreshLocked()
     const ReconState r = _core.reconState();
     TrackedState s;
     s.flags = statusFlags(r, _core.settings().sleepModeEnabled);
+    if (_memoryOnly) s.flags |= kFlagNoSdLog;
     s.selected = static_cast<uint8_t>(r.selected);
     s.active = static_cast<uint8_t>(r.active);
     s.eventCount = r.eventCount;

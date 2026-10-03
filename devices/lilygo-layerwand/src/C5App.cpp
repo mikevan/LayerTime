@@ -50,6 +50,16 @@
 // BOOT button dumps the current run's stage records without changing the
 // mode; the mode is the watch's to change.
 //
+// SD-card log (Michael, approved 2026-10-01; from boot since 2026-10-03):
+// the LayerWand looks for a microSD card right after boot. With a card,
+// every event, link change, mode change, and the boot line go to
+// layerwand_NNNN.log for the whole run (C5SdLog.h, SdLogLogic.h). The card
+// shares the status LED's bus, so it is touched only at boot and when a
+// write is due: half the record ring waiting, or the watch connecting or
+// disconnecting (option c, 2026-10-03). Without one, Link Status carries noSdLog and the watch
+// warns that events live only in memory. Core's one EventLog port feeds
+// both the screen's BandTally and the SD log.
+//
 // Scan order (commit 2, Michael, 2026-10-02): the Wi-Fi radio runs on both
 // bands. At boot the LayerWand probes which channels its radio accepts and
 // hands core's scheduler a plan of every accepted 5 GHz channel, lowest to
@@ -67,6 +77,7 @@
 #include "C5Link.h"
 #include "C5MonitorSource.h"
 #include "C5ReconRadio.h"
+#include "C5SdLog.h"
 #include "C5StageLog.h"
 #include "TDongleC5Pins.h"
 
@@ -183,6 +194,25 @@ private:
 };
 
 BandTally gTally;
+C5SdLog gSdLog;
+
+// Core has one EventLog port; the screen's totals and the SD log both need
+// every new event, so the port feeds both.
+class EventLogFanout : public EventLog {
+public:
+    EventLogFanout(EventLog &first, EventLog &second) : _first(first), _second(second) {}
+    void append(const MonitorEvent &e) override
+    {
+        _first.append(e);
+        _second.append(e);
+    }
+
+private:
+    EventLog &_first;
+    EventLog &_second;
+};
+
+EventLogFanout gEventLogs(gTally, gSdLog);
 C5BootRecord gBoot; // D3: reset reason and retained boot history
 C5Display gDisplay;
 C5Led gLed;
@@ -343,6 +373,16 @@ void printCounters(const char *when)
                   static_cast<unsigned long>(t.wifi5GHz), static_cast<unsigned long>(t.wifi2_4GHz),
                   static_cast<unsigned long>(t.ble), static_cast<unsigned long>(t.other),
                   static_cast<unsigned>(gRadio.peerCount(millis())));
+    const C5SdLog::Counters &sd = gSdLog.counters();
+    Serial.printf("[%s] sd ring %s queued %u dropped %lu discarded %lu | card %s file %s | mounts %lu failures %lu "
+                  "files %lu lines %lu writes %lu errors %lu unformatted %lu | heap at mount %lu to %lu\n",
+                  when, sd.ringOk ? "ok" : "FAILED", static_cast<unsigned>(gSdLog.queued()),
+                  static_cast<unsigned long>(gSdLog.dropped()), static_cast<unsigned long>(sd.discarded),
+                  sd.mounted ? "mounted" : "-", sd.fileOpen ? sd.fileName : "-", static_cast<unsigned long>(sd.mounts),
+                  static_cast<unsigned long>(sd.mountFailures), static_cast<unsigned long>(sd.files),
+                  static_cast<unsigned long>(sd.lines), static_cast<unsigned long>(sd.writes),
+                  static_cast<unsigned long>(sd.writeErrors), static_cast<unsigned long>(sd.unformatted),
+                  static_cast<unsigned long>(sd.heapBeforeMount), static_cast<unsigned long>(sd.heapAfterMount));
     const recon::ReconScheduler &sched = gMonitor.scheduler();
     Serial.printf("[%s] plan %u channels | passes %lu last %lu ms | rest jitter %lu ms | channel refusals %lu\n", when,
                   static_cast<unsigned>(sched.planCount()), static_cast<unsigned long>(sched.passes()),
@@ -426,6 +466,7 @@ void startRun(RunMode mode, uint32_t now)
     gLastHopCount = 0;
     gLastHopMs = 0;
     gStage.record(recon::Stage::RunStart, 0, 0, static_cast<uint32_t>(mode));
+    gSdLog.noteMode(modeName(mode), now);
     recordHeap();
     Serial.printf("=== run start mode %s run %lu at %lu ms\n", modeName(mode), static_cast<unsigned long>(gRun),
                   static_cast<unsigned long>(now));
@@ -494,6 +535,7 @@ void sleepScreen()
 void setup()
 {
     gBoot.begin(); // before anything else: the reset reason of this boot
+    C5SdLog::holdCardDeselected(); // the card's CS floats otherwise (TDongleC5Pins.h)
     Serial.begin(115200);
     const uint32_t waitStart = millis();
     while (!Serial && millis() - waitStart < kSerialWaitMs) delay(10);
@@ -526,6 +568,13 @@ void setup()
     gStageOk = gStage.begin(kStageCapacity);
     Serial.printf("Stage log: %s, %lu records of %u bytes\n", gStageOk ? "ring in PSRAM" : "PSRAM allocation FAILED",
                   static_cast<unsigned long>(gStage.capacity()), static_cast<unsigned>(sizeof(recon::StageRecord)));
+    {
+        const bool sdOk = gSdLog.begin();
+        Serial.printf("SD log: %s, %u records of %u bytes; card looked for at boot and at each write; "
+                      "writes when %u records wait or the watch connects or disconnects\n",
+                      sdOk ? "ring in PSRAM" : "PSRAM allocation FAILED", static_cast<unsigned>(C5SdLog::kRingCapacity),
+                      static_cast<unsigned>(sizeof(SdRecord)), static_cast<unsigned>(C5SdLog::kRingCapacity / 2));
+    }
     gRadio.setStageLog(&gStage);
     gRadio.begin(true); // Wi-Fi first, as in 2A; both bands
     // The channel plan: what this radio accepts under the regulatory rules it
@@ -548,9 +597,11 @@ void setup()
 
     CorePorts ports;
     ports.monitor = &gLockedMonitor;
-    ports.eventLog = &gTally;
+    ports.eventLog = &gEventLogs;
     gCore.attach(ports);
     gServer.setLock(lockEvents, unlockEvents, nullptr);
+    // No card log until the first look finds one (first loop pass).
+    gServer.setMemoryOnly(true);
 
     gHeapOk = heapIntact();
     Serial.printf("Heap before BLE init: %s, free %lu\n", gHeapOk ? "intact" : "CORRUPT",
@@ -634,13 +685,25 @@ void loop()
     gLink.updateStatus();
     gLink.service(now);
 
+    bool linkChanged = false;
     if (gLink.connected() != gWasConnected) {
+        linkChanged = true;
         gWasConnected = gLink.connected();
         if (gWasConnected) ++gConnects; else ++gDisconnects;
+        gSdLog.noteLink(gWasConnected, gWasConnected ? gLink.peerAddress() : "", now);
         Serial.printf("Link %s %s at %lu ms\n", gWasConnected ? "connected to" : "disconnected, advertising again;",
                       gWasConnected ? gLink.peerAddress() : "", static_cast<unsigned long>(now));
         if (!gScreenAwake) showStatus(); // no redraw while lit (snapshot)
     }
+
+    // The SD log: looks for the card at boot, then touches it only when a
+    // write is due (half the ring waiting, or the watch connected or
+    // disconnected this pass). Card traffic scrambles the LED. Status tells
+    // the watch when events live only in memory.
+    if (gSdLog.service(now, gBoot.bootCount(), C5BootRecord::reasonName(gBoot.reason()), linkChanged)) {
+        applyLed();
+    }
+    gServer.setMemoryOnly(!gSdLog.hasCardLog());
 
     const AcquisitionStatus acq = gMonitor.acquisition();
     if (acqChanged(acq, gLastAcq)) {

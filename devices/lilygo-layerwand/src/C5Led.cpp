@@ -41,7 +41,7 @@ void C5Led::begin()
 {
     digitalWrite(pins::kLcdCs, HIGH);
     pinMode(pins::kLcdCs, OUTPUT);
-    SPI.begin(pins::kLcdSck, -1, pins::kLcdMosi, -1); // returns at once if already started
+    SPI.begin(pins::kLcdSck, pins::kSdMiso, pins::kLcdMosi, -1); // returns at once if already started
     off();
 }
 

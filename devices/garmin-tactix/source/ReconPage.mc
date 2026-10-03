@@ -109,6 +109,8 @@ class ReconView extends WatchUi.View {
         // Detections were dropped on LayerWand before the watch fetched them
         // (END gap). Shown until Clear succeeds or a new session starts.
         if (_link.mirror.gaps > 0) { linkText += "  GAP"; linkColor = AMBER; }
+        // No SD card log on the LayerWand: its events live only in memory.
+        if ((_link.flags & Link.FLAG_NO_SD_LOG) != 0) { linkText += "  NO SD"; linkColor = AMBER; }
         // An Increment 1 Link-only LayerWand runs no Recon.
         if (phase == :ready && !_link.reconAvailable) { linkText = "LINK-ONLY LAYERWAND"; linkColor = GREY; }
         if (phase == :stale) { linkText = "LINK STALE"; linkColor = AMBER; }

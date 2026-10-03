@@ -111,6 +111,10 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
     // Called once each time a GET_CHANGED reply reports a gap: detections
     // were dropped on the Node before the watch fetched them.
     public var gapObserver as Method() as Void? = null;
+    // Called once when Status first reports FLAG_NO_SD_LOG on a connection,
+    // and again if the flag clears and comes back (a card removed).
+    public var noSdObserver as Method() as Void? = null;
+    private var _noSdNoticed as Boolean = false;
     // False when the connected Node runs no Recon: its HELLO_ACK reports
     // neither monitor capability, or it answered GET_CHANGED with ERROR
     // UnknownOp (the Increment 1 Link-only Node). No GET_CHANGED is sent then.
@@ -433,6 +437,7 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
     private function setUpConnection(device as Device) as Void {
         _state = STATE_SETUP;
         reconAvailable = true;
+        _noSdNoticed = false;
         abandonQueued();
         _queue.clear();
         requestPending = false;   // a new connection: the stack starts clean
@@ -547,6 +552,12 @@ class LinkClient extends BluetoothLowEnergy.BleDelegate {
         }
         heartbeat = s[:heartbeat] as Number;
         flags = s[:flags] as Number;
+        if ((flags & Link.FLAG_NO_SD_LOG) == 0) {
+            _noSdNoticed = false;
+        } else if (!_noSdNoticed) {
+            _noSdNoticed = true;
+            if (noSdObserver != null) { noSdObserver.invoke(); }
+        }
         selected = s[:selected] as Number;
         active = s[:active] as Number;
         eventCount = s[:eventCount] as Number;

@@ -56,6 +56,7 @@ void constants_match_the_vectors()
     CHECK_INT(fl["earlyWarningResting"].asLong(), kFlagEarlyWarningResting);
     CHECK_INT(fl["alertPending"].asLong(), kFlagAlertPending);
     CHECK_INT(fl["sleepMode"].asLong(), kFlagSleepMode);
+    CHECK_INT(fl["noSdLog"].asLong(), kFlagNoSdLog);
     const Json &cap = c["capabilities"];
     CHECK_INT(cap["localWifiMonitor"].asLong(), kCapLocalWifiMonitor);
     CHECK_INT(cap["localBleMonitor"].asLong(), kCapLocalBleMonitor);

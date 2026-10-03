@@ -36,6 +36,7 @@ class LayerTimeApp extends Application.AppBase {
         _link = new LinkClient();
         _link.resultObserver = new Lang.Method(Controls, :showResult);
         _link.gapObserver = new Lang.Method(Controls, :showGap);
+        _link.noSdObserver = new Lang.Method(Controls, :showNoSdCard);
         Env.startLink(_link);
         _nav = new NavTracker();
         _nav.start();

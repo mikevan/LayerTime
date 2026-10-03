@@ -74,6 +74,15 @@ module Controls {
         WatchUi.requestUpdate();
     }
 
+    // LinkClient.noSdObserver: the LayerWand has no SD card log, so its
+    // events live only in its memory. Shown once per connection.
+    function showNoSdCard() as Void {
+        WatchUi.pushView(new $.NoticeView("NO SD CARD", NO_SD_CARD_TEXT), new $.NoticeDelegate(), WatchUi.SLIDE_UP);
+    }
+
+    // Michael's wording (2026-10-03).
+    const NO_SD_CARD_TEXT = "No SD card is installed. Limited memory will result in errors when the memory is full.";
+
     function toast(text as String) as Void {
         if (WatchUi has :showToast) { WatchUi.showToast(text, null); }
     }

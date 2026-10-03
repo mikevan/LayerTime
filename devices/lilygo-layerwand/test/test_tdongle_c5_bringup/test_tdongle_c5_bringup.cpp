@@ -11,6 +11,7 @@
 #include <cstring>
 
 #include "BringUpLogic.h"
+#include "SdLogLogic.h"
 
 using namespace layertime::tdongle_c5;
 using layertime::Band;
@@ -448,6 +449,181 @@ void the_plan_stops_at_capacity()
     CHECK_TRUE(sizeof(kWifi5GHzCandidates) + sizeof(kWifi2_4GHzCandidates) <= 48);
 }
 
+// --- SD-card log ---------------------------------------------------------
+
+void a_write_is_due_when_half_the_ring_waits()
+{
+    SdWritePolicy w(1024);
+    CHECK_INT(512, w.threshold());
+    CHECK_FALSE(w.due(0, false));
+    CHECK_FALSE(w.due(511, false));
+    CHECK_TRUE(w.due(512, false));
+    CHECK_TRUE(w.due(1024, false));
+}
+
+void a_link_change_writes_whatever_waits()
+{
+    SdWritePolicy w(1024);
+    CHECK_TRUE(w.due(1, true));
+    CHECK_FALSE(w.due(0, true)); // nothing to write
+}
+
+void a_tiny_ring_never_divides_to_zero()
+{
+    SdWritePolicy w(1);
+    CHECK_INT(0, w.threshold());
+    CHECK_FALSE(w.due(1, false)); // no threshold: only link changes write
+    CHECK_TRUE(w.due(1, true));
+}
+
+void log_file_names_parse_and_format()
+{
+    CHECK_INT(1, logFileSerial("layerwand_0001.log"));
+    CHECK_INT(42, logFileSerial("/LAYERWAND_0042.LOG"));
+    CHECK_INT(9999, logFileSerial("layerwand_9999.log"));
+    CHECK_INT(0, logFileSerial("layerwand_001.log"));
+    CHECK_INT(0, logFileSerial("layerwand_00a1.log"));
+    CHECK_INT(0, logFileSerial("layerwand_0001.txt"));
+    CHECK_INT(0, logFileSerial("detections.csv"));
+    CHECK_INT(0, logFileSerial(nullptr));
+    char name[kLogFileNameSize];
+    CHECK_TRUE(logFileName(1, name, sizeof(name)));
+    CHECK_STR("layerwand_0001.log", name);
+    CHECK_TRUE(logFileName(1234, name, sizeof(name)));
+    CHECK_STR("layerwand_1234.log", name);
+    CHECK_FALSE(logFileName(0, name, sizeof(name)));
+    CHECK_FALSE(logFileName(kMaxLogSerial + 1, name, sizeof(name)));
+    CHECK_FALSE(logFileName(1, name, sizeof(name) - 1));
+}
+
+void the_ring_keeps_order_and_counts_what_it_drops()
+{
+    SdRecord storage[3];
+    SdRecordRing ring;
+    ring.attach(storage, 3);
+    SdRecord r;
+    for (uint32_t i = 1; i <= 4; ++i) {
+        r.uptimeMs = i;
+        const bool pushed = ring.push(r);
+        CHECK_INT(i <= 3 ? 1 : 0, pushed ? 1 : 0);
+    }
+    CHECK_INT(3, ring.size());
+    CHECK_INT(1, static_cast<int>(ring.dropped()));
+    SdRecord out;
+    CHECK_TRUE(ring.pop(out));
+    CHECK_INT(1, static_cast<int>(out.uptimeMs));
+    r.uptimeMs = 5;
+    CHECK_TRUE(ring.push(r)); // wraps
+    const uint32_t wants[] = {2u, 3u, 5u};
+    for (uint32_t want : wants) {
+        CHECK_TRUE(ring.pop(out));
+        CHECK_INT(static_cast<int>(want), static_cast<int>(out.uptimeMs));
+    }
+    CHECK_FALSE(ring.pop(out));
+    SdRecordRing none;
+    none.attach(nullptr, 8);
+    CHECK_FALSE(none.push(r));
+    CHECK_INT(1, static_cast<int>(none.dropped()));
+}
+
+void untrusted_text_is_quoted_and_escaped_without_loss()
+{
+    char out[64];
+    CHECK_INT(7, static_cast<int>(csvQuoted("plain", out, sizeof(out))));
+    CHECK_STR("\"plain\"", out);
+    csvQuoted("a\"b,c", out, sizeof(out));
+    CHECK_STR("\"a\"\"b,c\"", out);
+    csvQuoted("x\r\ny\x7F\\", out, sizeof(out));
+    CHECK_STR("\"x\\x0D\\x0Ay\\x7F\\\\\"", out);
+    csvQuoted("", out, sizeof(out));
+    CHECK_STR("\"\"", out);
+    csvQuoted(nullptr, out, sizeof(out));
+    CHECK_STR("\"\"", out);
+    // Exactly fits: "abc" plus quotes is 5, plus the terminator 6.
+    CHECK_INT(5, static_cast<int>(csvQuoted("abc", out, 6)));
+    CHECK_INT(0, static_cast<int>(csvQuoted("abc", out, 5)));
+    CHECK_STR("", out);
+}
+
+void an_event_line_has_every_column()
+{
+    SdRecord r;
+    r.kind = SdRecordKind::Event;
+    r.uptimeMs = 123456;
+    r.event.eventId = 17;
+    r.event.detector = layertime::ReconTarget::Deauth;
+    r.event.confidence = layertime::Confidence::Medium;
+    r.event.sourceKind = SourceKind::Wifi;
+    strcpy(r.event.sourceId, "AA:BB:CC:DD:EE:FF");
+    strcpy(r.event.detail, "Free \"WiFi\", ok");
+    r.event.rssi = -67;
+    r.event.channel = 36;
+    r.event.band = Band::Band5GHz;
+    r.event.count = 3;
+    char line[256];
+    const size_t n = formatSdRecord(r, 2, "DEAUTH", line, sizeof(line));
+    CHECK_STR("2,123456,\"event\",17,\"DEAUTH\",\"medium\",\"wifi\",\"AA:BB:CC:DD:EE:FF\","
+              "\"Free \"\"WiFi\"\", ok\",-67,36,\"5GHz\",3\r\n",
+              line);
+    CHECK_INT(static_cast<int>(strlen(line)), static_cast<int>(n));
+}
+
+void link_mode_and_boot_lines_leave_event_columns_empty()
+{
+    SdRecord r;
+    r.kind = SdRecordKind::Link;
+    r.uptimeMs = 5000;
+    strcpy(r.text, "connected");
+    strcpy(r.peer, "e0:48:24:3d:a2:60");
+    char line[256];
+    formatSdRecord(r, 1, "", line, sizeof(line));
+    CHECK_STR("1,5000,\"link\",,,,,\"e0:48:24:3d:a2:60\",\"connected\",,,,\r\n", line);
+    SdRecord m;
+    m.kind = SdRecordKind::Mode;
+    m.uptimeMs = 6000;
+    strcpy(m.text, "early-warning");
+    formatSdRecord(m, 1, "", line, sizeof(line));
+    CHECK_STR("1,6000,\"mode\",,,,,\"\",\"early-warning\",,,,\r\n", line);
+    SdRecord b;
+    b.kind = SdRecordKind::Boot;
+    strcpy(b.text, "power-on");
+    formatSdRecord(b, 7, "", line, sizeof(line));
+    CHECK_STR("7,0,\"boot\",,,,,\"\",\"power-on\",,,,\r\n", line);
+}
+
+void every_line_has_the_headers_column_count()
+{
+    auto commas = [](const char *s) {
+        int n = 0;
+        bool quoted = false;
+        for (; *s; ++s) {
+            if (*s == '"') quoted = !quoted;
+            else if (*s == ',' && !quoted) ++n;
+        }
+        return n;
+    };
+    const int want = commas(kSdLogHeader);
+    CHECK_INT(12, want);
+    SdRecord r;
+    strcpy(r.event.detail, "a,b,\"c\"");
+    char line[256];
+    formatSdRecord(r, 1, "X", line, sizeof(line));
+    CHECK_INT(want, commas(line));
+    r.kind = SdRecordKind::Link;
+    strcpy(r.text, ",,,");
+    formatSdRecord(r, 1, "", line, sizeof(line));
+    CHECK_INT(want, commas(line));
+}
+
+void a_line_that_does_not_fit_is_refused_whole()
+{
+    SdRecord r;
+    strcpy(r.event.detail, "012345678901234567890123456789012345678"); // 39, the most it holds
+    char line[40];
+    CHECK_INT(0, static_cast<int>(formatSdRecord(r, 1, "X", line, sizeof(line))));
+    CHECK_STR("", line);
+}
+
 int main(int argc, char **argv)
 {
     CHECK_MAIN(argc, argv);
@@ -483,5 +659,15 @@ int main(int argc, char **argv)
     CASE(every_candidate_accepted_gives_28_then_14_in_order);
     CASE(no_5_ghz_accepted_leaves_only_2_4_ghz_and_none_accepted_leaves_nothing);
     CASE(the_plan_stops_at_capacity);
+    CASE(a_write_is_due_when_half_the_ring_waits);
+    CASE(a_link_change_writes_whatever_waits);
+    CASE(a_tiny_ring_never_divides_to_zero);
+    CASE(log_file_names_parse_and_format);
+    CASE(the_ring_keeps_order_and_counts_what_it_drops);
+    CASE(untrusted_text_is_quoted_and_escaped_without_loss);
+    CASE(an_event_line_has_every_column);
+    CASE(link_mode_and_boot_lines_leave_event_columns_empty);
+    CASE(every_line_has_the_headers_column_count);
+    CASE(a_line_that_does_not_fit_is_refused_whole);
     CHECK_SUMMARY();
 }

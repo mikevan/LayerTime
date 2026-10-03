@@ -87,6 +87,9 @@ constexpr uint8_t kFlagEarlyWarningEnabled = 0x02;
 constexpr uint8_t kFlagEarlyWarningResting = 0x04;
 constexpr uint8_t kFlagAlertPending = 0x08;
 constexpr uint8_t kFlagSleepMode = 0x10;
+// The Node keeps its events only in memory: no SD card log (LayerWand,
+// 2026-10-03). The watch warns the user. Never set by a Link-only Node.
+constexpr uint8_t kFlagNoSdLog = 0x20;
 
 // HELLO_ACK.capabilities bits.
 constexpr uint16_t kCapLocalWifiMonitor = 0x0001;

@@ -56,6 +56,7 @@ module LinkCodecTests {
         ok = ok && Link.STATUS_BAD_LENGTH == LinkVectors.LINKSTATUS_BADLENGTH;
         ok = ok && Link.STATUS_VERSION_MISMATCH == LinkVectors.LINKSTATUS_VERSIONMISMATCH && Link.STATUS_BUSY == LinkVectors.LINKSTATUS_BUSY;
         ok = ok && Link.FLAG_MONITORING == LinkVectors.STATUSFLAGS_MONITORING && Link.FLAG_SLEEP_MODE == LinkVectors.STATUSFLAGS_SLEEPMODE;
+        ok = ok && Link.FLAG_NO_SD_LOG == LinkVectors.STATUSFLAGS_NOSDLOG;
         ok = ok && Link.CAP_LOCAL_WIFI_MONITOR == LinkVectors.CAPABILITIES_LOCALWIFIMONITOR && Link.CAP_BUTTON == LinkVectors.CAPABILITIES_BUTTON;
         ok = ok && Link.UUID_SERVICE.equals(LinkVectors.UUID_SERVICE) && Link.UUID_CONTROL.equals(LinkVectors.UUID_CONTROL);
         ok = ok && Link.UUID_STATUS.equals(LinkVectors.UUID_STATUS) && Link.UUID_DATA.equals(LinkVectors.UUID_DATA);

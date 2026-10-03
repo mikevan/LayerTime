@@ -33,7 +33,8 @@ namespace tdongle_c5 {
 namespace pins {
 
 // ST7735 0.96 in 80 x 160 LCD on SPI. The LCD shares SCK/MOSI with the
-// microSD slot; the SD card is not used in Slice 1 (decision D5).
+// microSD slot. Slice 1 decision D5 left the card unused; the LayerWand's SD
+// log reverses that (Michael, approved 2026-10-01; C5SdLog.h).
 constexpr int8_t kLcdMosi = 2;
 constexpr int8_t kLcdSck = 6;
 constexpr int8_t kLcdCs = 10;
@@ -57,6 +58,13 @@ constexpr uint16_t kLcdRowOffset = 1;
 // the boards tested it answers the LCD's SPI bus (kLcdSck, kLcdMosi) instead,
 // and nothing on GPIO 4 or 5 reaches it (Michael, 2026-10-01; see C5Led.h).
 // GPIO 4 and 5 are left untouched.
+
+// microSD slot on the same bus: MISO on GPIO 7, card CS on GPIO 23 (LILYGO
+// examples/Factory/pin_config.h, as recorded in the Increment 2B handoff).
+// CS 23 has no pull-up, so it is driven high from boot: a floating CS lets
+// the card answer LCD and LED traffic.
+constexpr int8_t kSdMiso = 7;
+constexpr int8_t kSdCs = 23;
 
 // BOOT button KEY1 on GPIO28, to ground, with a 10 k pull-up (R16) to 3.3 V
 // (schematic V1.1). Pressed reads low. GPIO28 is a strapping pin: held low

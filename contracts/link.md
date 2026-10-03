@@ -101,7 +101,7 @@ application and travels inside RESULT frames.
 | 0 | 1 | linkVersion | `0x01` |
 | 1 | 2 | sessionId | random, non-zero, per power-on |
 | 3 | 4 | changeSeq | starts at 1 each session; +1 whenever flags, selected, active, eventCount or lastAlertEventId change, or an event is created, changes, or is dropped; constant on a Link-only Node |
-| 7 | 1 | flags | bit 0 monitoring, bit 1 earlyWarningEnabled, bit 2 earlyWarningResting, bit 3 alertPending, bit 4 sleepMode; 0 on a Link-only Node |
+| 7 | 1 | flags | bit 0 monitoring, bit 1 earlyWarningEnabled, bit 2 earlyWarningResting, bit 3 alertPending, bit 4 sleepMode, bit 5 noSdLog (the Node keeps its events only in memory because no SD card log is running; the watch warns); 0 on a Link-only Node |
 | 8 | 1 | selected | ReconTarget; 0 on a Link-only Node |
 | 9 | 1 | active | ReconTarget; 0 on a Link-only Node |
 | 10 | 1 | eventCount | events the Node holds now (at most 40); 0 on a Link-only Node |

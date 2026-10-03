@@ -269,6 +269,27 @@ void status_reports_the_core_state_and_moves_changeseq()
     CHECK_INT(0, g_depth);
 }
 
+void memory_only_sets_the_no_sd_log_flag_and_moves_changeseq()
+{
+    Rig r;
+    r.server.refresh();
+    CHECK_INT(0, r.status().flags & kFlagNoSdLog);
+    r.server.setMemoryOnly(true);
+    CHECK_TRUE(r.server.refresh());
+    StatusSnapshot s = r.status();
+    CHECK_INT(kFlagNoSdLog, s.flags & kFlagNoSdLog);
+    CHECK_INT(2, static_cast<long>(s.changeSeq));
+    CHECK_FALSE(r.server.refresh()); // unchanged: no bump
+    r.server.setMemoryOnly(false);
+    CHECK_TRUE(r.server.refresh());
+    CHECK_INT(0, r.status().flags & kFlagNoSdLog);
+    // The flag sits beside the Recon flags, never in place of them.
+    r.monitor.status.earlyWarningEnabled = true;
+    r.server.setMemoryOnly(true);
+    r.server.refresh();
+    CHECK_INT(kFlagEarlyWarningEnabled | kFlagNoSdLog, r.status().flags);
+}
+
 // --- COMMAND ----------------------------------------------------------------
 
 void recon_start_reaches_the_monitor_and_answers_ok()
@@ -641,6 +662,7 @@ int main(int argc, char **argv)
     CASE(tracker_bumps_once_per_pass_and_stamps_new_and_changed_events);
     CASE(tracker_records_dropped_events_for_the_gap);
     CASE(status_reports_the_core_state_and_moves_changeseq);
+    CASE(memory_only_sets_the_no_sd_log_flag_and_moves_changeseq);
     CASE(recon_start_reaches_the_monitor_and_answers_ok);
     CASE(recon_start_rejects_none_early_warning_and_beyond);
     CASE(stop_clear_acknowledge_and_the_two_settings);

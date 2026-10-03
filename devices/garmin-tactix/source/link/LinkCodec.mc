@@ -69,6 +69,7 @@ module Link {
     const FLAG_EARLY_WARNING_RESTING = 0x04;
     const FLAG_ALERT_PENDING = 0x08;
     const FLAG_SLEEP_MODE = 0x10;
+    const FLAG_NO_SD_LOG = 0x20;
 
     const SCHEDULE_SIMULTANEOUS = 0;
     const SCHEDULE_RECON = 1;
