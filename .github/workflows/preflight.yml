@@ -1,0 +1,26 @@
+# LayerTime pre-flight. The SAME tools/ci/preflight.sh contributors run locally.
+# Host job only for now. The 'full' job (host checks plus the firmware build in
+# the pinned image) is added once that image is built and its digest is pinned.
+name: preflight
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  host:
+    name: host profile (host checks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: host compiler
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential g++
+      - name: run pre-flight (host)
+        run: bash tools/ci/preflight.sh --host
+      - name: record inputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preflight-manifest-host
+          path: tools/ci/logs/preflight_manifest.txt
+

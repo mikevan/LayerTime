@@ -1,7 +1,9 @@
 .pio
 .vscode
 build
-.github
+.github/*
+!.github/workflows/
+!.github/workflows/**
 .keepsafe
 Claude outputs/
 devices/garmin-tactix/bin/
@@ -10,3 +12,4 @@ devices/lilygo-layerwand/bin/
 devices/lilygo-tultra/bin/
 __pycache__/
 devices/garmin-tactix/developer_key
+tools/ci/logs/
