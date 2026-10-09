@@ -1,34 +1,48 @@
 #!/usr/bin/env bash
-# LayerTime pre-flight gate. One script, run locally by contributors and by CI.
+# LayerTime pre-flight gate. Run it locally before every push. LayerTime does
+# not use GitHub Actions or any other hosted CI; this script is the gate.
 #
 # PROFILES (pick one):
 #   --host    the sensor library suite (LayerTime-Sensors, isolated), host unit
 #             suites, architecture boundary, and sensor harness.
 #             Needs only a HOST C++ compiler (g++/clang++). No device toolchain.
 #   --full    everything in --host PLUS a build of the required firmware
-#             targets. This is the merge gate.
-#   --docker  run the selected profile inside the pinned image, for an
-#             environment that matches CI. Add it to --host or --full.
-#   --targets a,b   firmware targets the full profile requires
-#                   (default: twatch_ultra).
+#             targets, each from its own device project (see PROJECT below).
+#   --targets a,b   firmware environments --full builds (default: twatch_ultra).
+#             Known: twatch_ultra, twatch_s3plus, tdongle_c5_wand. Any other
+#             name stops the run before anything is built.
 #
 # A required check that cannot run is reported NOT RUN and FAILS the profile.
 # --host does not require firmware; it reports the firmware build as NOT RUN
 # and its PASS means "host checks passed", never "firmware builds".
 #
-# Parity note: calling this same script is necessary but NOT sufficient for a
-# verdict that matches CI. The verdict is only comparable when the recorded
-# inputs match: compiler version, toolchain, dependency versions, platform,
-# and (under --docker) the container digest. Those inputs are written to
-# tools/ci/logs/preflight_manifest.txt on every run.
+# The library revision guard (tools/sensors_check.py) runs first. FAIL stops
+# the verdict from passing. With LAYERTIME_SENSORS_UNRECORDED=1 a mismatched
+# or modified library is reported EXPERIMENTAL; the run then ends "NOT VALID
+# FOR ACCEPTANCE" and exits 3, never 0.
+#
+# Exit codes: 0 passed, 1 failed, 2 usage or setup error, 3 experimental.
+# The run's inputs (source commit, library commit, compiler, device
+# dependency pins) are written to tools/ci/logs/preflight_manifest.txt.
 set -uo pipefail
 
-profile="host"; use_docker=0; targets="twatch_ultra"
+profile="host"; targets="twatch_ultra"
 while [ $# -gt 0 ]; do case "$1" in
   --host) profile="host";; --full) profile="full";;
-  --docker) use_docker=1;; --targets) shift; targets="${1:-}";;
+  --targets) shift; targets="${1:-}";;
   *) echo "unknown argument: $1" >&2; exit 2;; esac; shift; done
 IFS=',' read -r -a TARGETS <<< "$targets"
+
+# Firmware environment -> the device project that defines it.
+declare -A PROJECT=(
+  [twatch_ultra]=devices/lilygo-tultra
+  [twatch_s3plus]=devices/lilygo-s3plus
+  [tdongle_c5_wand]=devices/lilygo-layerwand
+)
+[ "${#TARGETS[@]}" -gt 0 ] || { echo "pre-flight: --targets is empty." >&2; exit 2; }
+for t in "${TARGETS[@]}"; do
+  [ -n "${PROJECT[$t]+x}" ] || { echo "pre-flight: unknown firmware target '$t'. Known: ${!PROJECT[*]}" >&2; exit 2; }
+done
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$here"
@@ -59,11 +73,10 @@ host_check() { # name, sources...
   PASS+=("$name ($(tail -n1 "$out/$name.run"))")
 }
 
-# Source identity: the commit under test. CI supplies GITHUB_SHA. Locally the
-# commit is read straight from .git without running git, so the gate never
-# takes a git lock on a working checkout. Uncommitted edits are NOT captured.
+# Source identity: the commit under test, read straight from .git without
+# running git, so the gate never takes a git lock on a working checkout.
+# Uncommitted edits are NOT captured here.
 source_identity() {
-  if [ -n "${GITHUB_SHA:-}" ]; then echo "$GITHUB_SHA (CI checkout)"; return; fi
   local g="$root/.git" head ref
   [ -f "$g/HEAD" ] || { echo "unknown (no .git)"; return; }
   head="$(tr -d '\r\n' < "$g/HEAD")"
@@ -100,37 +113,41 @@ manifest="$logdir/preflight_manifest.txt"
   echo "timestamp_utc = $(date -u +%FT%TZ)"
   echo "profile       = $profile"
   echo "targets       = $targets"
-  echo "docker        = $([ $use_docker -eq 1 ] && echo yes || echo no)"
   echo "host_uname    = $(uname -srm)"
   echo "host_cxx      = $("$CXX" --version 2>/dev/null | head -n1)"
   echo "source_identity = $(source_identity)"
   echo "sensors_identity = $(sensors_identity)"
   echo "# device dependency pins (not upgraded by the gate):"
   grep -hE '^\s*(https://|[a-z0-9_-]+/[A-Za-z0-9_-]+ @|platform = )' "$root/devices/lilygo-tultra/platformio.ini" 2>/dev/null | sed 's/^/  dep: /'
-  echo "container_digest = $([ $use_docker -eq 1 ] && echo '(set when image is built)' || echo 'n/a (host execution)')"
-  echo "parity_note = verdict matches CI only when the inputs above match; same-script alone does not guarantee it"
+  echo "parity_note = two verdicts are comparable only when the inputs above match"
 } > "$manifest"
 
 echo "LayerTime pre-flight"
-echo "profile: $profile    firmware targets: $targets    docker: $([ $use_docker -eq 1 ] && echo yes || echo no)"
+echo "profile: $profile    firmware targets: $targets"
 echo "inputs recorded in: tools/ci/logs/preflight_manifest.txt"
 echo
 
 # ---------------- Tier 0: host checks (both profiles) -----------------------
-echo "Sensor library revision:"
-# Every host test and device build must use the one library revision LayerTime
-# records. "git ls-tree" reads that record without touching the index.
-recorded=""; command -v git >/dev/null 2>&1 && recorded="$(git -C "$root" ls-tree HEAD sensors 2>/dev/null | awk '$2=="commit"{print $3}')"
-checked="$(sensors_identity | cut -d' ' -f1)"
-if [ -z "$recorded" ]; then
-  echo "  no recorded submodule revision found (git unavailable, or sensors/ is an in-tree folder); not compared"
-elif [ "$checked" = "$recorded" ]; then
-  PASS+=("sensors revision ($checked, the recorded one)")
-elif [ "${LAYERTIME_SENSORS_UNRECORDED:-}" = "1" ]; then
-  echo "  sensors/ is at $checked, LayerTime records $recorded; continuing because LAYERTIME_SENSORS_UNRECORDED=1"
-  NOTRUN+=("sensors revision (deliberately unrecorded: $checked, recorded $recorded)")
+echo "Sensor library revision (tools/sensors_check.py):"
+# The same guard the firmware builds run: the recorded commit, a clean
+# library checkout, readable git metadata. FAIL and EXPERIMENTAL both keep
+# this run from passing.
+EXPERIMENTAL=0
+if ! command -v python3 >/dev/null 2>&1; then
+  FAIL+=("sensors revision (python3 not found; the guard cannot run)")
 else
-  FAIL+=("sensors revision (sensors/ is at $checked, LayerTime records $recorded; run: git submodule update sensors)")
+  guard="$(python3 "$root/tools/sensors_check.py" "$root" 2>&1)"; gcode=$?
+  echo "$guard" | sed 's/^/  /'
+  case $gcode in
+    0) PASS+=("sensors revision ($(sensors_identity | cut -d' ' -f1), recorded and clean)");;
+    3) EXPERIMENTAL=1; NOTRUN+=("sensors revision (EXPERIMENTAL: not the recorded, clean library)");;
+    *) FAIL+=("sensors revision (guard failed; see the lines above)");;
+  esac
+fi
+if bash "$root/tools/ci/test_sensors_guard.sh" >"$out/guard_tests.log" 2>&1; then
+  PASS+=("sensors guard negative tests ($(tail -n1 "$out/guard_tests.log"))")
+else
+  FAIL+=("sensors guard negative tests (see tools/ci/logs/guard_tests.log)"); cp "$out/guard_tests.log" "$logdir/guard_tests.log"
 fi
 echo
 echo "Sensor library (LayerTime-Sensors, built and run in an isolated copy):"
@@ -171,20 +188,16 @@ if [ "$profile" != "full" ]; then
   for t in "${TARGETS[@]}"; do NOTRUN+=("firmware:$t (not required by --host)"); done
   echo "  NOT RUN - --host does not build firmware. Use --full for the merge gate."
 else
-  builder=""; digest=""
-  if [ $use_docker -eq 1 ]; then
-    if command -v docker >/dev/null 2>&1 && [ -n "${LAYERTIME_IMAGE:-}" ]; then builder="docker"; else
-      for t in "${TARGETS[@]}"; do NOTRUN+=("firmware:$t (docker or LAYERTIME_IMAGE unavailable)"); done; fi
-  else
-    if command -v pio >/dev/null 2>&1 || command -v platformio >/dev/null 2>&1; then builder="native"; else
-      for t in "${TARGETS[@]}"; do NOTRUN+=("firmware:$t (pioarduino toolchain not on PATH; use --docker or install it)"); done; fi
-  fi
-  if [ -n "$builder" ]; then
+  if command -v pio >/dev/null 2>&1; then
     for t in "${TARGETS[@]}"; do
-      dev="$root/devices/lilygo-tultra"; [ -d "$root/devices/$t" ] && dev="$root/devices/$t"
-      # The device project builds from its own folder; respect its pinned platform/libs.
-      if ( cd "$dev" && pio run -e "$t" ) >"$out/fw_$t.log" 2>&1; then PASS+=("firmware:$t"); else FAIL+=("firmware:$t (see logs/fw_$t.log)"); cp "$out/fw_$t.log" "$logdir/fw_$t.log" 2>/dev/null; fi
+      # Each environment builds from the device project that defines it.
+      dev="$root/${PROJECT[$t]}"
+      if ( cd "$dev" && pio run -e "$t" ) >"$out/fw_$t.log" 2>&1; then PASS+=("firmware:$t (${PROJECT[$t]})")
+      else FAIL+=("firmware:$t (${PROJECT[$t]}; see tools/ci/logs/fw_$t.log)"); fi
+      cp "$out/fw_$t.log" "$logdir/fw_$t.log" 2>/dev/null
     done
+  else
+    for t in "${TARGETS[@]}"; do NOTRUN+=("firmware:$t (pioarduino core 'pio' not on PATH)"); done
   fi
 fi
 
@@ -198,7 +211,11 @@ echo
 required_notrun=0
 if [ "$firmware_required" -eq 1 ]; then for x in "${NOTRUN[@]:-}"; do case "$x" in firmware:*) required_notrun=1;; esac; done; fi
 
-if [ "${#FAIL[@]}" -eq 0 ] && [ "$required_notrun" -eq 0 ]; then
+if [ "${#FAIL[@]}" -eq 0 ] && [ "$required_notrun" -eq 0 ] && [ "$EXPERIMENTAL" -eq 1 ]; then
+  echo "EXPERIMENTAL: the checks ran against a library that is not the recorded, clean revision."
+  echo "NOT VALID FOR ACCEPTANCE (LAYERTIME_SENSORS_UNRECORDED=1)."
+  exit 3
+elif [ "${#FAIL[@]}" -eq 0 ] && [ "$required_notrun" -eq 0 ]; then
   if [ "$profile" = "host" ]; then echo "HOST PROFILE PASSED: host checks passed. Firmware build NOT RUN (this does not certify a firmware build)."
   else echo "FULL PROFILE PASSED: host checks and required firmware targets built."; fi
   exit 0

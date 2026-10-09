@@ -1,35 +1,47 @@
 # LayerTime pre-flight gate
 
-One script, `tools/ci/preflight.sh`, run locally by contributors and by CI.
-Prove your change locally before you push; CI runs the identical script.
+One script, `tools/ci/preflight.sh`, run locally before every push. LayerTime
+does not use GitHub Actions or any other hosted CI; this script is the gate.
 
 ## Profiles
-- `--host`  host unit suites + architecture boundary + sensor harness. Needs
-  only a HOST C++ compiler. PASS means "host checks passed", never "firmware
-  builds".
-- `--full`  `--host` plus a build of the required firmware targets
-  (`--targets a,b`, default `twatch_ultra`). This is the merge gate. A required
-  firmware target that cannot run is reported NOT RUN and FAILS the profile.
-- `--docker`  run the selected profile inside the pinned image for an
-  environment that matches CI. Not available yet: the image is not built or
-  published, so CI runs only the host job for now.
+- `--host`  the sensor library revision guard, the sensor library's own
+  suites (in an isolated copy), the host unit suites, the architecture
+  boundary, the detection-equivalence check, and the replay harness. Needs
+  only a host C++ compiler, python3, and git. PASS means "host checks
+  passed", never "firmware builds".
+- `--full`  `--host` plus a build of each firmware environment named with
+  `--targets a,b` (default `twatch_ultra`), each from its own device project:
 
-Results are reported in three buckets: PASS, FAIL, NOT RUN. The run's inputs
-(source commit, host compiler, device dependency pins, container digest) are
+  | Environment | Device project |
+  |---|---|
+  | `twatch_ultra` | `devices/lilygo-tultra` |
+  | `twatch_s3plus` | `devices/lilygo-s3plus` |
+  | `tdongle_c5_wand` | `devices/lilygo-layerwand` |
+
+  Any other name stops the run before anything is built. A required firmware
+  target that cannot run (no `pio` on PATH) is reported NOT RUN and fails the
+  profile.
+
+Results are reported as PASS, FAIL, and NOT RUN. Exit codes: 0 passed,
+1 failed, 2 usage or setup error, 3 experimental (below). The run's inputs
+(source commit, library commit, host compiler, device dependency pins) are
 written to `tools/ci/logs/preflight_manifest.txt`.
 
-## Supported environments
-- Linux/macOS with `g++`/`clang++` and `bash`: run `./tools/ci/preflight.sh`.
-- Windows: run `tools\ci\preflight.ps1`. It runs the host profile under WSL2
-  (which must have a host g++, e.g. `build-essential`), or, with `--docker`,
-  inside the pinned image via Docker Desktop. An ESP32 cross-compiler is NOT a
-  host compiler and cannot run the host suites.
-- Device firmware builds (`--full`) use the pioarduino toolchain, native or in
-  the pinned image (`.devcontainer/Dockerfile`).
+## The sensor library guard
+`tools/sensors_check.py` is the single check, used by this script and by
+every device firmware build. It requires the recorded `sensors/` submodule
+commit, a clean library checkout (no modified tracked files, no untracked
+files, no ignored files inside `src/` or `library.json`), and readable git
+metadata; a source export without git metadata is not supported.
+`LAYERTIME_SENSORS_UNRECORDED=1` allows experimental work on an unrecorded
+or modified library: firmware builds continue with a warning, and this
+script reports EXPERIMENTAL, prints NOT VALID FOR ACCEPTANCE, and exits 3.
+`tools/ci/test_sensors_guard.sh` proves each of those cases.
 
-## Parity
-Running the same script is necessary but not sufficient for a verdict that
-matches CI. Verdicts are comparable only when the recorded inputs match:
-compiler version, pioarduino toolchain, the pinned device dependencies, the
-platform, and (under `--docker`) the image digest. The manifest records these
-so a local PASS can be checked against CI's inputs.
+## Supported environments
+- Linux or macOS with `g++`/`clang++`, `bash`, `python3`, and `git`: run
+  `./tools/ci/preflight.sh`.
+- Windows: run `tools\ci\preflight.ps1`, which runs the profile under WSL2
+  (WSL needs `build-essential`, `python3`, and `git`). An ESP32
+  cross-compiler is not a host compiler and cannot run the host suites.
+- Firmware builds (`--full`) need the pioarduino core's `pio` on PATH.
