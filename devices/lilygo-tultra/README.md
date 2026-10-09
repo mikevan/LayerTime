@@ -1,11 +1,11 @@
 # T-Watch Ultra (LilyGo T-Watch S3 Ultra)
 
-The original LayerTime watch, kept as the historical reference implementation.
-It is frozen: no new work lands here unless Michael authorizes it. It is its
-own pioarduino project: open this folder, not the repository root, to build
-it in the pioarduino IDE. It compiles only the repository's `src/core/` and
-this folder's `src/`. Moved here from the repository root in layout step 4
-(2026-10-07); the firmware version stays 0.2.3.
+The original LayerTime watch and one of the two LayerTime watch products,
+alongside the T-Watch S3 Plus. It is its own pioarduino project: open this
+folder, not the repository root, to build it in the pioarduino IDE. It
+compiles only the repository's `src/core/` and this folder's `src/`. Moved
+here from the repository root in layout step 4 (2026-10-07); the firmware
+version stays 0.2.3.
 
 ## Layout
 
@@ -114,12 +114,11 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I..
 service's file-local pieces. Do not also pass `ReconService.cpp` on
 that command line.
 
-Since Slice 1 Increment 2A the T-Watch Ultra is frozen reference code:
-`ReconService` and the suites above stay as they were and are not part of
-the C5/Garmin acceptance path. The Recon schedule `ReconService` runs was
-expressed in core as `src/core/logic/ReconScheduler` behind the
-`src/core/ports/ReconRadio` port, and the C5 (`devices/lilygo-layerwand/src`) is
-its consumer. `test_recon_scheduler` below pins that schedule on its own;
+`ReconService` and the suites above are the Ultra's own Recon path. The Recon
+schedule `ReconService` runs was expressed in core as
+`src/core/logic/ReconScheduler` behind the `src/core/ports/ReconRadio` port,
+and the C5 (`devices/lilygo-layerwand/src`) is its consumer.
+`test_recon_scheduler` below pins that schedule on its own;
 `test_recon` still characterizes the T-Ultra's original.
 
 Since Phase 0 Step 4 the Recon event history, the alert, and the Recon

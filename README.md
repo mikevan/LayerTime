@@ -160,7 +160,7 @@ This project builds against **[pioarduino](https://github.com/pioarduino/platfor
 
 - `src/core/` — the LayerTime application itself, independent of any watch: the model, the application logic, and the ports a platform plugs into. It uses nothing but the C and C++ standard libraries.
   - `link/` — the LayerTime Link codec (`contracts/link.md`): the byte layouts, the Node-side dispatcher, and the test-build probe payloads. Shared by the C5 and, through the same vectors, by the Connect IQ app.
-- `devices/lilygo-tultra/` — the T-Watch Ultra, the historical reference target, its own pioarduino project (see its `README.md`). Its `src/` holds everything specific to the watch:
+- `devices/lilygo-tultra/` — the T-Watch Ultra, a LayerTime watch product, its own pioarduino project (see its `README.md`). Its `src/` holds everything specific to the watch:
   - `app/WatchApp.*` — wires the core, every service, and every screen together, and owns the settings-changed/mutual-exclusion logic.
   - `services/` — hardware/protocol logic (Battery, Clock, GPS, Recon, MeshService (MeshCore), MeshtasticService, SdCardService, SettingsService).
   - `ui/` — LVGL screens (WatchFace, GpsScreen, MappingScreen, MeshScreen, MeshtasticScreen, ReconScreen, SettingsScreen).
