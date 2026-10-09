@@ -1,9 +1,7 @@
 .pio
 .vscode
 build
-.github/*
-!.github/workflows/
-!.github/workflows/**
+.github
 .keepsafe
 Claude outputs/
 devices/garmin-tactix/bin/

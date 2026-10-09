@@ -59,13 +59,14 @@ DEFECT); scan-selection scope; independent receiver histories; capacity
 eviction at 40; sleep-mode suppression; clear() keeps the event serial;
 acquisition gap updates lastSeen.
 
-## In-repo home and CI
+## In-repo home and the pre-flight gate
 
-Lives at `test/replay/` today (the classifiers are still under `src/core`). At
-layout step 5, when the detection code moves to `sensors/`, move this to
-`sensors/test/replay/` and update the five source paths in `run_harness.sh`.
-CI runs it through `tools/ci/preflight.sh --host` (the host job in
-`.github/workflows/preflight.yml`); a failed check fails the job.
+Lives at `test/replay/`. It stays in LayerTime after layout step 5 because it
+tests LayerTime's event log and alert policy, not the sensor library; the
+library's own public replay is `sensors/test/test_public_replay`.
+`tools/ci/preflight.sh --host`, run locally before every push, builds and runs
+it; a failed check fails the pre-flight. LayerTime does not use GitHub Actions
+or any hosted CI.
 
 ## Hardware validation gaps (not covered here, by design)
 
