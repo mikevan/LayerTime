@@ -1,0 +1,4 @@
+[submodule "sensors"]
+	path = sensors
+	url = https://github.com/mikevan/LayerTime-Sensors.git
+	branch = main

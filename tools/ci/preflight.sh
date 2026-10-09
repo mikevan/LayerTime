@@ -117,6 +117,22 @@ echo "inputs recorded in: tools/ci/logs/preflight_manifest.txt"
 echo
 
 # ---------------- Tier 0: host checks (both profiles) -----------------------
+echo "Sensor library revision:"
+# Every host test and device build must use the one library revision LayerTime
+# records. "git ls-tree" reads that record without touching the index.
+recorded=""; command -v git >/dev/null 2>&1 && recorded="$(git -C "$root" ls-tree HEAD sensors 2>/dev/null | awk '$2=="commit"{print $3}')"
+checked="$(sensors_identity | cut -d' ' -f1)"
+if [ -z "$recorded" ]; then
+  echo "  no recorded submodule revision found (git unavailable, or sensors/ is an in-tree folder); not compared"
+elif [ "$checked" = "$recorded" ]; then
+  PASS+=("sensors revision ($checked, the recorded one)")
+elif [ "${LAYERTIME_SENSORS_UNRECORDED:-}" = "1" ]; then
+  echo "  sensors/ is at $checked, LayerTime records $recorded; continuing because LAYERTIME_SENSORS_UNRECORDED=1"
+  NOTRUN+=("sensors revision (deliberately unrecorded: $checked, recorded $recorded)")
+else
+  FAIL+=("sensors revision (sensors/ is at $checked, LayerTime records $recorded; run: git submodule update sensors)")
+fi
+echo
 echo "Sensor library (LayerTime-Sensors, built and run in an isolated copy):"
 if bash "$root/sensors/tools/run_tests.sh" >"$out/sensors.log" 2>&1; then
   PASS+=("sensors library ($(tail -n1 "$out/sensors.log"))")
