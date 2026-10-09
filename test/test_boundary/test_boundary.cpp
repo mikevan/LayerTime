@@ -13,8 +13,13 @@
 //   * "quoted": the including file's own directory first, then the src/
 //     include root (the firmware build and these tests both put src/ on the
 //     include path).
-//   * <angled>: the src/ include root. Anything not found there is a system
+//   * <angled>: the src/ include root, then the sensor library's include root
+//     (sensors/src, LayerTime-Sensors). Anything not found there is a system
 //     or library header.
+//
+// Layout step 5 (2026-10-09) added the sensor library. Core may include it,
+// and only through its public <lts/...> headers; device code may not include
+// it at all, so every device reaches the sensors through core.
 // So a core file writing "../model/Mesh.h" and one writing
 // "core/model/Mesh.h" are the same include, and both are core.
 //
@@ -37,6 +42,7 @@ namespace {
 const fs::path kRepo = fs::weakly_canonical("..");
 const fs::path kSrc = fs::weakly_canonical("../src");
 const fs::path kUltraSrc = fs::weakly_canonical("../devices/lilygo-tultra/src");
+const fs::path kSensorsSrc = fs::weakly_canonical("../sensors/src");
 
 // Headers a core file may take from outside the project: the C and C++
 // standard library, and nothing else.
@@ -71,6 +77,7 @@ fs::path resolve(const fs::path &from, const std::string &name, bool quoted)
     std::vector<fs::path> tries;
     if (quoted) tries.push_back(from.parent_path() / name);
     tries.push_back(kSrc / name);
+    if (!quoted) tries.push_back(kSensorsSrc / name);
     for (const fs::path &t : tries) {
         std::error_code ec;
         if (fs::is_regular_file(t, ec)) return fs::weakly_canonical(t);
@@ -138,13 +145,19 @@ void the_source_tree_is_where_the_tests_expect()
     CHECK_TRUE(scan().size() > 100);
 }
 
-void core_includes_only_core_and_the_standard_library()
+bool isPublicSensorInclude(const Include &inc)
+{
+    return !inc.quoted && inc.spelled.rfind("lts/", 0) == 0 && !inc.target.empty() &&
+           under(inc.target, kSensorsSrc);
+}
+
+void core_includes_only_core_the_standard_library_and_the_sensor_library()
 {
     int bad = 0;
     for (const Include &inc : scan()) {
         if (!under(inc.from, kCore)) continue;
         const bool ok = inc.target.empty() ? (!inc.quoted && kStandard.count(inc.spelled) == 1)
-                                           : under(inc.target, kCore);
+                                           : (under(inc.target, kCore) || isPublicSensorInclude(inc));
         if (!ok) {
             report(inc, "core reaches outside core");
             ++bad;
@@ -169,6 +182,7 @@ void every_include_that_resolves_stays_inside_src()
     int bad = 0;
     for (const Include &inc : scan()) {
         if (inc.target.empty() || under(inc.target, kSrc) || under(inc.target, kUltraSrc)) continue;
+        if (under(inc.from, kCore) && isPublicSensorInclude(inc)) continue;
         report(inc, "leaves src and the Ultra's folder");
         ++bad;
     }
@@ -217,15 +231,87 @@ void one_target_never_reaches_into_another()
     CHECK_INT(0, bad);
 }
 
+// Device folders whose code must reach the sensors only through core.
+const char *const kDeviceSrcs[] = {"../devices/lilygo-tultra/src", "../devices/lilygo-s3plus/src",
+                                   "../devices/lilygo-layerwand/src"};
+
+// Every include in `root` that names the sensor library, however spelled:
+// <lts/...>, or any path through sensors/src.
+std::vector<std::string> sensorIncludesUnder(const fs::path &root)
+{
+    std::vector<std::string> out;
+    if (!fs::is_directory(root)) return out;
+    for (const auto &e : fs::recursive_directory_iterator(root)) {
+        if (!e.is_regular_file()) continue;
+        std::ifstream in(e.path());
+        std::string line;
+        int n = 0;
+        while (std::getline(in, line)) {
+            ++n;
+            const size_t h = line.find("#include");
+            if (h == std::string::npos) continue;
+            const std::string rest = line.substr(h);
+            if (rest.find("<lts/") != std::string::npos || rest.find("\"lts/") != std::string::npos ||
+                rest.find("sensors/src") != std::string::npos || rest.find("/lts/") != std::string::npos)
+                out.push_back(e.path().generic_string() + ":" + std::to_string(n) + "  " + rest);
+        }
+    }
+    return out;
+}
+
+void devices_reach_the_sensors_only_through_core()
+{
+    int found = 0;
+    for (const char *dir : kDeviceSrcs) {
+        CHECK_TRUE(fs::is_directory(dir));
+        for (const std::string &s : sensorIncludesUnder(dir)) {
+            fprintf(stderr, "      device includes the sensor library directly: %s\n", s.c_str());
+            ++found;
+        }
+    }
+    CHECK_INT(0, found);
+}
+
+void the_device_rule_rejects_a_planted_direct_include()
+{
+    const fs::path scratch = fs::temp_directory_path() / "layertime_boundary_negative";
+    fs::remove_all(scratch);
+    fs::create_directories(scratch);
+    std::ofstream(scratch / "A.cpp") << "#include <lts/Signatures.h>\n";
+    std::ofstream(scratch / "B.h") << "#include \"../../../sensors/src/lts/Detectors.h\"\n";
+    std::ofstream(scratch / "C.cpp") << "#include \"core/logic/ReconClassification.h\"\n";
+    CHECK_INT(2, sensorIncludesUnder(scratch).size());
+    fs::remove_all(scratch);
+}
+
+void the_core_rule_rejects_a_quoted_path_into_the_sensors()
+{
+    // Core must use the public <lts/...> spelling. A quoted path that
+    // happens to reach the same file is still a layout dependency.
+    Include quoted;
+    quoted.from = kCore / "logic" / "X.cpp";
+    quoted.spelled = "../../../sensors/src/lts/Detectors.h";
+    quoted.quoted = true;
+    quoted.target = kSensorsSrc / "lts" / "Detectors.h";
+    CHECK_FALSE(isPublicSensorInclude(quoted));
+    Include angled = quoted;
+    angled.spelled = "lts/Detectors.h";
+    angled.quoted = false;
+    CHECK_TRUE(isPublicSensorInclude(angled));
+}
+
 int main(int argc, char **argv)
 {
     CHECK_MAIN(argc, argv);
     CASE(the_source_tree_is_where_the_tests_expect);
-    CASE(core_includes_only_core_and_the_standard_library);
+    CASE(core_includes_only_core_the_standard_library_and_the_sensor_library);
     CASE(every_quoted_project_include_resolves);
     CASE(every_include_that_resolves_stays_inside_src);
     CASE(every_source_file_is_core_a_platform_target_or_main);
     CASE(only_platform_code_and_main_reach_platform_code);
     CASE(one_target_never_reaches_into_another);
+    CASE(devices_reach_the_sensors_only_through_core);
+    CASE(the_device_rule_rejects_a_planted_direct_include);
+    CASE(the_core_rule_rejects_a_quoted_path_into_the_sensors);
     CHECK_SUMMARY();
 }

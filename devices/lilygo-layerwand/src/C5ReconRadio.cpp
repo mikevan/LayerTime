@@ -25,9 +25,8 @@
 #include "C5StageLog.h"
 
 #include "core/link/LinkFrames.h"
-#include "core/logic/BleAdvertClassifier.h"
+#include "core/logic/ReconClassification.h"
 #include "core/logic/ReconSelection.h"
-#include "core/logic/ReconSignatures.h"
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>

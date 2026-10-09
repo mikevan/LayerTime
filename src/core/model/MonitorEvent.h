@@ -22,6 +22,13 @@
 
 #include <stdint.h>
 
+// Confidence, SourceKind, and Band belong to the sensor library
+// (LayerTime-Sensors, checked out at sensors/). Core uses them as they are.
+#if !__has_include(<lts/Detectors.h>)
+#error "LayerTime-Sensors is missing: sensors/src/lts/Detectors.h was not found. Fetch it with: git submodule update --init sensors"
+#endif
+#include <lts/Detectors.h>
+
 #include "Time.h"
 
 namespace layertime {
@@ -33,7 +40,9 @@ namespace layertime {
 //
 // A MonitorEvent always carries a single-detector value (Deauth through
 // GoogleTag). None, All, the three groups, and EarlyWarning are selections,
-// never event sources.
+// never event sources. The single detectors correspond one to one to the
+// sensor library's lts::DetectorId; the conversion is an explicit mapping in
+// core/logic/ReconClassification, never a cast.
 enum class ReconTarget : uint8_t {
     None = 0,
     All = 1,
@@ -55,27 +64,27 @@ enum class ReconTarget : uint8_t {
     EarlyWarning = 17,
 };
 
-// Values match the T-Ultra's SignalConfidence. Ordered: a larger value is a
-// stronger match, and the T-Ultra relies on that ordering when it keeps the
-// strongest grade an emitter has ever matched at.
-enum class Confidence : uint8_t {
-    Low = 0,
-    Medium = 1,
-    High = 2,
-};
+// Confidence, SourceKind, and Band are the sensor library's types, used
+// unchanged so a candidate needs no conversion. Their numbers are part of
+// LayerTime's contracts (the link records, the stage log), so they are
+// pinned here: a library release that renumbered one would stop the build.
+// Confidence is ordered: a larger value is a stronger match, and the event
+// log relies on that when it keeps the strongest grade an emitter has ever
+// matched at.
+using Confidence = lts::Confidence;
+using SourceKind = lts::SourceKind;
+using Band = lts::Band;
 
-enum class SourceKind : uint8_t {
-    Unknown = 0,
-    Wifi = 1,
-    Ble = 2,
-    Ieee802154 = 3,
-};
-
-enum class Band : uint8_t {
-    Unknown = 0,
-    Band2_4GHz = 1,
-    Band5GHz = 2,
-};
+static_assert(static_cast<uint8_t>(Confidence::Low) == 0, "Confidence::Low is 0 on the wire");
+static_assert(static_cast<uint8_t>(Confidence::Medium) == 1, "Confidence::Medium is 1 on the wire");
+static_assert(static_cast<uint8_t>(Confidence::High) == 2, "Confidence::High is 2 on the wire");
+static_assert(static_cast<uint8_t>(SourceKind::Unknown) == 0, "SourceKind::Unknown is 0 on the wire");
+static_assert(static_cast<uint8_t>(SourceKind::Wifi) == 1, "SourceKind::Wifi is 1 on the wire");
+static_assert(static_cast<uint8_t>(SourceKind::Ble) == 2, "SourceKind::Ble is 2 on the wire");
+static_assert(static_cast<uint8_t>(SourceKind::Ieee802154) == 3, "SourceKind::Ieee802154 is 3 on the wire");
+static_assert(static_cast<uint8_t>(Band::Unknown) == 0, "Band::Unknown is 0 on the wire");
+static_assert(static_cast<uint8_t>(Band::Band2_4GHz) == 1, "Band::Band2_4GHz is 1 on the wire");
+static_assert(static_cast<uint8_t>(Band::Band5GHz) == 2, "Band::Band5GHz is 2 on the wire");
 
 // One emitter matched by one detector. Repeat sightings of the same emitter
 // by the same detector update this record (count, rssi, lastSeen) rather

@@ -61,7 +61,7 @@ are in `src/SdLogLogic.h` (host-tested); the card handling is in
 Run from `devices/lilygo-layerwand/test/`:
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../src -o tests_tdongle_c5_bringup test_tdongle_c5_bringup/test_tdongle_c5_bringup.cpp ../src/BringUpLogic.cpp ../src/SdLogLogic.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../../../sensors/src -I../src -o tests_tdongle_c5_bringup test_tdongle_c5_bringup/test_tdongle_c5_bringup.cpp ../src/BringUpLogic.cpp ../src/SdLogLogic.cpp
 ./tests_tdongle_c5_bringup
 ```
 

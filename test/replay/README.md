@@ -1,5 +1,10 @@
 # Sensor replay harness (BLE detection pipeline)
 
+This is the application integration replay: it follows each observation past
+the sensor output into LayerTime's event log and alert policy. The public
+replay, which stops at the sensor output, lives with the sensor library in
+`sensors/test/test_public_replay`.
+
 A deterministic, host-only harness that replays recorded or synthetic BLE
 observations through the **real** LayerTime detection code and checks the
 result. It exists because a watch that went quiet in the field could not be
@@ -8,9 +13,11 @@ advertisement does or does not produce the expected detection.
 
 ## What it drives (no reimplementation)
 
-- `core/logic/BleAdvertClassifier` - signature matching.
-- `core/logic/ReconSignatures`, `core/logic/ReconSelection` - the tables and
-  the scan-scope rules.
+- `core/logic/ReconClassification` - core's classification entry point,
+  which runs the LayerTime-Sensors BLE classifier and signature tables
+  (`sensors/src/lts`) on each observation.
+- `core/logic/ReconSelection` - the scan-scope rules that decide which
+  detectors a selection enables.
 - `core/logic/MonitorEventLog` + `core/logic/AlertPolicy` - the stateful
   history: one record per (detector, sourceId), repeat-in-place, strongest
   confidence kept, capacity eviction, alert policy.

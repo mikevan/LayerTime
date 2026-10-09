@@ -18,8 +18,9 @@
 #pragma once
 
 // Recon acquisition on the T-Dongle-C5: the Wi-Fi promiscuous capture and
-// the NimBLE passive scan, handed to the core classifiers
-// (src/core/logic/WifiFrameClassifier, BleAdvertClassifier), plus the six
+// the NimBLE passive scan, handed to core's classification entry point
+// (src/core/logic/ReconClassification, which runs the LayerTime-Sensors
+// classifiers), plus the six
 // radio primitives core's ReconScheduler drives (src/core/ports/ReconRadio).
 //
 // This is the C5's Recon acquisition, ported in Slice 1 Increment 2A from
@@ -52,7 +53,7 @@
 
 #include "core/logic/ReconCandidate.h"
 #include "core/logic/ReconScheduler.h"
-#include "core/logic/WifiFrameClassifier.h"
+#include "core/logic/ReconClassification.h"
 #include "core/model/MonitorEvent.h"
 #include "core/ports/ReconRadio.h"
 

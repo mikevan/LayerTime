@@ -1,7 +1,8 @@
 // LayerTime deterministic sensor replay harness - BLE detection pipeline.
 //
-// Drives the REAL production code: core/logic/BleAdvertClassifier for
-// classification and core/logic/MonitorEventLog (+ AlertPolicy) for the
+// Drives the REAL production code: core's classification entry point
+// (core/logic/ReconClassification, which runs the LayerTime-Sensors BLE
+// classifier) and core/logic/MonitorEventLog (+ AlertPolicy) for the
 // stateful history. No detection logic is reimplemented here. This file only:
 //   1. records an observation (the bytes + metadata one receiver saw),
 //   2. adapts it to the production BleAdvertSource through the same two
@@ -20,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "core/logic/BleAdvertClassifier.h"
+#include "core/logic/ReconClassification.h"
 #include "core/logic/MonitorEventLog.h"
 
 namespace layertime {

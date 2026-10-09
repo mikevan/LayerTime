@@ -3,7 +3,7 @@
 // Each case feeds recorded/synthetic observations through the REAL classifier
 // and the REAL per-receiver MonitorEventLog (see replay.h) and checks the
 // normalized result. Expected outcomes are derived from documented rules:
-//   - the BLE signature table (core/logic/ReconSignatures.h),
+//   - the BLE signature table (LayerTime-Sensors, sensors/src/lts/Signatures.h),
 //   - the MonitorEventLog contract (its header: one record per
 //     (detector, sourceId); repeat updates in place and keeps the strongest
 //     confidence; capacity 40, oldest dropped; clear() keeps the serial),

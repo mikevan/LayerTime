@@ -3,7 +3,7 @@
 // screen's ages, and one Recon results entry.
 //
 // Run from devices/lilygo-s3plus/test/:
-//   g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../src -o tests_s3plus_text test_s3plus_text/test_s3plus_text.cpp ../src/ui/TextFormat.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/GeoGrid.cpp ../src/gnss/Solar.cpp
+//   g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../../../sensors/src -I../src -o tests_s3plus_text test_s3plus_text/test_s3plus_text.cpp ../src/ui/TextFormat.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/GeoGrid.cpp ../src/gnss/Solar.cpp
 //   ./tests_s3plus_text
 
 #include "check.h"

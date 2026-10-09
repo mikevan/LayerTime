@@ -29,9 +29,9 @@
 // The T-Dongle-C5 (devices/lilygo-layerwand/src/C5ReconRadio) is the implementation.
 //
 // Frame and advertisement acquisition is not part of this port. A platform
-// hands what its radios receive to the core classifiers itself
-// (logic/WifiFrameClassifier, logic/BleAdvertClassifier) and delivers the
-// candidates through MonitorSource::setCandidateSink.
+// hands what its radios receive to core's classification entry point itself
+// (logic/ReconClassification, which runs the LayerTime-Sensors classifiers)
+// and delivers the candidates through MonitorSource::setCandidateSink.
 
 #include <stdint.h>
 

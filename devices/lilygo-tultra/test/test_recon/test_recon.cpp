@@ -30,6 +30,10 @@
 // Since Phase 0 Step 3 the classifiers and tables checked below live in
 // src/core/logic. The expectations are unchanged; only the namespace moved.
 using namespace layertime::recon;
+// Since layout step 5 the signature tables and matchers are the sensor
+// library's (sensors/src/lts, namespace lts), reached here through
+// ReconService's core include. The expectations are unchanged.
+using namespace lts;
 
 namespace {
 

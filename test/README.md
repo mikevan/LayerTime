@@ -3,7 +3,7 @@
 No IDE, no framework, no platform. One compiler invocation.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests test_geogrid/test_geogrid.cpp ../src/core/logic/GeoGrid.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests test_geogrid/test_geogrid.cpp ../src/core/logic/GeoGrid.cpp
 ./tests
 ```
 
@@ -16,8 +16,8 @@ One case in isolation, which is how the density tooling works:
 ## Coverage and density
 
 ```
-g++ -std=c++17 -O0 -g --coverage -I. -I../src -c ../src/core/logic/GeoGrid.cpp -o GeoGrid.o
-g++ -std=c++17 -O0 -g --coverage -I. -I../src -c test_geogrid/test_geogrid.cpp -o tests.o
+g++ -std=c++17 -O0 -g --coverage -I. -I../src -I../sensors/src -c ../src/core/logic/GeoGrid.cpp -o GeoGrid.o
+g++ -std=c++17 -O0 -g --coverage -I. -I../src -I../sensors/src -c test_geogrid/test_geogrid.cpp -o tests.o
 g++ --coverage GeoGrid.o tests.o -o test_cov
 python3 density.py
 ```
@@ -37,7 +37,7 @@ types it will be adapted from. Run from `test/`, because the vectors are read
 from `../contracts/vectors/`.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_core test_core_model/test_core_model.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_core test_core_model/test_core_model.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_core
 ```
 
@@ -67,47 +67,55 @@ module on its own, with no stubs, which is also the proof that core needs
 nothing from the platform. `test_layertime_core` uses fake ports. Run from
 `test/`.
 
+Since layout step 5 the detectors themselves (the BLE and Wi-Fi classifiers
+and their signature tables) are LayerTime-Sensors, the separate library
+checked out as the submodule at `sensors/`; their own suites live in
+`sensors/test/` and run with `sensors/tools/run_tests.sh`. Every command
+below adds `-I../sensors/src`, because core's model uses the library's
+Confidence, SourceKind, and Band. `test_recon_classification` covers core's
+side of the seam (the detector mapping and the selection-to-detector-set
+translation), and `test_sensor_equivalence` proves the extraction changed no
+detection: it replays a fixed corpus and compares every candidate against
+the output recorded from 894b508, before the move.
+
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_decl_advice test_declination_advice/test_declination_advice.cpp ../src/core/logic/DeclinationAdvice.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_decl_advice test_declination_advice/test_declination_advice.cpp ../src/core/logic/DeclinationAdvice.cpp
 ./tests_decl_advice
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_recon_selection test_recon_selection/test_recon_selection.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_recon_selection test_recon_selection/test_recon_selection.cpp ../src/core/logic/ReconSelection.cpp
 ./tests_recon_selection
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_recon_signatures test_recon_signatures/test_recon_signatures.cpp ../src/core/logic/ReconSignatures.cpp
-./tests_recon_signatures
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_recon_classification test_recon_classification/test_recon_classification.cpp ../src/core/logic/ReconClassification.cpp ../src/core/logic/ReconSelection.cpp ../sensors/src/lts/*.cpp
+./tests_recon_classification
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_wifi_classifier test_wifi_classifier/test_wifi_classifier.cpp ../src/core/logic/WifiFrameClassifier.cpp ../src/core/logic/ReconSignatures.cpp
-./tests_wifi_classifier
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_sensor_equivalence test_sensor_equivalence/test_sensor_equivalence.cpp ../src/core/logic/ReconClassification.cpp ../src/core/logic/ReconSelection.cpp ../sensors/src/lts/*.cpp
+./tests_sensor_equivalence
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_ble_classifier test_ble_classifier/test_ble_classifier.cpp ../src/core/logic/BleAdvertClassifier.cpp ../src/core/logic/ReconSignatures.cpp ../src/core/logic/ReconSelection.cpp
-./tests_ble_classifier
-
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_alert_policy test_alert_policy/test_alert_policy.cpp ../src/core/logic/AlertPolicy.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_alert_policy test_alert_policy/test_alert_policy.cpp ../src/core/logic/AlertPolicy.cpp
 ./tests_alert_policy
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_recon_scheduler test_recon_scheduler/test_recon_scheduler.cpp ../src/core/logic/ReconScheduler.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_recon_scheduler test_recon_scheduler/test_recon_scheduler.cpp ../src/core/logic/ReconScheduler.cpp ../src/core/logic/ReconSelection.cpp
 ./tests_recon_scheduler
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_recon_stage_log test_recon_stage_log/test_recon_stage_log.cpp ../src/core/logic/ReconStageLog.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_recon_stage_log test_recon_stage_log/test_recon_stage_log.cpp ../src/core/logic/ReconStageLog.cpp
 ./tests_recon_stage_log
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_mesh_conversations test_mesh_conversations/test_mesh_conversations.cpp ../src/core/logic/MeshConversations.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_mesh_conversations test_mesh_conversations/test_mesh_conversations.cpp ../src/core/logic/MeshConversations.cpp
 ./tests_mesh_conversations
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_detection_csv test_detection_csv/test_detection_csv.cpp ../src/core/logic/DetectionCsv.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_detection_csv test_detection_csv/test_detection_csv.cpp ../src/core/logic/DetectionCsv.cpp
 ./tests_detection_csv
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_monitor_event_log test_monitor_event_log/test_monitor_event_log.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_monitor_event_log test_monitor_event_log/test_monitor_event_log.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/ReconSelection.cpp
 ./tests_monitor_event_log
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_layertime_core test_layertime_core/test_layertime_core.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_layertime_core test_layertime_core/test_layertime_core.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_layertime_core
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_mesh_commands test_mesh_commands/test_mesh_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_mesh_commands test_mesh_commands/test_mesh_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_mesh_commands
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_settings_commands test_settings_commands/test_settings_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_settings_commands test_settings_commands/test_settings_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_settings_commands
 ```
 
@@ -141,13 +149,13 @@ lock never being held around a command that reaches the radios; and rule 2's
 one outstanding request on the Node (`LinkPipe`).
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_link_codec test_link_codec/test_link_codec.cpp ../src/core/link/LinkCodec.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_codec test_link_codec/test_link_codec.cpp ../src/core/link/LinkCodec.cpp
 ./tests_link_codec
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_link_vectors_mc test_link_vectors_mc/test_link_vectors_mc.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_vectors_mc test_link_vectors_mc/test_link_vectors_mc.cpp
 ./tests_link_vectors_mc
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_link_server test_link_server/test_link_server.cpp ../src/core/link/LinkServer.cpp ../src/core/link/ChangeTracker.cpp ../src/core/link/LinkCodec.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_server test_link_server/test_link_server.cpp ../src/core/link/LinkServer.cpp ../src/core/link/ChangeTracker.cpp ../src/core/link/LinkCodec.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
 ./tests_link_server
 ```
 
@@ -166,6 +174,6 @@ folders. Run from `test/`, because it reads `../src` and
 `../devices/lilygo-tultra/src`.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -o tests_boundary test_boundary/test_boundary.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_boundary test_boundary/test_boundary.cpp
 ./tests_boundary
 ```

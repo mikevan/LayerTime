@@ -41,10 +41,8 @@
 #include <vector>
 
 #include "check.h"
-#include "core/logic/BleAdvertClassifier.h"
+#include "core/logic/ReconClassification.h"
 #include "core/logic/ReconSelection.h"
-#include "core/logic/ReconSignatures.h"
-#include "core/logic/WifiFrameClassifier.h"
 
 using namespace layertime;
 
@@ -138,29 +136,29 @@ std::vector<Advert> bleCorpus()
     }
     for (uint8_t sub : {0x12, 0x1E, 0x07, 0x10}) {
         Advert a = make("", nullptr);
-        a.mfg.push_back(mfgRecord(recon::kAppleCompanyId, {sub, 0x19}));
+        a.mfg.push_back(mfgRecord(lts::kAppleCompanyId, {sub, 0x19}));
         v.push_back(a);
     }
     {
         Advert a = make("", nullptr);
-        a.mfg.push_back(mfgRecord(recon::kAppleCompanyId, {}));
+        a.mfg.push_back(mfgRecord(lts::kAppleCompanyId, {}));
         a.mfg.push_back(std::string(1, '\x4C'));
         a.mfg.push_back(std::string());
         v.push_back(a);
     }
     for (const char *n : {"", "Penguin-123", "FS Ext Battery", "1234567890", "123456789", "Other"}) {
         Advert a = make(n, nullptr);
-        a.mfg.push_back(mfgRecord(recon::kXuntongCompanyId, {0x01}));
+        a.mfg.push_back(mfgRecord(lts::kXuntongCompanyId, {0x01}));
         v.push_back(a);
     }
     {
         Advert a = make("", nullptr);
-        a.mfg.push_back(mfgRecord(recon::kAppleCompanyId, {0x12}));
-        a.mfg.push_back(mfgRecord(recon::kXuntongCompanyId, {}));
+        a.mfg.push_back(mfgRecord(lts::kAppleCompanyId, {0x12}));
+        a.mfg.push_back(mfgRecord(lts::kXuntongCompanyId, {}));
         a.uuids = {0xFEED, 0x3081};
         v.push_back(a);
     }
-    for (const auto &sig : recon::kOuiSignatures) {
+    for (const auto &sig : lts::kOuiSignatures) {
         uint8_t addr[6] = {sig.oui[0], sig.oui[1], sig.oui[2], 0x01, 0x02, 0x03};
         v.push_back(make("", addr));
         Advert b = make("Cam", addr);
@@ -174,8 +172,8 @@ std::vector<Advert> bleCorpus()
         a.name = names[rng.below(5)];
         for (uint8_t &b : a.address) b = static_cast<uint8_t>(rng.next());
         if (rng.below(3) == 0) {
-            const auto &sig = recon::kOuiSignatures[rng.below(
-                sizeof(recon::kOuiSignatures) / sizeof(recon::kOuiSignatures[0]))];
+            const auto &sig = lts::kOuiSignatures[rng.below(
+                sizeof(lts::kOuiSignatures) / sizeof(lts::kOuiSignatures[0]))];
             memcpy(a.address, sig.oui, 3);
         }
         a.rssi = static_cast<int8_t>(-30 - static_cast<int>(rng.below(70)));
@@ -183,8 +181,8 @@ std::vector<Advert> bleCorpus()
         for (uint32_t m = 0; m < nm; ++m) {
             std::string rec;
             const uint32_t pick = rng.below(4);
-            const uint16_t company = pick == 0   ? recon::kAppleCompanyId
-                                     : pick == 1 ? recon::kXuntongCompanyId
+            const uint16_t company = pick == 0   ? lts::kAppleCompanyId
+                                     : pick == 1 ? lts::kXuntongCompanyId
                                                  : static_cast<uint16_t>(rng.next());
             const uint32_t len = rng.below(9);
             rec.push_back(static_cast<char>(company & 0xFF));
@@ -217,7 +215,7 @@ void runBle()
         for (size_t i = 0; i < corpus.size(); ++i) {
             const Advert &a = corpus[i];
             char printed[18];
-            recon::formatMac(printed, sizeof(printed), a.address);
+            lts::formatMac(printed, sizeof(printed), a.address);
             recon::BleAdvertSource src;
             src.name = a.name.data();
             src.nameLength = a.name.size();
@@ -292,7 +290,7 @@ std::vector<Frame> wifiCorpus()
     const uint8_t pwn[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD};
     add(beacon(pwn, "pwn", 3, false), 5);
     // Every OUI signature as a beacon BSSID.
-    for (const auto &sig : recon::kOuiSignatures) {
+    for (const auto &sig : lts::kOuiSignatures) {
         const uint8_t b[6] = {sig.oui[0], sig.oui[1], sig.oui[2], 0x10, 0x20, 0x30};
         add(beacon(b, "net", 3, true), 5);
     }
@@ -340,8 +338,8 @@ std::vector<Frame> wifiCorpus()
         uint8_t mac[6];
         for (uint8_t &b : mac) b = static_cast<uint8_t>(rng.next());
         if (rng.below(3) == 0) {
-            const auto &sig = recon::kOuiSignatures[rng.below(
-                sizeof(recon::kOuiSignatures) / sizeof(recon::kOuiSignatures[0]))];
+            const auto &sig = lts::kOuiSignatures[rng.below(
+                sizeof(lts::kOuiSignatures) / sizeof(lts::kOuiSignatures[0]))];
             memcpy(mac, sig.oui, 3);
         }
         if (rng.below(8) == 0) memcpy(mac, rng.below(2) ? macA : multi, 6);

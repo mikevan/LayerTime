@@ -24,9 +24,9 @@
 // (src/platform/twatch_ultra/services/ReconService), per the S3 Plus port
 // rule. Both watches are ESP32-S3, so the radio code carries over as is.
 //
-// Detector behaviour is unchanged: classification is the core's
-// (WifiFrameClassifier, BleAdvertClassifier, ReconSignatures,
-// ReconSelection), and the schedule's timings are the Ultra's (650 ms channel
+// Detector behaviour is unchanged: classification goes through core
+// (ReconClassification and ReconSelection, which run the LayerTime-Sensors
+// classifiers), and the schedule's timings are the Ultra's (650 ms channel
 // hop over 1 to 11, 1.8 s BLE scan every 12 s, early warning 10 s active and
 // 60 s rest).
 //
@@ -41,7 +41,7 @@
 #include <stdint.h>
 
 #include "core/logic/ReconCandidate.h"
-#include "core/logic/WifiFrameClassifier.h"
+#include "core/logic/ReconClassification.h"
 #include "core/model/MonitorEvent.h"
 
 #include "EventLock.h"

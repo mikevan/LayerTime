@@ -18,10 +18,8 @@
 
 #include "S3PlusReconService.h"
 
-#include "core/logic/BleAdvertClassifier.h"
+#include "core/logic/ReconClassification.h"
 #include "core/logic/ReconSelection.h"
-#include "core/logic/ReconSignatures.h"
-#include "core/logic/WifiFrameClassifier.h"
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
@@ -44,7 +42,7 @@ constexpr uint32_t kBleCycleMs = 12000;
 constexpr uint32_t kBleScanMs = 1800;
 
 // Pulls one advertisement's manufacturer records and 16-bit UUIDs out of
-// NimBLE for the core classifier (src/core/logic/BleAdvertClassifier).
+// NimBLE for core's classification entry point (src/core/logic/ReconClassification).
 void bleManufacturerThunk(uint8_t index, std::string &out, const void *context)
 {
     out = static_cast<const NimBLEAdvertisedDevice *>(context)->getManufacturerData(index);
@@ -360,7 +358,7 @@ void S3PlusReconService::onPromiscuousPacket(void *buf, int type)
     // S3 Plus: the classifier state and the core's event history change
     // together, under the event-log lock (EventLock.h).
     EventLockGuard guard(*_lock);
-    // Frame classification lives in core (src/core/logic/WifiFrameClassifier).
+    // Frame classification goes through core (src/core/logic/ReconClassification).
     // This side only unpacks what the Wi-Fi driver handed over.
     _wifiClassifier.classify(packet->payload, packet->rx_ctrl.sig_len, packet->rx_ctrl.rssi,
                              packet->rx_ctrl.channel, millis(), wantsThunk, this,

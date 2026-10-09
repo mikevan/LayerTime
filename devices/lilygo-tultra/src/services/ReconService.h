@@ -23,7 +23,7 @@
 
 class NimBLEAdvertisedDevice;
 
-#include "core/logic/WifiFrameClassifier.h"
+#include "core/logic/ReconClassification.h"
 #include "core/model/MonitorEvent.h"
 
 // How much a match is worth trusting, and what Recon is pointed at.

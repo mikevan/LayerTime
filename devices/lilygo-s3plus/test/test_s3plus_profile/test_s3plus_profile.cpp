@@ -5,7 +5,7 @@
 // shared suite test/test_core_model, the same as for every other target.
 //
 // Run from devices/lilygo-s3plus/test/:
-//   g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../src -o tests_s3plus_profile test_s3plus_profile/test_s3plus_profile.cpp
+//   g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../../../sensors/src -I../src -o tests_s3plus_profile test_s3plus_profile/test_s3plus_profile.cpp
 //   ./tests_s3plus_profile
 
 #include "check.h"

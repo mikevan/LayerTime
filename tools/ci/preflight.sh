@@ -2,7 +2,8 @@
 # LayerTime pre-flight gate. One script, run locally by contributors and by CI.
 #
 # PROFILES (pick one):
-#   --host    host unit suites + architecture boundary + sensor harness.
+#   --host    the sensor library suite (LayerTime-Sensors, isolated), host unit
+#             suites, architecture boundary, and sensor harness.
 #             Needs only a HOST C++ compiler (g++/clang++). No device toolchain.
 #   --full    everything in --host PLUS a build of the required firmware
 #             targets. This is the merge gate.
@@ -31,19 +32,27 @@ IFS=',' read -r -a TARGETS <<< "$targets"
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$here"
-while [ "$root" != "/" ] && [ ! -f "$root/src/core/logic/BleAdvertClassifier.cpp" ]; do root="$(dirname "$root")"; done
-[ -f "$root/src/core/logic/BleAdvertClassifier.cpp" ] || { echo "pre-flight: repository root not found." >&2; exit 2; }
+while [ "$root" != "/" ] && [ ! -f "$root/src/core/logic/ReconClassification.cpp" ]; do root="$(dirname "$root")"; done
+[ -f "$root/src/core/logic/ReconClassification.cpp" ] || { echo "pre-flight: repository root not found." >&2; exit 2; }
+# The sensor library is a submodule at sensors/. Stop with the fix, not with
+# a wall of missing-header errors, when it has not been fetched.
+if [ ! -f "$root/sensors/library.json" ] || [ ! -f "$root/sensors/src/lts/Detectors.h" ]; then
+  echo "pre-flight: LayerTime-Sensors is missing: sensors/ is empty or not checked out." >&2
+  echo "pre-flight: fetch it with: git submodule update --init sensors" >&2
+  exit 2
+fi
 harness=""; [ -f "$root/test/replay/test_sensor_replay.cpp" ] && harness="$root/test/replay"
 
 CXX="${CXX:-g++}"; FLAGS="-std=c++17 -O0 -Wall -Wextra"
 out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT
 T="$root/test"; S="$root/src"; L="$S/core/logic"; A="$S/core/app"; K="$S/core/link"
+Z="$root/sensors/src"; ZS=("$Z"/lts/*.cpp)
 logdir="$root/tools/ci/logs"; mkdir -p "$logdir"
 PASS=(); FAIL=(); NOTRUN=()
 
 host_check() { # name, sources...
   local name="$1"; shift
-  if ! "$CXX" $FLAGS -I"$T" -I"$S" ${harness:+-I"$harness"} -o "$out/$name" "$@" 2>"$out/$name.cc"; then
+  if ! "$CXX" $FLAGS -I"$T" -I"$S" -I"$Z" ${harness:+-I"$harness"} -o "$out/$name" "$@" 2>"$out/$name.cc"; then
     FAIL+=("$name (compile)"); return; fi
   if ! ( cd "$T" && "$out/$name" ) >"$out/$name.run" 2>&1; then
     FAIL+=("$name (run: $(tail -n1 "$out/$name.run"))"); return; fi
@@ -66,6 +75,24 @@ source_identity() {
   esac
 }
 
+# The sensor library's own commit when sensors/ is a submodule checkout (its
+# .git is a file pointing into the superproject's .git/modules), read without
+# running git, like source_identity.
+sensors_identity() {
+  local s="$root/sensors" gd head
+  if [ -f "$s/.git" ]; then
+    gd="$(sed -n 's/^gitdir: //p' "$s/.git" | tr -d '\r')"
+    case "$gd" in /*) ;; *) gd="$s/$gd";; esac
+    head="$(tr -d '\r\n' < "$gd/HEAD" 2>/dev/null)"
+    case "$head" in ref:*) head="$(tr -d '\r\n' < "$gd/${head#ref: }" 2>/dev/null)";; esac
+    echo "${head:-unknown} (submodule checkout; its working tree may hold uncommitted edits)"
+  elif [ -d "$s/.git" ]; then
+    echo "standalone clone at sensors/ (not the recorded submodule)"
+  else
+    echo "in-tree folder (not a submodule)"
+  fi
+}
+
 # ---------------- input manifest (source identity + toolchain) --------------
 manifest="$logdir/preflight_manifest.txt"
 {
@@ -77,6 +104,7 @@ manifest="$logdir/preflight_manifest.txt"
   echo "host_uname    = $(uname -srm)"
   echo "host_cxx      = $("$CXX" --version 2>/dev/null | head -n1)"
   echo "source_identity = $(source_identity)"
+  echo "sensors_identity = $(sensors_identity)"
   echo "# device dependency pins (not upgraded by the gate):"
   grep -hE '^\s*(https://|[a-z0-9_-]+/[A-Za-z0-9_-]+ @|platform = )' "$root/devices/lilygo-tultra/platformio.ini" 2>/dev/null | sed 's/^/  dep: /'
   echo "container_digest = $([ $use_docker -eq 1 ] && echo '(set when image is built)' || echo 'n/a (host execution)')"
@@ -89,14 +117,19 @@ echo "inputs recorded in: tools/ci/logs/preflight_manifest.txt"
 echo
 
 # ---------------- Tier 0: host checks (both profiles) -----------------------
+echo "Sensor library (LayerTime-Sensors, built and run in an isolated copy):"
+if bash "$root/sensors/tools/run_tests.sh" >"$out/sensors.log" 2>&1; then
+  PASS+=("sensors library ($(tail -n1 "$out/sensors.log"))")
+else
+  FAIL+=("sensors library (see tools/ci/logs/sensors.log)"); cp "$out/sensors.log" "$logdir/sensors.log"
+fi
+echo
 echo "Host unit suites + architecture boundary + sensor harness:"
 host_check geogrid            "$T/test_geogrid/test_geogrid.cpp" "$L/GeoGrid.cpp"
 host_check core_model         "$T/test_core_model/test_core_model.cpp" "$L/QuickMessages.cpp"
 host_check decl_advice        "$T/test_declination_advice/test_declination_advice.cpp" "$L/DeclinationAdvice.cpp"
 host_check recon_selection    "$T/test_recon_selection/test_recon_selection.cpp" "$L/ReconSelection.cpp"
-host_check recon_signatures   "$T/test_recon_signatures/test_recon_signatures.cpp" "$L/ReconSignatures.cpp"
-host_check wifi_classifier    "$T/test_wifi_classifier/test_wifi_classifier.cpp" "$L/WifiFrameClassifier.cpp" "$L/ReconSignatures.cpp"
-host_check ble_classifier     "$T/test_ble_classifier/test_ble_classifier.cpp" "$L/BleAdvertClassifier.cpp" "$L/ReconSignatures.cpp" "$L/ReconSelection.cpp"
+host_check recon_classification "$T/test_recon_classification/test_recon_classification.cpp" "$L/ReconClassification.cpp" "$L/ReconSelection.cpp" "${ZS[@]}"
 host_check alert_policy       "$T/test_alert_policy/test_alert_policy.cpp" "$L/AlertPolicy.cpp"
 host_check recon_scheduler    "$T/test_recon_scheduler/test_recon_scheduler.cpp" "$L/ReconScheduler.cpp" "$L/ReconSelection.cpp"
 host_check recon_stage_log    "$T/test_recon_stage_log/test_recon_stage_log.cpp" "$L/ReconStageLog.cpp"
@@ -110,10 +143,9 @@ host_check link_codec         "$T/test_link_codec/test_link_codec.cpp" "$K/LinkC
 host_check link_vectors_mc    "$T/test_link_vectors_mc/test_link_vectors_mc.cpp"
 host_check link_server        "$T/test_link_server/test_link_server.cpp" "$K/LinkServer.cpp" "$K/ChangeTracker.cpp" "$K/LinkCodec.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp"
 host_check boundary           "$T/test_boundary/test_boundary.cpp"
-host_check sensor_equivalence "$T/test_sensor_equivalence/test_sensor_equivalence.cpp" "$L/BleAdvertClassifier.cpp" "$L/WifiFrameClassifier.cpp" "$L/ReconSignatures.cpp" "$L/ReconSelection.cpp"
-if [ -n "$harness" ]; then host_check sensor_replay "$harness/test_sensor_replay.cpp" "$L/BleAdvertClassifier.cpp" "$L/ReconSignatures.cpp" "$L/ReconSelection.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp"
+host_check sensor_equivalence "$T/test_sensor_equivalence/test_sensor_equivalence.cpp" "$L/ReconClassification.cpp" "$L/ReconSelection.cpp" "${ZS[@]}"
+if [ -n "$harness" ]; then host_check sensor_replay "$harness/test_sensor_replay.cpp" "$L/ReconClassification.cpp" "$L/ReconSelection.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "${ZS[@]}"
 else FAIL+=("sensor_replay (harness not found)"); fi
-if [ -n "$harness" ] && [ -f "$harness/test_sensor_public.cpp" ]; then host_check sensor_public "$harness/test_sensor_public.cpp" "$L/BleAdvertClassifier.cpp" "$L/ReconSignatures.cpp" "$L/ReconSelection.cpp"; fi
 
 # ---------------- Tier 1: firmware build (full profile) ---------------------
 firmware_required=0; [ "$profile" = "full" ] && firmware_required=1
