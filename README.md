@@ -123,12 +123,12 @@ See [Build & flash (pioarduino)](#build--flash-pioarduino) below. It is the only
 The browser flasher serves one merged image, so the pieces PlatformIO produces have to be combined. From the repo root with the PlatformIO venv active:
 
 ```powershell
-.\support\make_flasher_bin.ps1 -Build
+.\devices\lilygo-tultra\tools\make_flasher_bin.ps1 -Build
 ```
 
 That writes `docs/firmware/layertime.bin` (~2.4 MB). Bump `version` in `docs/manifest.json`, commit both, and push — GitHub Pages serves `/docs` from `main`, so the push is the release.
 
-The offsets it uses come from `boards/lilygo-t-watch-ultra.json` (qio, 80 MHz, 16 MB) and LilyGoLib's factory partition table:
+The offsets it uses come from `devices/lilygo-tultra/boards/lilygo-t-watch-ultra.json` (qio, 80 MHz, 16 MB) and LilyGoLib's factory partition table:
 
 | Offset | Image |
 |---|---|
@@ -139,15 +139,15 @@ The offsets it uses come from `boards/lilygo-t-watch-ultra.json` (qio, 80 MHz, 1
 
 ## Hardware target
 
-This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_ultra` in `platformio.ini`), built on [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) (ESP32-S3, SX1262 LoRa, AXP2101 PMU, MIA-M10Q GNSS). The `platformio.ini` also carries environments for T-Watch-S3, T-LoRa-Pager, and the LilyGoLib emulator targets inherited from the base template, but LayerTime's own screens and services are written against the Ultra's hardware and are not verified on the other boards.
+This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_ultra` in `devices/lilygo-tultra/platformio.ini`), built on [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) (ESP32-S3, SX1262 LoRa, AXP2101 PMU, MIA-M10Q GNSS). The LilyGo template environments for the T-Watch-S3, T-LoRa-Pager, and the LilyGoLib emulator were removed in layout step 4. The other LayerTime targets (the S3 Plus, the LayerWand, and the Garmin tactix) are their own projects under `devices/`.
 
 ## Build & flash (pioarduino)
 
 This project builds against **[pioarduino](https://github.com/pioarduino/platform-espressif32)**, the community fork of `platform-espressif32` — not the stock PlatformIO ESP32 platform. `platformio.ini` pins it directly, so the fork is used whether or not you notice.
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/) and the **[pioarduino IDE](https://marketplace.visualstudio.com/items?itemName=pioarduino.pioarduino-ide)** extension (search the extension manager for "pioarduino ide").
-2. Open this project folder in VS Code and let it fetch the platform and dependencies. The first fetch is slow — it pulls the ESP32 toolchain plus about ten libraries.
-3. Confirm `default_envs = twatch_ultra` is uncommented in `platformio.ini` (it is, by default, in this repo).
+2. Open the `devices/lilygo-tultra` folder (not the repository root) in VS Code and let it fetch the platform and dependencies. The first fetch is slow — it pulls the ESP32 toolchain plus about ten libraries.
+3. Confirm `default_envs = twatch_ultra` in `devices/lilygo-tultra/platformio.ini` (it is the only environment).
 4. Build, then upload over USB. If the port won't open ("Access is denied" on Windows), make sure nothing else — most commonly an open Serial Monitor — has it locked.
 5. Use the Serial Monitor to watch boot/log output once flashed.
 
@@ -160,22 +160,20 @@ This project builds against **[pioarduino](https://github.com/pioarduino/platfor
 
 - `src/core/` — the LayerTime application itself, independent of any watch: the model, the application logic, and the ports a platform plugs into. It uses nothing but the C and C++ standard libraries.
   - `link/` — the LayerTime Link codec (`contracts/link.md`): the byte layouts, the Node-side dispatcher, and the test-build probe payloads. Shared by the C5 and, through the same vectors, by the Connect IQ app.
-- `src/platform/twatch_ultra/` — everything specific to the T-Watch Ultra:
+- `devices/lilygo-tultra/` — the T-Watch Ultra, the historical reference target, its own pioarduino project (see its `README.md`). Its `src/` holds everything specific to the watch:
   - `app/WatchApp.*` — wires the core, every service, and every screen together, and owns the settings-changed/mutual-exclusion logic.
   - `services/` — hardware/protocol logic (Battery, Clock, GPS, Recon, MeshService (MeshCore), MeshtasticService, SdCardService, SettingsService).
   - `ui/` — LVGL screens (WatchFace, GpsScreen, MappingScreen, MeshScreen, MeshtasticScreen, ReconScreen, SettingsScreen).
   - `model/` — the watch's own state and settings structs (`TUltraSettings`, `WatchState`).
   - the adapters that connect the core's ports to those services.
-- `devices/lilygo-layerwand/` — the LayerWand, the LayerTime Node on the LILYGO T-Dongle-C5 (Slice 1). Increment 0 bring-up: status LCD with the LayerTime owl, APA102 LED, BOOT button, PSRAM (`devices/lilygo-layerwand/tools/c5_owl_image.py` regenerates the owl bitmap from the T-Ultra SVG). Increment 1: `C5Link` serves the LayerTime Link over NimBLE. Its own pioarduino project with the `tdongle_c5` environments in `devices/lilygo-layerwand/platformio.ini`; `tdongle_c5_test` adds the Probe characteristic.
+- `devices/lilygo-layerwand/` — the LayerWand, the LayerTime Node on the LILYGO T-Dongle-C5 (Slice 1). Increment 0 bring-up: status LCD with the LayerTime owl, APA102 LED, BOOT button, PSRAM (`devices/lilygo-layerwand/tools/c5_owl_image.py` regenerates the owl bitmap from `assets/LayerTime-owl.svg`). Increment 1: `C5Link` serves the LayerTime Link over NimBLE. Its own pioarduino project with the `tdongle_c5` environments in `devices/lilygo-layerwand/platformio.ini`; `tdongle_c5_test` adds the Probe characteristic.
 - `devices/garmin-tactix/` — the LayerTime Connect IQ Device App for the Garmin tactix 8 AMOLED (Slice 1). Increment 1: finds the C5, keeps the link, shows the heartbeat, pings (`devices/garmin-tactix/source/link/`). `devices/garmin-tactix/source/link/LinkVectors.mc` is generated by `tools/gen_link_vectors_mc.py` from the contract vectors.
-- `boards/` — board definitions not shipped by the platform (the T-Watch Ultra, T-Watch S3, and T-LoRa Pager). The LayerWand's is in `devices/lilygo-layerwand/boards/`.
-- `tools/pioarduino-platform-55.03.36-1-lt1/` — the T-Ultra build platform (pioarduino 55.03.36-1, Arduino core 3.3.6) carried in-tree with a one-line bootstrap patch; see its `LAYERTIME-PATCH.md`.
+- `devices/<manufacturer>-<device>/` — every device target keeps its own board definitions, pin variants, and build platform. The T-Ultra's build platform (pioarduino 55.03.36-1, Arduino core 3.3.6, with a one-line bootstrap patch) is `devices/lilygo-tultra/tools/pioarduino-platform-55.03.36-1-lt1/`.
 - `contracts/` — the canonical LayerTime application model and the LayerTime Link wire format (`link.md`); every target binds to them.
 - `test/` — host-side tests built with plain g++; see `test/README.md`.
-- `variants/lilygo_twatch_ultra/` — board pin definitions.
 - `assets/` — source SVG assets (owl logo) and README imagery.
 - `docs/` — the browser flasher published by GitHub Pages (`index.html`, `manifest.json`, `firmware/`).
-- `support/` — maintainer scripts, including `make_flasher_bin.ps1`.
+- `support/` — maintainer scripts (GitHub issue creation). The flasher merge script is `devices/lilygo-tultra/tools/make_flasher_bin.ps1`.
 
 ## License
 

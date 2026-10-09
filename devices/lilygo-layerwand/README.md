@@ -70,6 +70,6 @@ suite, `test_recon_scheduler`, stays with the root suites in `test/`.
 
 ## Regenerating the owl
 
-`tools/c5_owl_image.py` renders the owl from the T-Watch Ultra's SVG
-(`src/platform/twatch_ultra/ui/OwlLogo.cpp`) into `src/C5OwlImage.cpp`. If the
+`tools/c5_owl_image.py` renders the owl from `assets/LayerTime-owl.svg` at
+the repository root into `src/C5OwlImage.cpp`. If the
 owl changes, recheck the eye and lens boxes in `src/C5OwlImage.h`.

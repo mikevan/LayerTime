@@ -1,9 +1,15 @@
 // The core/platform boundary, checked on the source tree itself. Added in
 // Phase 0 Step 7.
 //
-// Every #include under src/ is resolved the way the compiler resolves it,
-// and classified by the file it actually reaches, not by how its path is
-// spelled:
+// Since layout step 4 (2026-10-07) src/ holds only core, and the T-Watch
+// Ultra's platform code is its own folder, devices/lilygo-tultra/src/. The
+// rules are the same seven; "platform code" now means that folder, and
+// main.cpp is the one inside it. The LayerWand and the S3 Plus check their
+// own boundaries in their own test folders.
+//
+// Every #include under src/ and devices/lilygo-tultra/src/ is resolved the
+// way the compiler resolves it, and classified by the file it actually
+// reaches, not by how its path is spelled:
 //   * "quoted": the including file's own directory first, then the src/
 //     include root (the firmware build and these tests both put src/ on the
 //     include path).
@@ -12,7 +18,8 @@
 // So a core file writing "../model/Mesh.h" and one writing
 // "core/model/Mesh.h" are the same include, and both are core.
 //
-// Run from test/, like every other suite; the tree is read from ../src.
+// Run from test/, like every other suite; the trees are read from ../src and
+// ../devices/lilygo-tultra/src.
 
 #include "check.h"
 
@@ -27,7 +34,9 @@ namespace fs = std::filesystem;
 
 namespace {
 
+const fs::path kRepo = fs::weakly_canonical("..");
 const fs::path kSrc = fs::weakly_canonical("../src");
+const fs::path kUltraSrc = fs::weakly_canonical("../devices/lilygo-tultra/src");
 
 // Headers a core file may take from outside the project: the C and C++
 // standard library, and nothing else.
@@ -49,7 +58,7 @@ struct Include {
     fs::path target;     // resolved project file; empty when outside the project
 };
 
-std::string rel(const fs::path &p) { return fs::relative(p, kSrc).generic_string(); }
+std::string rel(const fs::path &p) { return fs::relative(p, kRepo).generic_string(); }
 
 bool under(const fs::path &p, const fs::path &dir)
 {
@@ -72,10 +81,12 @@ fs::path resolve(const fs::path &from, const std::string &name, bool quoted)
 std::vector<Include> scan()
 {
     std::vector<Include> out;
-    if (!fs::is_directory(kSrc)) return out;
     std::vector<fs::path> files;
-    for (const auto &e : fs::recursive_directory_iterator(kSrc))
-        if (e.is_regular_file()) files.push_back(fs::weakly_canonical(e.path()));
+    for (const fs::path &root : {kSrc, kUltraSrc}) {
+        if (!fs::is_directory(root)) continue;
+        for (const auto &e : fs::recursive_directory_iterator(root))
+            if (e.is_regular_file()) files.push_back(fs::weakly_canonical(e.path()));
+    }
     std::sort(files.begin(), files.end());
     for (const fs::path &f : files) {
         std::ifstream in(f);
@@ -109,15 +120,13 @@ void report(const Include &inc, const char *why)
 }
 
 const fs::path kCore = kSrc / "core";
-const fs::path kPlatform = kSrc / "platform";
-const fs::path kMain = kSrc / "main.cpp";
+const fs::path kPlatform = kUltraSrc;
+const fs::path kMain = kUltraSrc / "main.cpp";
 
-// The platform target a file belongs to (e.g. "twatch_ultra"), or "".
+// The platform target a file belongs to ("twatch_ultra"), or "".
 std::string targetOf(const fs::path &p)
 {
-    if (!under(p, kPlatform)) return "";
-    const fs::path r = fs::relative(p, kPlatform);
-    return r.begin()->generic_string();
+    return under(p, kUltraSrc) ? "twatch_ultra" : "";
 }
 
 } // namespace
@@ -159,8 +168,8 @@ void every_include_that_resolves_stays_inside_src()
 {
     int bad = 0;
     for (const Include &inc : scan()) {
-        if (inc.target.empty() || under(inc.target, kSrc)) continue;
-        report(inc, "leaves src");
+        if (inc.target.empty() || under(inc.target, kSrc) || under(inc.target, kUltraSrc)) continue;
+        report(inc, "leaves src and the Ultra's folder");
         ++bad;
     }
     CHECK_INT(0, bad);
@@ -174,13 +183,9 @@ void every_source_file_is_core_a_platform_target_or_main()
     for (const auto &e : fs::recursive_directory_iterator(kSrc)) {
         if (!e.is_regular_file()) continue;
         const fs::path f = fs::weakly_canonical(e.path());
-        // A target's files sit in a directory under platform/, never loose in it.
-        bool inTarget = false;
-        if (under(f, kPlatform)) {
-            const fs::path r = fs::relative(f, kPlatform);
-            inTarget = std::distance(r.begin(), r.end()) >= 2;
-        }
-        if (f == kMain || under(f, kCore) || inTarget) continue;
+        // Since layout step 4, src/ holds only core; every file in the
+        // Ultra's own folder (main.cpp included) is that target's.
+        if (under(f, kCore)) continue;
         fprintf(stderr, "      outside the layout: %s\n", rel(f).c_str());
         ++bad;
     }

@@ -20,10 +20,10 @@
 // MeshCore service's records were called MeshNode and MeshMessage, the same
 // names as the core model's, until Phase 0 Step 5 renamed them MeshCoreNode
 // and MeshCoreMessage; this must still compile with both in scope.
-#include "platform/twatch_ultra/services/MeshService.h"
-#include "platform/twatch_ultra/services/MeshtasticService.h"
+#include "../../devices/lilygo-tultra/src/services/MeshService.h"
+#include "../../devices/lilygo-tultra/src/services/MeshtasticService.h"
 #include "core/logic/MonitorEventLog.h"
-#include "platform/twatch_ultra/services/ReconService.h"
+#include "../../devices/lilygo-tultra/src/services/ReconService.h"
 #include "core/logic/QuickMessages.h"
 
 #include "core/model/Alert.h"
@@ -36,7 +36,7 @@
 #include "core/model/Settings.h"
 #include "core/model/ReconState.h"
 #include "core/model/Time.h"
-#include "platform/twatch_ultra/TUltraProfile.h"
+#include "../../devices/lilygo-tultra/src/TUltraProfile.h"
 
 // The core types are still named layertime::MeshNode and
 // layertime::MeshMessage here, and the MeshCore ones ::MeshCoreNode and

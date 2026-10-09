@@ -7,5 +7,6 @@ Claude outputs/
 devices/garmin-tactix/bin/
 devices/lilygo-s3plus/bin/
 devices/lilygo-layerwand/bin/
+devices/lilygo-tultra/bin/
 __pycache__/
 devices/garmin-tactix/developer_key
