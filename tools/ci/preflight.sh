@@ -110,6 +110,7 @@ host_check link_codec         "$T/test_link_codec/test_link_codec.cpp" "$K/LinkC
 host_check link_vectors_mc    "$T/test_link_vectors_mc/test_link_vectors_mc.cpp"
 host_check link_server        "$T/test_link_server/test_link_server.cpp" "$K/LinkServer.cpp" "$K/ChangeTracker.cpp" "$K/LinkCodec.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp"
 host_check boundary           "$T/test_boundary/test_boundary.cpp"
+host_check sensor_equivalence "$T/test_sensor_equivalence/test_sensor_equivalence.cpp" "$L/BleAdvertClassifier.cpp" "$L/WifiFrameClassifier.cpp" "$L/ReconSignatures.cpp" "$L/ReconSelection.cpp"
 if [ -n "$harness" ]; then host_check sensor_replay "$harness/test_sensor_replay.cpp" "$L/BleAdvertClassifier.cpp" "$L/ReconSignatures.cpp" "$L/ReconSelection.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp"
 else FAIL+=("sensor_replay (harness not found)"); fi
 if [ -n "$harness" ] && [ -f "$harness/test_sensor_public.cpp" ]; then host_check sensor_public "$harness/test_sensor_public.cpp" "$L/BleAdvertClassifier.cpp" "$L/ReconSignatures.cpp" "$L/ReconSelection.cpp"; fi
