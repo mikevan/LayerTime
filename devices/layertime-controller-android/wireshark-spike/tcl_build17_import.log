@@ -1,0 +1,25 @@
+﻿installed: versionCode=17 minSdk=26 targetSdk=34
+test files in the Downloads index (what the file picker shows under Downloads):
+  Row: 0 _display_name=lt_test_5frames.pcap
+  Row: 1 _display_name=lt_test_bulk_3000.pcap
+process started: pid 30650
+READY: tap COUNTER, then DECODE A CAPTURE FILE, then IMPORT CAPTURE FILE, and choose lt_test_5frames.pcap in Downloads. Then IMPORT ANOTHER FILE and choose lt_test_bulk_3000.pcap. Stay in the app until this block ends.
+10-11 04:00:02.105  1495  5300 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity} with LAUNCH_MULTIPLE from uid 2000 (BAL_ALLOW_PERMISSION) result code=0
+10-11 04:00:02.781  1495  1606 W ActivityTaskManager: Activity top resumed state loss timeout for ActivityRecord{98dd2a u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity t54}
+10-11 04:00:02.782  1495  1606 W ActivityTaskManager: Activity pause timeout for ActivityRecord{98dd2a u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity t54}
+10-11 04:00:06.347  1495  1597 E ActivityTaskManager: tclActivityMemManager: but null ActivityRecord{98dd2a u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity t54}
+10-11 04:00:34.740  1495  4559 E ActivityTaskManager: setVisibility=true while transition is not collecting or finishing ActivityRecord{98dd2a u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity t54} caller=com.android.server.wm.ActivityRecord.setVisibility:5466 com.android.server.wm.TaskFragment.resumeTopActivity:1531 com.android.server.wm.Task.resumeTopActivityInnerLocked:5315 com.android.server.wm.Task.resumeTopActivityUncheckedLocked:5245 com.android.server.wm.Task.resumeTopActivityUncheckedLocked:5296 com.android.server.wm.RootWindowContainer.lambda$applySleepTokens$20:2436 com.android.server.wm.RootWindowContainer.$r8$lambda$9xL80GDJRExKql35hTmQVg_ieD8:0 com.android.server.wm.RootWindowContainer$$ExternalSyntheticLambda10.accept:0 
+10-11 04:00:36.827  1495  4559 E ActivityTaskManager: tclActivityMemManager: but null ActivityRecord{98dd2a u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity t54}
+10-11 04:01:02.158  1495  2922 I ActivityTaskManager: START u0 {act=android.intent.action.OPEN_DOCUMENT typ=*/* cmp=com.google.android.documentsui/com.android.documentsui.picker.PickActivity (has extras)} with LAUNCH_MULTIPLE from uid 10273 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-11 04:01:02.816  1495  1603 I ActivityTaskManager: Displayed com.google.android.documentsui/com.android.documentsui.picker.PickActivity for user 0: +662ms
+10-11 04:01:03.318  1495  2922 E ActivityTaskManager: tclActivityMemManager: but null ActivityRecord{8a296b7 u0 com.google.android.documentsui/com.android.documentsui.picker.PickActivity t54}
+WAITING: 0 of 2 imports done after 62 s. App is running. Next file: lt_test_5frames.pcap.
+10-11 04:01:20.397  1495  4554 E ActivityTaskManager: tclActivityMemManager: but null ActivityRecord{98dd2a u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity t54}
+WAITING: 0 of 2 imports done after 123 s. App is running. Next file: lt_test_5frames.pcap.
+10-11 04:02:24.532  1495  2939 I ActivityTaskManager: START u0 {act=android.intent.action.OPEN_DOCUMENT typ=*/* cmp=com.google.android.documentsui/com.android.documentsui.picker.PickActivity (has extras)} with LAUNCH_MULTIPLE from uid 10273 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-11 04:02:25.116  1495  1603 I ActivityTaskManager: Displayed com.google.android.documentsui/com.android.documentsui.picker.PickActivity for user 0: +586ms
+10-11 04:02:25.628  1495  2939 E ActivityTaskManager: tclActivityMemManager: but null ActivityRecord{7b0fa65 u0 com.google.android.documentsui/com.android.documentsui.picker.PickActivity t54}
+10-11 04:02:30.236  1495  1648 E ActivityTaskManager: tclActivityMemManager: but null ActivityRecord{98dd2a u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity t54}
+10-11 04:03:07.828  1495  1648 I ActivityTaskManager: Activity reported stop, but no longer stopping: ActivityRecord{98dd2a u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity t54 f}} DESTROYING
+PROCESS ENDED after 185 s (closed or killed). Crash buffer follows if there was a crash:
+imports finished: 0 of 2; wall time 185 s

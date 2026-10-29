@@ -1,0 +1,115 @@
+﻿APK size on build machine: 50,618,384 bytes (versionCode 16)
+installed: versionCode=16 minSdk=26 targetSdk=34
+===== RUN: report + 20,000 decodes, normal (no GC), warm-up 4000 =====
+10-11 03:18:38.725 26997 27087 I LTWS_DIAG: PHASE load
+10-11 03:18:39.114 26997 27087 I LTWS_DIAG: PHASE init
+10-11 03:18:40.406 26997 27087 I LTWS_DIAG: PHASE decode
+10-11 03:18:40.595 26997 27087 I LTWS_DIAG: PHASE tree
+10-11 03:18:40.722 26997 27087 I LTWS_DIAG: PHASE pcap
+10-11 03:18:40.854 26997 27087 I LTWS_DIAG: PHASE warmup
+10-11 03:18:45.859 26997 27087 I LTWS_DIAG: HEARTBEAT warmup 797/4000 (19%) 159/s elapsed 5 s eta 20 s
+10-11 03:18:50.865 26997 27087 I LTWS_DIAG: HEARTBEAT warmup 1551/4000 (38%) 151/s elapsed 10 s eta 16 s
+10-11 03:18:55.868 26997 27087 I LTWS_DIAG: HEARTBEAT warmup 2307/4000 (57%) 151/s elapsed 15 s eta 11 s
+10-11 03:19:00.873 26997 27087 I LTWS_DIAG: HEARTBEAT warmup 3059/4000 (76%) 150/s elapsed 20 s eta 6 s
+10-11 03:19:05.876 26997 27087 I LTWS_DIAG: HEARTBEAT warmup 3812/4000 (95%) 151/s elapsed 25 s eta 1 s
+10-11 03:19:07.133 26997 27087 I LTWS_DIAG: HEARTBEAT warmup 4000/4000 (100%) 149/s elapsed 26 s eta 0 s
+10-11 03:19:07.245 26997 27087 I LTWS_DIAG: PHASE stability
+10-11 03:19:12.252 26997 27087 I LTWS_DIAG: HEARTBEAT stability 736/20000 (3%) 147/s elapsed 5 s eta 131 s
+10-11 03:19:17.255 26997 27087 I LTWS_DIAG: HEARTBEAT stability 1468/20000 (7%) 146/s elapsed 10 s eta 126 s
+10-11 03:19:21.020 26997 27087 I LTWS_DIAG: progress     2000    13.8 s  PSS 214,594 (java 11,012, native 19,432, code 174,128, stack 684, gfx 0, other 4,800, sys 4,538) KB; nHeapAlloc 37,680 KB; RSS 296,156 KB | from baseline PSS +496 (java +564, native +0, code +0, gfx +0, other -72) KB; nHeapAlloc +0 KB; RSS +500 KB
+10-11 03:19:22.258 26997 27087 I LTWS_DIAG: HEARTBEAT stability 2181/20000 (10%) 143/s elapsed 15 s eta 123 s
+10-11 03:19:27.262 26997 27087 I LTWS_DIAG: HEARTBEAT stability 2925/20000 (14%) 149/s elapsed 20 s eta 117 s
+10-11 03:19:32.266 26997 27087 I LTWS_DIAG: HEARTBEAT stability 3665/20000 (18%) 148/s elapsed 25 s eta 112 s
+10-11 03:19:34.652 26997 27087 I LTWS_DIAG: progress     4000    27.4 s  PSS 215,170 (java 11,588, native 19,432, code 174,128, stack 684, gfx 0, other 4,800, sys 4,538) KB; nHeapAlloc 37,681 KB; RSS 296,732 KB | from baseline PSS +1,072 (java +1,140, native +0, code +0, gfx +0, other -72) KB; nHeapAlloc +1 KB; RSS +1,076 KB
+10-11 03:19:37.270 26997 27087 I LTWS_DIAG: HEARTBEAT stability 4383/20000 (21%) 143/s elapsed 30 s eta 107 s
+10-11 03:19:42.275 26997 27087 I LTWS_DIAG: HEARTBEAT stability 5115/20000 (25%) 146/s elapsed 35 s eta 102 s
+10-11 03:19:47.276 26997 27087 I LTWS_DIAG: HEARTBEAT stability 5850/20000 (29%) 147/s elapsed 40 s eta 97 s
+10-11 03:19:48.417 26997 27087 I LTWS_DIAG: progress     6000    41.2 s  PSS 215,780 (java 12,160, native 19,432, code 174,128, stack 684, gfx 0, other 4,800, sys 4,576) KB; nHeapAlloc 37,681 KB; RSS 297,304 KB | from baseline PSS +1,682 (java +1,712, native +0, code +0, gfx +0, other -72) KB; nHeapAlloc +1 KB; RSS +1,648 KB
+10-11 03:19:52.277 26997 27087 I LTWS_DIAG: HEARTBEAT stability 6571/20000 (32%) 144/s elapsed 45 s eta 92 s
+10-11 03:19:57.281 26997 27087 I LTWS_DIAG: HEARTBEAT stability 7309/20000 (36%) 147/s elapsed 50 s eta 87 s
+10-11 03:20:02.129 26997 27087 I LTWS_DIAG: progress     8000    54.9 s  PSS 215,283 (java 140, native 6,712, code 120,104, stack 216, gfx 0, other 4,076, sys 84,035) KB; nHeapAlloc 37,682 KB; RSS 217,772 KB | from baseline PSS +1,185 (java -10,308, native -12,720, code -54,024, gfx +0, other -796) KB; nHeapAlloc +2 KB; RSS -77,884 KB
+10-11 03:20:02.283 26997 27087 I LTWS_DIAG: HEARTBEAT stability 8022/20000 (40%) 143/s elapsed 55 s eta 82 s
+10-11 03:20:07.285 26997 27087 I LTWS_DIAG: HEARTBEAT stability 8755/20000 (43%) 147/s elapsed 60 s eta 77 s
+10-11 03:20:12.287 26997 27087 I LTWS_DIAG: HEARTBEAT stability 9490/20000 (47%) 147/s elapsed 65 s eta 72 s
+10-11 03:20:15.867 26997 27087 I LTWS_DIAG: progress    10000    68.6 s  PSS 215,863 (java 1,344, native 6,724, code 120,908, stack 228, gfx 0, other 4,452, sys 82,207) KB; nHeapAlloc 37,682 KB; RSS 219,836 KB | from baseline PSS +1,765 (java -9,104, native -12,708, code -53,220, gfx +0, other -420) KB; nHeapAlloc +2 KB; RSS -75,820 KB
+10-11 03:20:17.290 26997 27087 I LTWS_DIAG: HEARTBEAT stability 10210/20000 (51%) 144/s elapsed 70 s eta 67 s
+10-11 03:20:22.296 26997 27087 I LTWS_DIAG: HEARTBEAT stability 10950/20000 (54%) 148/s elapsed 75 s eta 62 s
+10-11 03:20:27.302 26997 27087 I LTWS_DIAG: HEARTBEAT stability 11693/20000 (58%) 148/s elapsed 80 s eta 57 s
+10-11 03:20:29.480 26997 27087 I LTWS_DIAG: progress    12000    82.2 s  PSS 216,087 (java 1,916, native 6,376, code 120,908, stack 228, gfx 0, other 4,452, sys 82,207) KB; nHeapAlloc 37,683 KB; RSS 220,160 KB | from baseline PSS +1,989 (java -8,532, native -13,056, code -53,220, gfx +0, other -420) KB; nHeapAlloc +3 KB; RSS -75,496 KB
+10-11 03:20:32.304 26997 27087 I LTWS_DIAG: HEARTBEAT stability 12414/20000 (62%) 144/s elapsed 85 s eta 52 s
+10-11 03:20:37.309 26997 27087 I LTWS_DIAG: HEARTBEAT stability 13148/20000 (65%) 147/s elapsed 90 s eta 47 s
+10-11 03:20:42.310 26997 27087 I LTWS_DIAG: HEARTBEAT stability 13885/20000 (69%) 147/s elapsed 95 s eta 42 s
+10-11 03:20:43.205 26997 27087 I LTWS_DIAG: progress    14000    96.0 s  PSS 216,667 (java 2,532, native 6,376, code 121,196, stack 244, gfx 0, other 4,476, sys 81,843) KB; nHeapAlloc 37,683 KB; RSS 220,984 KB | from baseline PSS +2,569 (java -7,916, native -13,056, code -52,932, gfx +0, other -396) KB; nHeapAlloc +3 KB; RSS -74,672 KB
+10-11 03:20:47.314 26997 27087 I LTWS_DIAG: HEARTBEAT stability 14606/20000 (73%) 144/s elapsed 100 s eta 37 s
+10-11 03:20:52.320 26997 27087 I LTWS_DIAG: HEARTBEAT stability 15347/20000 (76%) 148/s elapsed 105 s eta 32 s
+10-11 03:20:56.854 26997 27087 I LTWS_DIAG: progress    16000   109.6 s  PSS 217,235 (java 3,100, native 6,376, code 121,200, stack 244, gfx 0, other 4,476, sys 81,839) KB; nHeapAlloc 37,684 KB; RSS 221,560 KB | from baseline PSS +3,137 (java -7,348, native -13,056, code -52,928, gfx +0, other -396) KB; nHeapAlloc +4 KB; RSS -74,096 KB
+10-11 03:20:57.320 26997 27087 I LTWS_DIAG: HEARTBEAT stability 16068/20000 (80%) 144/s elapsed 110 s eta 27 s
+10-11 03:21:02.323 26997 27087 I LTWS_DIAG: HEARTBEAT stability 16806/20000 (84%) 148/s elapsed 115 s eta 22 s
+10-11 03:21:07.325 26997 27087 I LTWS_DIAG: HEARTBEAT stability 17546/20000 (87%) 148/s elapsed 120 s eta 17 s
+10-11 03:21:10.503 26997 27087 I LTWS_DIAG: progress    18000   123.2 s  PSS 217,950 (java 3,832, native 6,524, code 121,460, stack 256, gfx 0, other 5,272, sys 80,606) KB; nHeapAlloc 37,685 KB; RSS 223,660 KB | from baseline PSS +3,852 (java -6,616, native -12,908, code -52,668, gfx +0, other +400) KB; nHeapAlloc +5 KB; RSS -71,996 KB
+10-11 03:21:12.331 26997 27087 I LTWS_DIAG: HEARTBEAT stability 18270/20000 (91%) 145/s elapsed 125 s eta 12 s
+10-11 03:21:17.332 26997 27087 I LTWS_DIAG: HEARTBEAT stability 19006/20000 (95%) 147/s elapsed 130 s eta 7 s
+10-11 03:21:22.337 26997 27087 I LTWS_DIAG: HEARTBEAT stability 19741/20000 (98%) 147/s elapsed 135 s eta 2 s
+10-11 03:21:24.124 26997 27087 I LTWS_DIAG: HEARTBEAT stability 20000/20000 (100%) 145/s elapsed 137 s eta 0 s
+10-11 03:21:24.243 26997 27087 I LTWS_DIAG: progress    20000   137.0 s  PSS 218,542 (java 4,416, native 6,544, code 121,460, stack 260, gfx 0, other 5,292, sys 80,570) KB; nHeapAlloc 37,687 KB; RSS 224,304 KB | from baseline PSS +4,444 (java -6,032, native -12,888, code -52,668, gfx +0, other +420) KB; nHeapAlloc +7 KB; RSS -71,352 KB
+10-11 03:21:24.249 26997 27087 I LTWS_DIAG: PHASE done
+10-11 03:21:24.253 26997 27087 I LTWS_DIAG: build: 0.1.15-diag (code 16)
+10-11 03:21:24.256 26997 27087 I LTWS_DIAG: device: T434D, Android 14 (API 34), ABIs arm64-v8a,armeabi-v7a,armeabi
+10-11 03:21:24.258 26997 27087 I LTWS_DIAG: process: pid 26997, report #1 in this process, activity instance #1
+10-11 03:21:24.259 26997 27087 I LTWS_DIAG: 
+10-11 03:21:24.262 26997 27087 I LTWS_DIAG: APK on device: 49,432 KB; native libs 16 files, 129,100 KB; installed total 178,532 KB
+10-11 03:21:24.269 26997 27087 I LTWS_DIAG: baseline before libwireshark load: PSS 81,131 (java 10,796, native 7,172, code 55,016, stack 768, gfx 0, other 3,268, sys 4,111) KB; nHeapAlloc 11,950 KB; RSS 158,732 KB
+10-11 03:21:24.273 26997 27087 I LTWS_DIAG: System.loadLibrary(ltws + dependencies): 385.8 ms (this report)
+10-11 03:21:24.275 26997 27087 I LTWS_DIAG: native init: PERFORMED IN THIS REPORT, epan_init returned true
+10-11 03:21:24.277 26997 27087 I LTWS_DIAG:   epan_init: 1172.4 ms; total init: 1174.6 ms
+10-11 03:21:24.279 26997 27087 I LTWS_DIAG: libwireshark/epan version: 4.4.19
+10-11 03:21:24.285 26997 27087 I LTWS_DIAG: memory after init: PSS 219,713 (java 11,412, native 24,488, code 173,784, stack 768, gfx 0, other 4,756, sys 4,505) KB; nHeapAlloc 41,797 KB; RSS 299,872 KB
+10-11 03:21:24.285 26997 27087 I LTWS_DIAG: 
+10-11 03:21:24.286 26997 27087 I LTWS_DIAG: epan 4.4.19, 26 bytes
+10-11 03:21:24.287 26997 27087 I LTWS_DIAG: wlan.fc.type_subtype     : 0x000c
+10-11 03:21:24.290 26997 27087 I LTWS_DIAG: wlan.da                  : ff:ff:ff:ff:ff:ff
+10-11 03:21:24.291 26997 27087 I LTWS_DIAG: wlan.sa                  : 00:11:22:33:aa:bb
+10-11 03:21:24.294 26997 27087 I LTWS_DIAG: wlan.bssid               : 00:11:22:33:aa:bb
+10-11 03:21:24.295 26997 27087 I LTWS_DIAG: wlan.seq                 : 7
+10-11 03:21:24.296 26997 27087 I LTWS_DIAG: wlan.fixed.reason_code   : 0x0007
+10-11 03:21:24.298 26997 27087 I LTWS_DIAG: fields matching TShark 4.4.19: 6 of 6
+10-11 03:21:24.300 26997 27087 I LTWS_DIAG: reference: wireshark-spike/tshark_4.4.19_decode.txt
+10-11 03:21:24.303 26997 27087 I LTWS_DIAG: decode time, warm (20 runs): median 6283 us, min 5386 us, max 8025 us
+10-11 03:21:24.304 26997 27087 I LTWS_DIAG: 
+10-11 03:21:24.306 26997 27087 I LTWS_DIAG: STRUCTURED TREE: 72 fields (name, value, byte offset, length)
+10-11 03:21:24.308 26997 27087 I LTWS_DIAG:   wlan.fc.type_subtype = 0x000c @ offset 0 len 1
+10-11 03:21:24.310 26997 27087 I LTWS_DIAG:   wlan.da = ff:ff:ff:ff:ff:ff @ offset 4 len 6
+10-11 03:21:24.312 26997 27087 I LTWS_DIAG:   wlan.sa = 00:11:22:33:aa:bb @ offset 10 len 6
+10-11 03:21:24.314 26997 27087 I LTWS_DIAG:   wlan.bssid = 00:11:22:33:aa:bb @ offset 16 len 6
+10-11 03:21:24.316 26997 27087 I LTWS_DIAG:   wlan.seq = 7 @ offset 22 len 2
+10-11 03:21:24.318 26997 27087 I LTWS_DIAG:   wlan.fixed.reason_code = 0x0007 @ offset 24 len 2
+10-11 03:21:24.320 26997 27087 I LTWS_DIAG:   (full tree available; 72 nodes)
+10-11 03:21:24.320 26997 27087 I LTWS_DIAG: 
+10-11 03:21:24.322 26997 27087 I LTWS_DIAG: PCAP IMPORT: decoded fixture.pcap (66 bytes)
+10-11 03:21:24.324 26997 27087 I LTWS_DIAG:   frame	encap	caplen	type_subtype	sa	da	reason
+10-11 03:21:24.326 26997 27087 I LTWS_DIAG:   1	20	26	0x000c	00:11:22:33:aa:bb	ff:ff:ff:ff:ff:ff	0x0007
+10-11 03:21:24.327 26997 27087 I LTWS_DIAG:   frames decoded: 1
+10-11 03:21:24.328 26997 27087 I LTWS_DIAG: 
+10-11 03:21:24.334 26997 27087 I LTWS_DIAG: memory after fixture work: PSS 220,746 (java 11,636, native 24,968, code 174,128, stack 688, gfx 0, other 4,792, sys 4,534) KB; nHeapAlloc 43,846 KB; RSS 301,680 KB
+10-11 03:21:24.334 26997 27087 I LTWS_DIAG: 
+10-11 03:21:24.338 26997 27087 I LTWS_DIAG: STABILITY TEST: 20000 iterations, mode DECODE (full libwireshark), warm-up 4000, GC before each sample: no (normal run)
+10-11 03:21:24.345 26997 27087 I LTWS_DIAG: post-warm-up baseline (after 4000 iterations): PSS 214,098 (java 10,448, native 19,432, code 174,128, stack 684, gfx 0, other 4,872, sys 4,534) KB; nHeapAlloc 37,680 KB; RSS 295,656 KB
+10-11 03:21:24.355 26997 27087 I LTWS_DIAG:      2000    13.8 s  PSS 214,594 (java 11,012, native 19,432, code 174,128, stack 684, gfx 0, other 4,800, sys 4,538) KB; nHeapAlloc 37,680 KB; RSS 296,156 KB | from baseline PSS +496 (java +564, native +0, code +0, gfx +0, other -72) KB; nHeapAlloc +0 KB; RSS +500 KB
+10-11 03:21:24.365 26997 27087 I LTWS_DIAG:      4000    27.4 s  PSS 215,170 (java 11,588, native 19,432, code 174,128, stack 684, gfx 0, other 4,800, sys 4,538) KB; nHeapAlloc 37,681 KB; RSS 296,732 KB | from baseline PSS +1,072 (java +1,140, native +0, code +0, gfx +0, other -72) KB; nHeapAlloc +1 KB; RSS +1,076 KB
+10-11 03:21:24.375 26997 27087 I LTWS_DIAG:      6000    41.2 s  PSS 215,780 (java 12,160, native 19,432, code 174,128, stack 684, gfx 0, other 4,800, sys 4,576) KB; nHeapAlloc 37,681 KB; RSS 297,304 KB | from baseline PSS +1,682 (java +1,712, native +0, code +0, gfx +0, other -72) KB; nHeapAlloc +1 KB; RSS +1,648 KB
+10-11 03:21:24.386 26997 27087 I LTWS_DIAG:      8000    54.9 s  PSS 215,283 (java 140, native 6,712, code 120,104, stack 216, gfx 0, other 4,076, sys 84,035) KB; nHeapAlloc 37,682 KB; RSS 217,772 KB | from baseline PSS +1,185 (java -10,308, native -12,720, code -54,024, gfx +0, other -796) KB; nHeapAlloc +2 KB; RSS -77,884 KB
+10-11 03:21:24.396 26997 27087 I LTWS_DIAG:     10000    68.6 s  PSS 215,863 (java 1,344, native 6,724, code 120,908, stack 228, gfx 0, other 4,452, sys 82,207) KB; nHeapAlloc 37,682 KB; RSS 219,836 KB | from baseline PSS +1,765 (java -9,104, native -12,708, code -53,220, gfx +0, other -420) KB; nHeapAlloc +2 KB; RSS -75,820 KB
+10-11 03:21:24.406 26997 27087 I LTWS_DIAG:     12000    82.2 s  PSS 216,087 (java 1,916, native 6,376, code 120,908, stack 228, gfx 0, other 4,452, sys 82,207) KB; nHeapAlloc 37,683 KB; RSS 220,160 KB | from baseline PSS +1,989 (java -8,532, native -13,056, code -53,220, gfx +0, other -420) KB; nHeapAlloc +3 KB; RSS -75,496 KB
+10-11 03:21:24.416 26997 27087 I LTWS_DIAG:     14000    96.0 s  PSS 216,667 (java 2,532, native 6,376, code 121,196, stack 244, gfx 0, other 4,476, sys 81,843) KB; nHeapAlloc 37,683 KB; RSS 220,984 KB | from baseline PSS +2,569 (java -7,916, native -13,056, code -52,932, gfx +0, other -396) KB; nHeapAlloc +3 KB; RSS -74,672 KB
+10-11 03:21:24.426 26997 27087 I LTWS_DIAG:     16000   109.6 s  PSS 217,235 (java 3,100, native 6,376, code 121,200, stack 244, gfx 0, other 4,476, sys 81,839) KB; nHeapAlloc 37,684 KB; RSS 221,560 KB | from baseline PSS +3,137 (java -7,348, native -13,056, code -52,928, gfx +0, other -396) KB; nHeapAlloc +4 KB; RSS -74,096 KB
+10-11 03:21:24.437 26997 27087 I LTWS_DIAG:     18000   123.2 s  PSS 217,950 (java 3,832, native 6,524, code 121,460, stack 256, gfx 0, other 5,272, sys 80,606) KB; nHeapAlloc 37,685 KB; RSS 223,660 KB | from baseline PSS +3,852 (java -6,616, native -12,908, code -52,668, gfx +0, other +400) KB; nHeapAlloc +5 KB; RSS -71,996 KB
+10-11 03:21:24.446 26997 27087 I LTWS_DIAG:     20000   137.0 s  PSS 218,542 (java 4,416, native 6,544, code 121,460, stack 260, gfx 0, other 5,292, sys 80,570) KB; nHeapAlloc 37,687 KB; RSS 224,304 KB | from baseline PSS +4,444 (java -6,032, native -12,888, code -52,668, gfx +0, other +420) KB; nHeapAlloc +7 KB; RSS -71,352 KB
+10-11 03:21:24.447 26997 27087 I LTWS_DIAG: mismatched outputs: 0 of 20000
+10-11 03:21:24.448 26997 27087 I LTWS_DIAG: mean iteration: 6850 us
+10-11 03:21:24.451 26997 27087 I LTWS_DIAG: growth from post-warm-up baseline to end (20000 iterations):
+10-11 03:21:24.455 26997 27087 I LTWS_DIAG:   PSS +4,444 (java -6,032, native -12,888, code -52,668, gfx +0, other +420) KB; nHeapAlloc +7 KB; RSS -71,352 KB
+10-11 03:21:24.456 26997 27087 I LTWS_DIAG: native-heap change per iteration: +0.4 bytes
+10-11 03:21:24.460 26997 27087 I LTWS_DIAG: STABILITY RESULT: native heap grew; see figures. Figures are measured; GC is a request, not a guarantee.
+10-11 03:21:24.460 26997 27087 I LTWS_DIAG: 
+10-11 03:21:24.460 26997 27087 I LTWS_DIAG: END
+run wall time: 171 s

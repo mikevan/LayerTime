@@ -1,0 +1,26 @@
+# Android / Gradle build outputs
+.gradle/
+build/
+app/build/
+captures/
+.cxx/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# Keep the Gradle wrapper jar tracked (do NOT ignore it):
+!gradle/wrapper/gradle-wrapper.jar
+
+# Transient local build log
+build-log.txt
+
+# Linux NDK staged for the arm64 Wireshark cross-compile (large, not source)
+.ndk-cache/
+app/src/main/jniLibs/
+app/src/main/cpp/wireshark-prebuilt/

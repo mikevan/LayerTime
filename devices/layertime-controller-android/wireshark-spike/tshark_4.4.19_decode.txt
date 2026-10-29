@@ -1,0 +1,40 @@
+# TShark (Wireshark) 4.4.19 (Git commit bb1640e38673).  (host x86_64, same source + build options as the arm64 libs)
+# fixture: deauth_fixture.pcap (26 bytes, DLT 105)
+# fields: frame.len wlan.fc.type_subtype wlan.da wlan.sa wlan.bssid wlan.seq wlan.fixed.reason_code
+26	0x000c	ff:ff:ff:ff:ff:ff	00:11:22:33:aa:bb	00:11:22:33:aa:bb	7	0x0007
+# verbose 802.11 tree:
+IEEE 802.11 Deauthentication, Flags: ........
+    Type/Subtype: Deauthentication (0x000c)
+    Frame Control Field: 0xc000
+        .... ..00 = Version: 0
+        .... 00.. = Type: Management frame (0)
+        1100 .... = Subtype: 12
+        Flags: 0x00
+            .... ..00 = DS status: Not leaving DS or network is operating in AD-HOC mode (To DS: 0 From DS: 0) (0x0)
+            .... .0.. = More Fragments: This is the last fragment
+            .... 0... = Retry: Frame is not being retransmitted
+            ...0 .... = PWR MGT: STA will stay up
+            ..0. .... = More Data: No data buffered
+            .0.. .... = Protected flag: Data is not protected
+            0... .... = +HTC/Order flag: Not strictly ordered
+    .000 0001 0011 1010 = Duration: 314 microseconds
+    Receiver address: ff:ff:ff:ff:ff:ff (ff:ff:ff:ff:ff:ff)
+        .... ..1. .... .... .... .... = LG bit: Locally administered address (this is NOT the factory default)
+        .... ...1 .... .... .... .... = IG bit: Group address (multicast/broadcast)
+    Destination address: ff:ff:ff:ff:ff:ff (ff:ff:ff:ff:ff:ff)
+        .... ..1. .... .... .... .... = LG bit: Locally administered address (this is NOT the factory default)
+        .... ...1 .... .... .... .... = IG bit: Group address (multicast/broadcast)
+    Transmitter address: CIMSYS_33:aa:bb (00:11:22:33:aa:bb)
+        .... ..0. .... .... .... .... = LG bit: Globally unique address (factory default)
+        .... ...0 .... .... .... .... = IG bit: Individual address (unicast)
+    Source address: CIMSYS_33:aa:bb (00:11:22:33:aa:bb)
+        .... ..0. .... .... .... .... = LG bit: Globally unique address (factory default)
+        .... ...0 .... .... .... .... = IG bit: Individual address (unicast)
+    BSS Id: CIMSYS_33:aa:bb (00:11:22:33:aa:bb)
+        .... ..0. .... .... .... .... = LG bit: Globally unique address (factory default)
+        .... ...0 .... .... .... .... = IG bit: Individual address (unicast)
+    .... .... .... 0000 = Fragment number: 0
+    0000 0000 0111 .... = Sequence number: 7
+    [WLAN Flags: ........]
+IEEE 802.11 Wireless Management
+

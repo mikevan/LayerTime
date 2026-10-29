@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Exported diagnostic bundles are written here and shared via FileProvider. -->
+    <cache-path name="diagnostics" path="diagnostics/" />
+    <files-path name="exports" path="exports/" />
+</paths>

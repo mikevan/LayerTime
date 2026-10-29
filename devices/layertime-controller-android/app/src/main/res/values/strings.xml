@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LayerTime Controller</string>
+    <string name="notif_channel_name">LayerTime Link</string>
+    <string name="notif_channel_desc">Holds the connection to a LayerWand while the screen is off.</string>
+</resources>

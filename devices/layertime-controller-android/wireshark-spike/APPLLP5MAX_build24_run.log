@@ -1,0 +1,40 @@
+﻿
+STEP 1 of 5: building (about 30 s to 2 min).
+STEP 2 of 5: clearing the test environment on the watch and installing.
+pm clear: Success
+installed: versionCode=24 minSdk=26 targetSdk=34
+test files in the Downloads index: 2 of 2
+STEP 3 of 5: screenshot of the face.
+saved 01_face_in.png
+STEP 4 of 5: import test.
+READY: tap COUNTER, then DECODE A CAPTURE FILE, then IMPORT CAPTURE FILE, and choose lt_test_5frames.pcap in Downloads. If it shows 5 frames, tap IMPORT ANOTHER FILE and choose lt_test_bulk_3000.pcap. Then do nothing.
+--------- beginning of main
+--------- beginning of system
+10-28 23:34:09.328  1093  4725 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity} from uid 2000
+10-28 23:34:09.381  1093  1118 I ActivityManager: Start proc 13016:com.projectrevivesolutions.layertime.controller.diag/u0a58 for activity {com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity}
+10-28 23:34:18.594  1093  1116 I ActivityTaskManager: Displayed com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity: +9s264ms
+STATUS at 22 s: waiting for the first import to start. App alive: True.
+STATUS at 37 s: waiting for the first import to start. App alive: True.
+STATUS at 53 s: waiting for the first import to start. App alive: True.
+10-28 23:35:06.695  1093  8027 I ActivityTaskManager: START u0 {act=android.intent.action.OPEN_DOCUMENT typ=*/* cmp=com.android.documentsui/.picker.PickActivity (has extras)} from uid 10058
+10-28 23:35:07.017  1093  1116 I ActivityTaskManager: Displayed com.android.documentsui/.picker.PickActivity: +312ms
+10-28 23:35:17.911  1093  9708 I ActivityTaskManager: START u0 {act=android.intent.action.OPEN_DOCUMENT typ=*/* cmp=com.android.documentsui/.picker.PickActivity (has extras)} from uid 10058
+10-28 23:35:18.227  1093  1116 I ActivityTaskManager: Displayed com.android.documentsui/.picker.PickActivity: +306ms
+STATUS at 83 s: waiting for the first import to start. App alive: True.
+STATUS at 99 s: waiting for the first import to start. App alive: True.
+10-28 23:36:01.485  1093  8027 I ActivityTaskManager: START u0 {act=android.intent.action.OPEN_DOCUMENT typ=*/* cmp=com.android.documentsui/.picker.PickActivity (has extras)} from uid 10058
+10-28 23:36:01.796  1093  1116 I ActivityTaskManager: Displayed com.android.documentsui/.picker.PickActivity: +300ms
+STATUS at 126 s: waiting for the first import to start. App alive: True.
+STATUS at 142 s: waiting for the first import to start. App alive: True.
+STATUS at 158 s: waiting for the first import to start. App alive: True.
+STATUS at 174 s: waiting for the first import to start. App alive: True.
+STATUS at 190 s: waiting for the first import to start. App alive: True.
+STATUS at 206 s: waiting for the first import to start. App alive: True.
+STATUS at 222 s: waiting for the first import to start. App alive: True.
+STATUS at 238 s: waiting for the first import to start. App alive: True.
+STATUS at 255 s: waiting for the first import to start. App alive: True.
+STATUS at 275 s: waiting for the first import to start. App alive: True.
+STATUS at 291 s: waiting for the first import to start. App alive: True.
+TIME LIMIT: 300 s reached with 0 of 2 imports finished. Stopping.
+STEP 5 of 5: finished. imports finished: 0 of 2; wall time 301 s
+done; log: C:\workspace\TUltra-Project\LayerTime\devices\layertime-controller-android\wireshark-spike\APPLLP5MAX_build24_run.log; screenshot: C:\workspace\TUltra-Project\LayerTime\devices\layertime-controller-android\wireshark-spike\screens_watch_b24

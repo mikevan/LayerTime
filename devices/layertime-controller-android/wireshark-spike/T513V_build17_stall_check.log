@@ -1,0 +1,84 @@
+﻿app pid now: 28083
+power: mWakefulness=Dozing
+proc: *APP* UID 10278 ProcessRecord{6c2c2c3 28083:com.projectrevivesolutions.layertime.controller.diag/u0a278}
+proc: lastRssTime=-2m43s738ms rssProcState=16 rssStatType=0 nextRssTime=+8m46s259ms
+proc: lastRss=209MB lastCachedRss=209MB
+proc: procStateMemTracker: best=1 (1=1 1.0x, 4=1 1.0x)
+proc: mCurSchedGroup=0 setSchedGroup=0 systemNoUi=false
+proc: curProcState=16 mRepProcState=16 setProcState=16 lastStateTime=-10m6s68ms
+proc: cached=true empty=false
+proc: hasPendingCompaction=false    isFreezeExempt=false isPendingFreeze=false isFrozen=true
+proc: 900: CACHED_APP_MIN_ADJ (  350,031K)
+proc: 999: CACHED_APP_MAX_ADJ (  430,080K)
+proc: state: cur=CAC  set=CAC  lastRss=209MB lastCachedRss=209MB
+proc: cached=true empty=false hasAboveClient=false
+proc: mHomeProcess: ProcessRecord{ec96d8f 2260:com.tcl.android.launcher/u0a77}
+proc: mPreviousProcess: ProcessRecord{13b6e4a 21029:com.google.android.googlequicksearchbox:search/u0a156}
+proc: PID #28083: ProcessRecord{6c2c2c3 28083:com.projectrevivesolutions.layertime.controller.diag/u0a278}
+status: State:	S (sleeping) VmRSS:	  187284 kB Threads:	35 
+cgroup: 4:memory:/ 3:cpuset:/background 2:cpu:/background 1:blkio:/background 0::/uid_10278/pid_28083 
+threads (tid state cpu_ticks_in_5s name waiting_in) - busy threads and worker threads only:
+  28133 S 0 DefaultDispatch do_freezer_trap
+  28134 S 0 DefaultDispatch do_freezer_trap
+----- last decoder lines -----
+----- freezer, screen and process events from the phone log -----
+10-11 15:36:53.297  1555  2240 I am_kill : [0,2865,com.google.android.euicc,955,tguard-kill-cacheApp,59412]
+10-11 15:36:53.317  1555  3011 I am_kill : [0,16258,com.android.vending,905,tguard-kill-cacheApp,115420]
+10-11 15:36:53.328  1555  3011 I am_kill : [0,28805,com.android.vending:instant_app_installer,935,tguard-kill-cacheApp,90720]
+10-11 15:36:53.349  1555  3011 I am_kill : [0,21099,com.google.android.apps.nbu.files,975,tguard-kill-cacheApp,60072]
+10-11 15:36:53.359  1555  3011 I am_kill : [0,27423,com.google.android.adservices.api,925,tguard-kill-cacheApp,65520]
+10-11 15:36:53.363  1555  3011 I am_kill : [0,27538,com.swishme.tracfone,935,tguard-kill-cacheApp,174552]
+10-11 15:36:53.366  1555  3011 I am_kill : [0,27705,com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0,945,tguard-kill-cacheApp,77088]
+10-11 15:36:53.384  1555  3011 I am_kill : [0,27735,com.google.android.webview:webview_service,925,tguard-kill-cacheApp,49760]
+10-11 15:36:53.390  1555  2240 I am_kill : [0,28781,com.google.android.apps.turbo,945,tguard-kill-cacheApp,71912]
+10-11 15:36:53.390  1555  2240 I am_kill : [0,29708,com.google.android.apps.turbo:aab,905,tguard-kill-cacheApp,80236]
+10-11 15:36:53.394  1555  3011 I am_kill : [0,29504,com.google.android.partnersetup,905,tguard-kill-cacheApp,72352]
+10-11 15:36:53.400  1555  3011 I am_kill : [0,29525,com.android.chrome,905,tguard-kill-cacheApp,63800]
+10-11 15:36:53.428  1555  2633 I am_proc_died: [0,27423,com.google.android.adservices.api,925,19]
+10-11 15:36:53.483  1555  2183 I am_proc_died: [0,27705,com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0,945,19]
+10-11 15:36:53.501  1555  2243 I am_proc_died: [0,21099,com.google.android.apps.nbu.files,975,19]
+10-11 15:36:53.537  1887  1966 D IOLimit : LRU List: [com.projectrevivesolutions.layertime.controller.diag,us.sliide.tiger,com.tcl.android.launcher,]
+10-11 15:36:53.553  1555  2009 I PowerHalWrapper: amsBoostNotify pid:2260,activity:com.tcl.android.launcher.uioverrides.TclQuickstepLauncher, package:com.tcl.android.launcher, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:36:53.555  1555  2009 I PowerHalWrapper: amsBoostNotify pid:23969,activity:com.sliide.headlines.v2.activities.MainActivity, package:us.sliide.tiger, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:36:53.558  1555  3011 I am_proc_died: [0,2865,com.google.android.euicc,955,19]
+10-11 15:36:53.560  1555  1555 D MBrainLocalService: isVendorFreezeConditionPass is false
+10-11 15:36:53.561  1555  1555 D MBrainLocalService: isVendorFreezeConditionPass is false
+10-11 15:36:53.716  1555  2185 I am_proc_died: [0,29525,com.android.chrome,905,19]
+10-11 15:36:53.730  1555  3020 I am_proc_died: [0,28781,com.google.android.apps.turbo,945,19]
+10-11 15:36:53.734  1555  1701 I am_proc_died: [0,28816,com.google.android.apps.messaging,915,19]
+10-11 15:36:53.741  1555  2076 I am_proc_died: [0,27735,com.google.android.webview:webview_service,925,19]
+10-11 15:36:53.753  1555  1578 I am_proc_died: [0,28805,com.android.vending:instant_app_installer,935,19]
+10-11 15:36:53.805  1555  1577 I am_proc_died: [0,16258,com.android.vending,905,19]
+10-11 15:36:53.825  1555  2633 I am_proc_died: [0,29504,com.google.android.partnersetup,905,19]
+10-11 15:36:53.851  1555  3012 I am_proc_died: [0,27538,com.swishme.tracfone,935,19]
+10-11 15:36:53.861  1555  1702 I am_proc_died: [0,29708,com.google.android.apps.turbo:aab,905,19]
+10-11 15:36:54.118  1555  1588 I PowerHalWrapper: amsBoostNotify pid:23969,activity:com.sliide.headlines.v2.activities.MainActivity, package:us.sliide.tiger, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:36:54.121  1555  1588 I PowerHalWrapper: amsBoostNotify pid:2260,activity:com.tcl.android.launcher.uioverrides.TclQuickstepLauncher, package:com.tcl.android.launcher, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:36:57.470  1555  1577 I PowerHalWrapper: amsBoostNotify pid:2260,activity:com.tcl.android.launcher.uioverrides.TclQuickstepLauncher, package:com.tcl.android.launcher, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:36:58.213  1555  3012 I PowerHalWrapper: amsBoostNotify pid:23969,activity:com.sliide.headlines.v2.activities.MainActivity, package:us.sliide.tiger, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:37:00.502  1555  1702 I PowerHalWrapper: amsBoostNotify pid:2260,activity:com.tcl.android.launcher.uioverrides.TclQuickstepLauncher, package:com.tcl.android.launcher, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:37:00.524  1555  1577 I PowerHalWrapper: amsBoostNotify pid:21029,activity:com.google.android.googlequicksearchbox.SearchActivity, package:com.google.android.googlequicksearchbox, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:37:01.091  1555  1588 I PowerHalWrapper: amsBoostNotify pid:2260,activity:com.tcl.android.launcher.uioverrides.TclQuickstepLauncher, package:com.tcl.android.launcher, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:37:02.385  1555  3013 I PowerHalWrapper: amsBoostNotify pid:2260,activity:com.tcl.android.launcher.uioverrides.TclQuickstepLauncher, package:com.tcl.android.launcher, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:37:02.764  2260  2274 W ndroid.launcher: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~IYDjQyqEBsez24ADYKFkFA==/com.projectrevivesolutions.layertime.controller.diag-lZSryIXDPvpvAF-jCoWSbw==/base.apk' with 1 weak references
+10-11 15:37:03.112  1555  2241 I PowerHalWrapper: amsBoostNotify pid:21029,activity:com.google.android.googlequicksearchbox.SearchActivity, package:com.google.android.googlequicksearchbox, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:37:03.128  1555  1588 I PowerHalWrapper: amsBoostNotify pid:21029,activity:com.google.android.googlequicksearchbox.SearchActivity, package:com.google.android.googlequicksearchbox, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:37:10.713  1555  1735 I am_freeze: [30565,com.google.android.googlequicksearchbox]
+10-11 15:37:12.025  1555  1735 I am_freeze: [30631,com.google.android.webview:webview_service]
+10-11 15:37:12.158  1555  1735 I am_freeze: [30680,com.google.android.adservices.api]
+10-11 15:37:16.922  1555  1735 I am_freeze: [30770,com.android.vending]
+10-11 15:37:17.118  1555  1735 I am_freeze: [30855,com.android.vending:background]
+10-11 15:37:18.018  1555  1735 I am_freeze: [30938,com.facebook.katana]
+10-11 15:38:02.296  1555  1575 W system_server: ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~IYDjQyqEBsez24ADYKFkFA==/com.projectrevivesolutions.layertime.controller.diag-lZSryIXDPvpvAF-jCoWSbw==/base.apk' with 1 weak references
+10-11 15:38:09.142  1555  1620 I PowerHalWrapper: amsBoostNotify pid:2260,activity:com.tcl.android.launcher.uioverrides.TclQuickstepLauncher, package:com.tcl.android.launcher, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:38:09.152  1555  1588 I PowerHalWrapper: amsBoostNotify pid:2260,activity:com.tcl.android.launcher.uioverrides.TclQuickstepLauncher, package:com.tcl.android.launcher, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:38:09.424  1555  1555 I screen_toggled: 0
+10-11 15:38:09.979  1555  2633 I PowerHalWrapper: amsBoostNotify pid:23969,activity:com.sliide.headlines.v2.activities.MainActivity, package:us.sliide.tiger, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:38:09.982  1555  2633 I PowerHalWrapper: amsBoostNotify pid:23969,activity:com.sliide.headlines.v2.activities.MainActivity, package:us.sliide.tiger, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:38:10.063  1555  1588 I PowerHalWrapper: amsBoostNotify pid:23969,activity:com.sliide.headlines.v2.activities.MainActivity, package:us.sliide.tiger, mProcessCreatePackcom.projectrevivesolutions.layertime.controller.diag 
+10-11 15:38:10.289  1555  1735 I am_unfreeze: [30770,com.android.vending,6]
+10-11 15:38:10.294  1555  1735 I am_unfreeze: [30855,com.android.vending:background,6]
+10-11 15:38:10.335   823  2141 I SurfaceFlinger: onHandleDestroyed: name=Surface(name=1ddd30 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.wireshark.WiresharkDiagActivity)/@0xa176663 - animation-leash of starting_reveal#1062, layerId=1062, parentId=0
+10-11 15:38:10.337   823   823 I BufferQueueDebug: [Surface(name=1ddd30 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.wireshark.WiresharkDiagActivity)/@0xa176663 - animation-leash of starting_reveal#1062](this:0xb400007a7a261810,id:-1,api:0,p:-1,c:823) onDestructor()
+10-11 15:38:20.818  1555  1735 I am_freeze: [30770,com.android.vending]
+10-11 15:38:20.822  1555  1735 I am_freeze: [30855,com.android.vending:background]

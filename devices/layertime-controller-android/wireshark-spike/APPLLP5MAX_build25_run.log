@@ -1,0 +1,11 @@
+﻿
+STEP 1 of 5: building (about 30 s to 2 min).
+STEP 2 of 5: installing on the watch.
+installed: versionCode=25 minSdk=26 targetSdk=34
+STEP 3 of 5: face screenshot, then the slide sounds.
+saved 01_face_in.png
+STEP 4 of 5: background-survival import test on the 3,000-frame file.
+READY: tap COUNTER, then DECODE A CAPTURE FILE, then IMPORT CAPTURE FILE, and choose lt_test_bulk_3000.pcap in Downloads. Then do nothing.
+PROCESS ENDED after 13 s.
+STEP 5 of 5: finished; wall time 14 s
+done; log: C:\workspace\TUltra-Project\LayerTime\devices\layertime-controller-android\wireshark-spike\APPLLP5MAX_build25_run.log; screenshot: C:\workspace\TUltra-Project\LayerTime\devices\layertime-controller-android\wireshark-spike\screens_watch_b25

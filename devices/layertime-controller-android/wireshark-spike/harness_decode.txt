@@ -1,0 +1,9 @@
+=== libwireshark embedding harness: decoded fields ===
+  wlan.fc.type_subtype     : 0x000c
+  wlan.fc.type             : <absent>
+  wlan.fc.subtype          : <absent>
+  wlan.da                  : ff:ff:ff:ff:ff:ff
+  wlan.sa                  : 00:11:22:33:aa:bb
+  wlan.bssid               : 00:11:22:33:aa:bb
+  wlan.seq                 : 7
+  wlan.fixed.reason_code   : 0x0007

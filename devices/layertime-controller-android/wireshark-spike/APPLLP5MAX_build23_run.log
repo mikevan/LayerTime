@@ -1,0 +1,40 @@
+﻿
+STEP 1 of 4: building (about 30 s to 2 min).
+STEP 2 of 4: installing on the watch.
+installed: versionCode=23 minSdk=26 targetSdk=34
+STEP 3 of 4: screenshots.
+saved 01_face_in.png
+saved 02_face_parked.png
+saved 03_panel_events.png
+STEP 4 of 4: import test.
+test files in the Downloads index: 2 of 2
+READY: tap COUNTER, then DECODE A CAPTURE FILE, then IMPORT CAPTURE FILE, and choose lt_test_5frames.pcap in Downloads. Then IMPORT ANOTHER FILE and choose lt_test_bulk_3000.pcap. Then do nothing.
+STATUS at 15 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 31 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 47 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 63 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 78 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 94 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 110 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 126 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 142 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 158 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 174 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 190 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 207 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 223 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 239 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 255 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 271 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 287 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 303 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 319 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 335 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 351 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 368 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 569 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 585 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+STATUS at 601 s: waiting for you to start the first import (lt_test_5frames.pcap). App alive: True.
+TIME LIMIT: 600 s reached with 0 of 2 imports finished. Stopping.
+imports finished: 0 of 2; wall time 601 s
+done; log: C:\workspace\TUltra-Project\LayerTime\devices\layertime-controller-android\wireshark-spike\APPLLP5MAX_build23_run.log; screenshots: C:\workspace\TUltra-Project\LayerTime\devices\layertime-controller-android\wireshark-spike\screens_watch_b23

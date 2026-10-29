@@ -1,0 +1,104 @@
+init #1: performed_now=1 ok=1 epan_init=83.6 ms total=83.8 ms calls=1
+init #2: performed_now=0 ok=1 (reports first-init epan_init=83.6 ms) calls=2
+RSS before init 83060 KB, after init 140080 KB
+epan 4.4.19, 26 bytes
+wlan.fc.type_subtype     : 0x000c
+wlan.da                  : ff:ff:ff:ff:ff:ff
+wlan.sa                  : 00:11:22:33:aa:bb
+wlan.bssid               : 00:11:22:33:aa:bb
+wlan.seq                 : 7
+wlan.fixed.reason_code   : 0x0007
+fields: all 6 match TShark 4.4.19
+--- structured tree (0 records) ---
+0	frame	Frame 1: 26 bytes on wire (208 bits), 26 bytes captured (208 bits)	0	26
+1	frame.encap_type	20	0	0
+1	frame.number	1	0	0
+1	frame.len	26	0	0
+1	frame.cap_len	26	0	0
+1	frame.marked	False	0	0
+1	frame.ignored	False	0	0
+1	frame.protocols	wlan	0	0
+0	wlan	IEEE 802.11 Deauthentication, Flags: ........	0	24
+1	wlan.fc.type_subtype	0x000c	0	1
+1	wlan.fc	0xc000	0	2
+2	wlan.fc.version	0	0	1
+2	wlan.fc.type	0	0	1
+2	wlan.fc.subtype	12	0	1
+2	wlan.flags	0x00	1	1
+3	wlan.fc.ds	0x00	1	1
+3	wlan.fc.tods	False	1	1
+3	wlan.fc.fromds	False	1	1
+3	wlan.fc.frag	False	1	1
+3	wlan.fc.retry	False	1	1
+3	wlan.fc.pwrmgt	False	1	1
+3	wlan.fc.moredata	False	1	1
+3	wlan.fc.protected	False	1	1
+3	wlan.fc.order	False	1	1
+1	wlan.duration	314	2	2
+1	wlan.ra	ff:ff:ff:ff:ff:ff	4	6
+2	wlan.ra_resolved	ff:ff:ff:ff:ff:ff	4	6
+2	wlan.ra.oui	16777215	4	3
+2	wlan.ra.lg	True	4	3
+2	wlan.ra.ig	True	4	3
+2	wlan.addr	ff:ff:ff:ff:ff:ff	4	6
+2	wlan.addr_resolved	ff:ff:ff:ff:ff:ff	4	6
+2	wlan.oui	16777215	4	3
+2	wlan.addr.lg	True	4	3
+2	wlan.addr.ig	True	4	3
+1	wlan.da	ff:ff:ff:ff:ff:ff	4	6
+2	wlan.da_resolved	ff:ff:ff:ff:ff:ff	4	6
+2	wlan.da.oui	16777215	4	3
+2	wlan.da.lg	True	4	3
+2	wlan.da.ig	True	4	3
+1	wlan.ta	00:11:22:33:aa:bb	10	6
+2	wlan.ta_resolved	CIMSYS_33:aa:bb	10	6
+2	wlan.ta.oui	4386	10	3
+2	wlan.ta.oui_resolved	CIMSYS Inc	10	6
+2	wlan.ta.lg	False	10	3
+2	wlan.ta.ig	False	10	3
+1	wlan.sa	00:11:22:33:aa:bb	10	6
+2	wlan.sa_resolved	CIMSYS_33:aa:bb	10	6
+2	wlan.sa.oui	4386	10	3
+2	wlan.sa.oui_resolved	CIMSYS Inc	10	6
+2	wlan.sa.lg	False	10	3
+2	wlan.sa.ig	False	10	3
+1	wlan.bssid	00:11:22:33:aa:bb	16	6
+2	wlan.bssid_resolved	CIMSYS_33:aa:bb	16	6
+2	wlan.bssid.oui	4386	16	3
+2	wlan.bssid.oui_resolved	CIMSYS Inc	16	6
+2	wlan.bssid.lg	False	16	3
+2	wlan.bssid.ig	False	16	3
+1	wlan.addr	00:11:22:33:aa:bb	10	6
+1	wlan.addr_resolved	CIMSYS_33:aa:bb	10	6
+1	wlan.oui	4386	10	3
+1	wlan.oui_resolved	CIMSYS Inc	10	6
+1	wlan.addr	00:11:22:33:aa:bb	16	6
+1	wlan.addr_resolved	CIMSYS_33:aa:bb	16	6
+1	wlan.oui	4386	16	3
+1	wlan.oui_resolved	CIMSYS Inc	16	6
+1	wlan.frag	0	22	2
+1	wlan.seq	7	22	2
+1	wlan.flags.str	........	0	0
+0	wlan.mgt	IEEE 802.11 Wireless Management	24	2
+1	wlan.fixed.all	Fixed parameters (2 bytes)	24	2
+2	wlan.fixed.reason_code	0x0007	24	2
+tree: six fields present; reason_code at offset 24 length 2
+--- pcap import ---
+frame	encap	caplen	type_subtype	sa	da	reason
+1	20	26	0x000c	00:11:22:33:aa:bb	ff:ff:ff:ff:ff:ff	0x0007
+frames decoded: 1
+pcap: 1 frame decoded, type_subtype present
+repeat 100000 in mode 'decode' (sample every 10000):
+    10000  RSS 141204 KB  heap-in-use    16239 KB  5194.0 ms
+    20000  RSS 141204 KB  heap-in-use    16238 KB  10351.2 ms
+    30000  RSS 141204 KB  heap-in-use    16238 KB  14821.3 ms
+    40000  RSS 141204 KB  heap-in-use    16239 KB  19313.3 ms
+    50000  RSS 141204 KB  heap-in-use    16238 KB  24780.7 ms
+    60000  RSS 141204 KB  heap-in-use    16239 KB  30190.3 ms
+    70000  RSS 141204 KB  heap-in-use    16239 KB  35436.1 ms
+    80000  RSS 141204 KB  heap-in-use    16239 KB  40322.4 ms
+    90000  RSS 141204 KB  heap-in-use    16239 KB  45246.6 ms
+   100000  RSS 141204 KB  heap-in-use    16238 KB  49923.8 ms
+mismatched outputs: 0 of 100000
+mean iteration: 499.2 us
+RESULT: PASS

@@ -1,0 +1,39 @@
+﻿adb: D6PJDQFMHQ6HO759	device
+phone: TCL T513V (Beryl_TF), Android 15 (API 35)
+chip: Mediatek MT6835, platform mt6835, cores 8
+RAM: MemTotal:        3752152 kB
+ABIs: arm64-v8a,armeabi-v7a,armeabi
+APK: 50,665,964 bytes, versionCode 17, built 10/11/2026 3:44:50 AM
+installed: versionCode=17 minSdk=26 targetSdk=34
+test files in the Downloads index: 2 of 2
+  Row: 0 _display_name=lt_test_5frames.pcap
+  Row: 1 _display_name=lt_test_bulk_3000.pcap
+===== RUN: diagnostic report + 20,000 decodes, normal (no GC), warm-up 4,000 =====
+process started: pid 28083
+10-11 15:28:45.635 28083 28133 I LTWS_DIAG: PHASE load
+10-11 15:28:45.696 28083 28133 I LTWS_DIAG: PHASE init
+10-11 15:28:46.052 28083 28133 I LTWS_DIAG: PHASE decode
+10-11 15:28:46.102 28083 28133 I LTWS_DIAG: PHASE tree
+10-11 15:28:46.143 28083 28133 I LTWS_DIAG: PHASE pcap
+10-11 15:28:46.147 28083 28133 I LTWS_DIAG: PHASE pcap-reader
+10-11 15:28:46.368 28083 28133 I LTWS_DIAG: PHASE warmup
+10-11 15:28:51.369 28083 28133 I LTWS_DIAG: HEARTBEAT warmup 3550/4000 (88%) 710/s elapsed 5 s eta 1 s
+10-11 15:28:52.012 28083 28133 I LTWS_DIAG: HEARTBEAT warmup 4000/4000 (100%) 699/s elapsed 6 s eta 0 s
+10-11 15:28:52.058 28083 28133 I LTWS_DIAG: PHASE stability
+10-11 15:28:54.960 28083 28133 I LTWS_DIAG: progress     2000     2.9 s  PSS 287,205 (java 13,900, native 33,120, code 183,848, stack 884, gfx 32,732, other 6,460, sys 16,261) KB; nHeapAlloc 53,575 KB; RSS 367,768 KB | from baseline PSS -4,787 (java -4,100, native -228, code +0, gfx -528, other +52) KB; nHeapAlloc -478 KB; RSS -4,376 KB
+10-11 15:28:57.059 28083 28133 I LTWS_DIAG: HEARTBEAT stability 3488/20000 (17%) 697/s elapsed 5 s eta 24 s
+10-11 15:28:57.833 28083 28133 I LTWS_DIAG: progress     4000     5.8 s  PSS 287,893 (java 14,488, native 33,216, code 183,848, stack 884, gfx 32,732, other 6,464, sys 16,261) KB; nHeapAlloc 53,603 KB; RSS 368,284 KB | from baseline PSS -4,099 (java -3,512, native -132, code +0, gfx -528, other +56) KB; nHeapAlloc -450 KB; RSS -3,860 KB
+10-11 15:29:00.712 28083 28133 I LTWS_DIAG: progress     6000     8.7 s  PSS 288,163 (java 15,044, native 33,132, code 183,840, stack 884, gfx 32,732, other 6,276, sys 16,255) KB; nHeapAlloc 53,587 KB; RSS 368,604 KB | from baseline PSS -3,829 (java -2,956, native -216, code -8, gfx -528, other -132) KB; nHeapAlloc -466 KB; RSS -3,540 KB
+10-11 15:29:02.059 28083 28133 I LTWS_DIAG: HEARTBEAT stability 6939/20000 (34%) 690/s elapsed 10 s eta 19 s
+10-11 15:29:03.617 28083 28133 I LTWS_DIAG: progress     8000    11.6 s  PSS 288,765 (java 15,624, native 33,136, code 183,848, stack 884, gfx 32,732, other 6,276, sys 16,265) KB; nHeapAlloc 53,592 KB; RSS 369,344 KB | from baseline PSS -3,227 (java -2,376, native -212, code +0, gfx -528, other -132) KB; nHeapAlloc -461 KB; RSS -2,800 KB
+10-11 15:29:06.536 28083 28133 I LTWS_DIAG: progress    10000    14.5 s  PSS 289,340 (java 16,184, native 33,136, code 183,848, stack 884, gfx 32,732, other 6,284, sys 16,272) KB; nHeapAlloc 53,592 KB; RSS 369,904 KB | from baseline PSS -2,652 (java -1,816, native -212, code +0, gfx -528, other -124) KB; nHeapAlloc -461 KB; RSS -2,240 KB
+10-11 15:29:07.060 28083 28133 I LTWS_DIAG: HEARTBEAT stability 10366/20000 (51%) 685/s elapsed 15 s eta 14 s
+10-11 15:29:09.429 28083 28133 I LTWS_DIAG: progress    12000    17.4 s  PSS 289,920 (java 16,760, native 33,136, code 183,848, stack 884, gfx 32,732, other 6,284, sys 16,276) KB; nHeapAlloc 53,597 KB; RSS 370,380 KB | from baseline PSS -2,072 (java -1,240, native -212, code +0, gfx -528, other -124) KB; nHeapAlloc -456 KB; RSS -1,764 KB
+10-11 15:29:12.061 28083 28133 I LTWS_DIAG: HEARTBEAT stability 13858/20000 (69%) 698/s elapsed 20 s eta 9 s
+10-11 15:29:12.311 28083 28133 I LTWS_DIAG: progress    14000    20.3 s  PSS 291,054 (java 17,348, native 33,548, code 183,840, stack 884, gfx 32,876, other 6,284, sys 16,274) KB; nHeapAlloc 54,004 KB; RSS 371,476 KB | from baseline PSS -938 (java -652, native +200, code -8, gfx -384, other -124) KB; nHeapAlloc -49 KB; RSS -668 KB
+10-11 15:29:15.228 28083 28133 I LTWS_DIAG: progress    16000    23.2 s  PSS 291,118 (java 17,900, native 33,184, code 183,848, stack 884, gfx 32,732, other 6,276, sys 16,294) KB; nHeapAlloc 53,601 KB; RSS 371,528 KB | from baseline PSS -874 (java -100, native -164, code +0, gfx -528, other -132) KB; nHeapAlloc -452 KB; RSS -616 KB
+10-11 15:29:17.062 28083 28133 I LTWS_DIAG: HEARTBEAT stability 16356/20000 (81%) 499/s elapsed 25 s eta 6 s
+10-11 15:29:22.064 28083 28133 I LTWS_DIAG: HEARTBEAT stability 17226/20000 (86%) 174/s elapsed 30 s eta 5 s SLOWING (now 174/s, started at 697/s)
+WATCHDOG: no app output for 25 s, process alive - possible stall
+TIME LIMIT: 600 s reached without END. Stopping.
+run wall time: 601 s

@@ -1,0 +1,332 @@
+﻿10-28 23:34:09.234  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:am start -n com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity
+10-28 23:34:09.328  1093  4725 I ActivityTaskManager: START u0 {flg=0x10000000 cmp=com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity} from uid 2000
+10-28 23:34:09.371   570   623 I BufferQueueConsumer: [Splash Screen com.projectrevivesolutions.layertime.controller.diag#0](this:0x7ddcfe2000,id:228,api:0,p:-1,c:570) setConsumerName: Splash Screen com.projectrevivesolutions.layertime.controller.diag#0
+10-28 23:34:09.371   570   623 I BufferQueueConsumer: [Splash Screen com.projectrevivesolutions.layertime.controller.diag#0](this:0x7ddcfe2000,id:228,api:0,p:-1,c:570) setDefaultBufferSize: width=640 height=480
+10-28 23:34:09.376   570   623 I BufferQueueProducer: [Splash Screen com.projectrevivesolutions.layertime.controller.diag#0](this:0x7ddcfe2000,id:228,api:2,p:1093,c:570) connect(P): api=2 producer=(1093:system_server) producerControlledByApp=false
+10-28 23:34:09.381  1093  1118 I ActivityManager: Start proc 13016:com.projectrevivesolutions.layertime.controller.diag/u0a58 for activity {com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity}
+10-28 23:34:12.434  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:14.566  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:16.696  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:18.125  1093  2066 I WindowManager: Relayout Window{3981f99 u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity}: oldVis=4 newVis=0 focusMayChange = true
+10-28 23:34:18.131   570  1683 I BufferQueueConsumer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:229,api:0,p:-1,c:570) setConsumerName: com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0
+10-28 23:34:18.131   570  1683 I BufferQueueConsumer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:229,api:0,p:-1,c:570) setDefaultBufferSize: width=640 height=480
+10-28 23:34:18.168   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:229,api:1,p:13016,c:570) connect(P): api=1 producer=(13016:com.projectrevivesolutions.layertime.controller.diag) producerControlledByApp=false
+10-28 23:34:18.594  1093  1116 I ActivityTaskManager: Displayed com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity: +9s264ms
+10-28 23:34:18.596   570  1683 I BufferQueueProducer: [Splash Screen com.projectrevivesolutions.layertime.controller.diag#0](this:0x7ddcfe2000,id:228,api:2,p:1093,c:570) disconnect(P): api 2
+10-28 23:34:18.693  4231  4278 W FontLog : No resolver, short-circuit {Noto Color Emoji Compat, wdth 100.0, wght 400, ital 0.0, bestEffort false} for com.projectrevivesolutions.layertime.controller.diag to failure [CONTEXT service_id=132 ]
+10-28 23:34:18.775   570   570 I BufferQueue: [Splash Screen com.projectrevivesolutions.layertime.controller.diag#0](this:0x7ddcfe2000,id:228,api:2,p:-1,c:-1) ~BufferQueueCore
+10-28 23:34:18.825  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:20.951  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:23.065  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:25.224  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:27.453  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:29.670  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:31.894  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:34.098  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:36.317  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:38.526  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:40.742  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:42.926  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:45.138  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:47.371  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:49.602  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:51.813  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:54.056  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:55.513   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:229,api:1,p:13016,c:570) queueBuffer: fps=0.05 dur=36931.80 max=36820.53 min=111.27
+10-28 23:34:56.334  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:34:58.620  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:00.903  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:03.203  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:04.950   570  1040 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:229,api:1,p:13016,c:570) queueBuffer: fps=0.21 dur=9436.92 max=9424.64 min=12.28
+10-28 23:35:05.490  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:06.683   570  1040 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:229,api:1,p:13016,c:570) queueBuffer: fps=4.62 dur=1732.71 max=1381.73 min=9.67
+10-28 23:35:06.683 13016 13016 I LTWS_PCAP: IMPORT tapped; launching the system file picker
+10-28 23:35:06.695  1093  8027 I ActivityTaskManager: START u0 {act=android.intent.action.OPEN_DOCUMENT typ=*/* cmp=com.android.documentsui/.picker.PickActivity (has extras)} from uid 10058
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.asFileNotFoundException(DocumentInfo.java:374)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.updateFromUri(DocumentInfo.java:203)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.updateSelf(DocumentInfo.java:188)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentStack.updateDocuments(DocumentStack.java:239)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentStack.fromLastAccessedCursor(DocumentStack.java:254)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.picker.LastAccessedStorage$RuntimeLastAccessedStorage.getLastAccessed(LastAccessedStorage.java:67)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.picker.LoadLastAccessedStackTask.run(LoadLastAccessedStackTask.java:60)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.picker.LoadLastAccessedStackTask.run(LoadLastAccessedStackTask.java:37)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.CheckedTask.doInBackground(CheckedTask.java:65)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.DocumentsApplication.acquireUnstableProviderOrThrow(DocumentsApplication.java:64)
+10-28 23:35:06.858  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.updateFromUri(DocumentInfo.java:195)
+10-28 23:35:06.915  1093  8027 I WindowManager: Relayout Window{20989ed u0 com.android.documentsui/com.android.documentsui.picker.PickActivity}: oldVis=4 newVis=0 focusMayChange = true
+10-28 23:35:06.920   570  1683 I BufferQueueConsumer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7de8977800,id:230,api:0,p:-1,c:570) setConsumerName: com.android.documentsui/com.android.documentsui.picker.PickActivity#0
+10-28 23:35:06.920   570  1683 I BufferQueueConsumer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7de8977800,id:230,api:0,p:-1,c:570) setDefaultBufferSize: width=640 height=480
+10-28 23:35:06.925   570  1040 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7de8977800,id:230,api:1,p:9018,c:570) connect(P): api=1 producer=(9018:com.android.documentsui) producerControlledByApp=false
+10-28 23:35:07.017  1093  1116 I ActivityTaskManager: Displayed com.android.documentsui/.picker.PickActivity: +312ms
+10-28 23:35:07.445   570   868 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:229,api:1,p:13016,c:570) disconnect(P): api 1
+10-28 23:35:07.527   570   570 I BufferQueue: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:229,api:1,p:-1,c:-1) ~BufferQueueCore
+10-28 23:35:07.785  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:08.513   570  1040 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7de8977800,id:230,api:1,p:9018,c:570) queueBuffer: fps=2.63 dur=1518.84 max=1340.03 min=41.09
+10-28 23:35:08.517 13016 13016 I LTWS_PCAP: PICKER RESULT uri=content://com.android.providers.downloads.documents/document/msf%3A18
+10-28 23:35:08.521 13016 13016 I LTWS_PCAP: SERVICE start requested for content://com.android.providers.downloads.documents/document/msf%3A18
+10-28 23:35:08.542  1093  2066 I WindowManager: Relayout Window{3981f99 u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity}: oldVis=4 newVis=0 focusMayChange = true
+10-28 23:35:08.546   570   868 I BufferQueueConsumer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:0,p:-1,c:570) setConsumerName: com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0
+10-28 23:35:08.546   570   868 I BufferQueueConsumer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:0,p:-1,c:570) setDefaultBufferSize: width=640 height=480
+10-28 23:35:08.554   570   868 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:1,p:13016,c:570) connect(P): api=1 producer=(13016:com.projectrevivesolutions.layertime.controller.diag) producerControlledByApp=false
+10-28 23:35:08.619 13016 13016 I LTWS_PCAP: SERVICE onStartCommand action=com.projectrevivesolutions.layertime.controller.PCAP_IMPORT data=content://com.android.providers.downloads.documents/document/msf%3A18
+10-28 23:35:08.632 13016 13016 I LTWS_PCAP: IMPORT start requested uri=content://com.android.providers.downloads.documents/document/msf%3A18 running=false
+10-28 23:35:08.661 13016 13190 I LTWS_PCAP: PHASE copy
+10-28 23:35:08.675 13016 13190 I LTWS_PCAP: PCAP file=lt_test_5frames.pcap bytes=256
+10-28 23:35:08.675 13016 13190 I LTWS_PCAP: PHASE init
+10-28 23:35:08.830 13016 13016 I ltws-pcap-impor: type=1400 audit(0.0:4988): avc: denied { open } for path="/dev/__properties__/u:object_r:net_dns_prop:s0" dev="tmpfs" ino=7607 scontext=u:r:untrusted_app:s0:c58,c256,c512,c768 tcontext=u:object_r:net_dns_prop:s0 tclass=file permissive=1
+10-28 23:35:08.830 13016 13016 I ltws-pcap-impor: type=1400 audit(0.0:4989): avc: denied { getattr } for path="/dev/__properties__/u:object_r:net_dns_prop:s0" dev="tmpfs" ino=7607 scontext=u:r:untrusted_app:s0:c58,c256,c512,c768 tcontext=u:object_r:net_dns_prop:s0 tclass=file permissive=1
+10-28 23:35:08.918   570  1040 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7de8977800,id:230,api:1,p:9018,c:570) disconnect(P): api 1
+10-28 23:35:09.080   570   570 I BufferQueue: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7de8977800,id:230,api:1,p:-1,c:-1) ~BufferQueueCore
+10-28 23:35:09.677 13016 13190 I LTWS_PCAP: PHASE decode
+10-28 23:35:09.681 13016 13190 I LTWS_PCAP: PCAP opened type=pcap size=256 wireshark=4.4.19
+10-28 23:35:09.754   570  1040 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:1,p:13016,c:570) queueBuffer: fps=3.51 dur=1139.42 max=899.82 min=10.06
+10-28 23:35:09.823 13016 13190 I LTWS_PCAP: FRAME 1 len=26 encap=IEEE 802.11 Wireless LAN fields=79 wlan.fc.type_subtype=0x000c@0+1 wlan.sa=00:11:22:33:aa:bb@10+6 wlan.da=ff:ff:ff:ff:ff:ff@4+6 wlan.bssid=00:11:22:33:aa:bb@16+6 wlan.seq=7@22+2 wlan.fixed.reason_code=0x0007@24+2
+10-28 23:35:09.880 13016 13190 I LTWS_PCAP: FRAME 2 len=26 encap=IEEE 802.11 Wireless LAN fields=82 wlan.fc.type_subtype=0x000a@0+1 wlan.sa=00:11:22:33:aa:bb@10+6 wlan.da=00:11:22:33:44:55@4+6 wlan.bssid=00:11:22:33:aa:bb@16+6 wlan.seq=8@22+2 wlan.fixed.reason_code=0x0008@24+2
+10-28 23:35:09.938 13016 13190 I LTWS_PCAP: FRAME 3 len=51 encap=IEEE 802.11 Wireless LAN fields=110 wlan.fc.type_subtype=0x0008@0+1 wlan.sa=00:11:22:33:aa:bb@10+6 wlan.da=ff:ff:ff:ff:ff:ff@4+6 wlan.bssid=00:11:22:33:aa:bb@16+6 wlan.seq=9@22+2 wlan.ssid=4c:54:2d:54:45:53:54@38+7 wlan.ds.current_channel=6@50+1
+10-28 23:35:09.976 13016 13190 I LTWS_PCAP: FRAME 4 len=29 encap=IEEE 802.11 Wireless LAN fields=81 wlan.fc.type_subtype=0x0004@0+1 wlan.sa=02:00:00:00:00:01@10+6 wlan.da=ff:ff:ff:ff:ff:ff@4+6 wlan.bssid=ff:ff:ff:ff:ff:ff@16+6 wlan.seq=10@22+2 wlan.ssid=@26+0
+10-28 23:35:10.000 13016 13190 I LTWS_PCAP: FRAME 5 len=20 encap=IEEE 802.11 Wireless LAN fields=49 MALFORMED wlan.fc.type_subtype=0x000c@0+1
+10-28 23:35:10.004 13016 13190 I LTWS_PCAP: HEARTBEAT pcap 5 frames (100% of file) 16/s elapsed 0 s final
+10-28 23:35:10.006 13016 13190 I LTWS_PCAP: PCAP DONE frames=5 kept=5 malformed=1 elapsed=0.3 s type=pcap file=lt_test_5frames.pcap
+10-28 23:35:10.024  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:10.713  2396  2396 W NotificationHelper: removeNotificationEntry failed, packageName=com.projectrevivesolutions.layertime.controller.diag mTag=null id=1002
+10-28 23:35:10.716  2396  2396 W NotificationHelper: removeNotificationEntry failed, packageName=com.projectrevivesolutions.layertime.controller.diag mTag=null id=1002
+10-28 23:35:11.732   570  1040 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:1,p:13016,c:570) queueBuffer: fps=9.61 dur=1977.15 max=1018.82 min=9.19
+10-28 23:35:12.275  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:12.732   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:1,p:13016,c:570) queueBuffer: fps=16.99 dur=1000.36 max=582.31 min=12.42
+10-28 23:35:14.527  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:14.706   570   623 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:1,p:13016,c:570) queueBuffer: fps=18.74 dur=1974.24 max=1468.37 min=11.72
+10-28 23:35:15.713   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:1,p:13016,c:570) queueBuffer: fps=65.56 dur=1006.70 max=35.78 min=10.23
+10-28 23:35:16.746  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:17.846   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:1,p:13016,c:570) queueBuffer: fps=24.85 dur=2132.76 max=1197.45 min=10.89
+10-28 23:35:17.907 13016 13016 I LTWS_PCAP: IMPORT tapped; launching the system file picker
+10-28 23:35:17.911  1093  9708 I ActivityTaskManager: START u0 {act=android.intent.action.OPEN_DOCUMENT typ=*/* cmp=com.android.documentsui/.picker.PickActivity (has extras)} from uid 10058
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.asFileNotFoundException(DocumentInfo.java:374)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.updateFromUri(DocumentInfo.java:203)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.updateSelf(DocumentInfo.java:188)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentStack.updateDocuments(DocumentStack.java:239)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentStack.fromLastAccessedCursor(DocumentStack.java:254)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.picker.LastAccessedStorage$RuntimeLastAccessedStorage.getLastAccessed(LastAccessedStorage.java:67)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.picker.LoadLastAccessedStackTask.run(LoadLastAccessedStackTask.java:60)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.picker.LoadLastAccessedStackTask.run(LoadLastAccessedStackTask.java:37)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.CheckedTask.doInBackground(CheckedTask.java:65)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.DocumentsApplication.acquireUnstableProviderOrThrow(DocumentsApplication.java:64)
+10-28 23:35:18.072  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.updateFromUri(DocumentInfo.java:195)
+10-28 23:35:18.129  1093  8027 I WindowManager: Relayout Window{4015273 u0 com.android.documentsui/com.android.documentsui.picker.PickActivity}: oldVis=4 newVis=0 focusMayChange = true
+10-28 23:35:18.134   570  1040 I BufferQueueConsumer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe2000,id:232,api:0,p:-1,c:570) setConsumerName: com.android.documentsui/com.android.documentsui.picker.PickActivity#0
+10-28 23:35:18.134   570  1040 I BufferQueueConsumer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe2000,id:232,api:0,p:-1,c:570) setDefaultBufferSize: width=640 height=480
+10-28 23:35:18.138   570   623 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe2000,id:232,api:1,p:9018,c:570) connect(P): api=1 producer=(9018:com.android.documentsui) producerControlledByApp=false
+10-28 23:35:18.227  1093  1116 I ActivityTaskManager: Displayed com.android.documentsui/.picker.PickActivity: +306ms
+10-28 23:35:18.656   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:1,p:13016,c:570) disconnect(P): api 1
+10-28 23:35:18.721   570   570 I BufferQueue: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8879800,id:231,api:1,p:-1,c:-1) ~BufferQueueCore
+10-28 23:35:19.012  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:19.698 13016 13016 I LTWS_PCAP: PICKER RESULT uri=content://com.android.providers.downloads.documents/document/msf%3A18
+10-28 23:35:19.698 13016 13016 I LTWS_PCAP: SERVICE start requested for content://com.android.providers.downloads.documents/document/msf%3A18
+10-28 23:35:19.705   570  1683 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe2000,id:232,api:1,p:9018,c:570) queueBuffer: fps=2.67 dur=1499.72 max=1325.84 min=44.01
+10-28 23:35:19.717  1093  2066 I WindowManager: Relayout Window{3981f99 u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity}: oldVis=4 newVis=0 focusMayChange = true
+10-28 23:35:19.721   570  1683 I BufferQueueConsumer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:0,p:-1,c:570) setConsumerName: com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0
+10-28 23:35:19.721   570  1683 I BufferQueueConsumer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:0,p:-1,c:570) setDefaultBufferSize: width=640 height=480
+10-28 23:35:19.728   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:1,p:13016,c:570) connect(P): api=1 producer=(13016:com.projectrevivesolutions.layertime.controller.diag) producerControlledByApp=false
+10-28 23:35:19.803 13016 13016 I LTWS_PCAP: SERVICE onStartCommand action=com.projectrevivesolutions.layertime.controller.PCAP_IMPORT data=content://com.android.providers.downloads.documents/document/msf%3A18
+10-28 23:35:19.822 13016 13016 I LTWS_PCAP: IMPORT start requested uri=content://com.android.providers.downloads.documents/document/msf%3A18 running=false
+10-28 23:35:19.844 13016 13226 I LTWS_PCAP: PHASE copy
+10-28 23:35:19.855 13016 13226 I LTWS_PCAP: PCAP file=lt_test_5frames.pcap bytes=256
+10-28 23:35:19.856 13016 13226 I LTWS_PCAP: PHASE init
+10-28 23:35:19.856 13016 13226 I LTWS_PCAP: PHASE decode
+10-28 23:35:19.856 13016 13226 I LTWS_PCAP: PCAP opened type=pcap size=256 wireshark=4.4.19
+10-28 23:35:19.885 13016 13226 I LTWS_PCAP: FRAME 1 len=26 encap=IEEE 802.11 Wireless LAN fields=79 wlan.fc.type_subtype=0x000c@0+1 wlan.sa=00:11:22:33:aa:bb@10+6 wlan.da=ff:ff:ff:ff:ff:ff@4+6 wlan.bssid=00:11:22:33:aa:bb@16+6 wlan.seq=7@22+2 wlan.fixed.reason_code=0x0007@24+2
+10-28 23:35:19.912 13016 13226 I LTWS_PCAP: FRAME 2 len=26 encap=IEEE 802.11 Wireless LAN fields=82 wlan.fc.type_subtype=0x000a@0+1 wlan.sa=00:11:22:33:aa:bb@10+6 wlan.da=00:11:22:33:44:55@4+6 wlan.bssid=00:11:22:33:aa:bb@16+6 wlan.seq=8@22+2 wlan.fixed.reason_code=0x0008@24+2
+10-28 23:35:19.947 13016 13226 I LTWS_PCAP: FRAME 3 len=51 encap=IEEE 802.11 Wireless LAN fields=110 wlan.fc.type_subtype=0x0008@0+1 wlan.sa=00:11:22:33:aa:bb@10+6 wlan.da=ff:ff:ff:ff:ff:ff@4+6 wlan.bssid=00:11:22:33:aa:bb@16+6 wlan.seq=9@22+2 wlan.ssid=4c:54:2d:54:45:53:54@38+7 wlan.ds.current_channel=6@50+1
+10-28 23:35:19.973 13016 13226 I LTWS_PCAP: FRAME 4 len=29 encap=IEEE 802.11 Wireless LAN fields=81 wlan.fc.type_subtype=0x0004@0+1 wlan.sa=02:00:00:00:00:01@10+6 wlan.da=ff:ff:ff:ff:ff:ff@4+6 wlan.bssid=ff:ff:ff:ff:ff:ff@16+6 wlan.seq=10@22+2 wlan.ssid=@26+0
+10-28 23:35:19.992 13016 13226 I LTWS_PCAP: FRAME 5 len=20 encap=IEEE 802.11 Wireless LAN fields=49 MALFORMED wlan.fc.type_subtype=0x000c@0+1
+10-28 23:35:19.994 13016 13226 I LTWS_PCAP: HEARTBEAT pcap 5 frames (100% of file) 37/s elapsed 0 s final
+10-28 23:35:19.995 13016 13226 I LTWS_PCAP: PCAP DONE frames=5 kept=5 malformed=1 elapsed=0.1 s type=pcap file=lt_test_5frames.pcap
+10-28 23:35:20.078   570   623 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe2000,id:232,api:1,p:9018,c:570) disconnect(P): api 1
+10-28 23:35:20.137  2396  2396 W NotificationHelper: removeNotificationEntry failed, packageName=com.projectrevivesolutions.layertime.controller.diag mTag=null id=1002
+10-28 23:35:20.138  2396  2396 W NotificationHelper: removeNotificationEntry failed, packageName=com.projectrevivesolutions.layertime.controller.diag mTag=null id=1002
+10-28 23:35:20.635   570   570 I BufferQueue: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe2000,id:232,api:1,p:-1,c:-1) ~BufferQueueCore
+10-28 23:35:21.252  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:21.272   570   623 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:1,p:13016,c:570) queueBuffer: fps=3.39 dur=1472.88 max=876.33 min=10.74
+10-28 23:35:22.400   570  1040 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:1,p:13016,c:570) queueBuffer: fps=27.48 dur=1128.18 max=644.03 min=10.19
+10-28 23:35:23.401   570   623 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:1,p:13016,c:570) queueBuffer: fps=46.95 dur=1001.12 max=95.90 min=8.53
+10-28 23:35:23.473  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:25.571   570   868 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:1,p:13016,c:570) queueBuffer: fps=14.29 dur=2169.97 max=1409.98 min=9.53
+10-28 23:35:25.701  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:27.956  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:30.244  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:32.539  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:34.840  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:37.157  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:39.457  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:41.742  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:44.032  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:46.320  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:48.602  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:50.892  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:53.188  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:55.475  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:35:57.766  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:00.064  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:01.453   570   623 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:1,p:13016,c:570) queueBuffer: fps=0.75 dur=35882.25 max=35506.74 min=11.78
+10-28 23:36:01.481 13016 13016 I LTWS_PCAP: IMPORT tapped; launching the system file picker
+10-28 23:36:01.485  1093  8027 I ActivityTaskManager: START u0 {act=android.intent.action.OPEN_DOCUMENT typ=*/* cmp=com.android.documentsui/.picker.PickActivity (has extras)} from uid 10058
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.asFileNotFoundException(DocumentInfo.java:374)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.updateFromUri(DocumentInfo.java:203)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.updateSelf(DocumentInfo.java:188)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentStack.updateDocuments(DocumentStack.java:239)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentStack.fromLastAccessedCursor(DocumentStack.java:254)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.picker.LastAccessedStorage$RuntimeLastAccessedStorage.getLastAccessed(LastAccessedStorage.java:67)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.picker.LoadLastAccessedStackTask.run(LoadLastAccessedStackTask.java:60)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.picker.LoadLastAccessedStackTask.run(LoadLastAccessedStackTask.java:37)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.CheckedTask.doInBackground(CheckedTask.java:65)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.DocumentsApplication.acquireUnstableProviderOrThrow(DocumentsApplication.java:64)
+10-28 23:36:01.640  9018 11657 W LastAccessedStorage: 	at com.android.documentsui.base.DocumentInfo.updateFromUri(DocumentInfo.java:195)
+10-28 23:36:01.698  1093  8027 I WindowManager: Relayout Window{c1eb616 u0 com.android.documentsui/com.android.documentsui.picker.PickActivity}: oldVis=4 newVis=0 focusMayChange = true
+10-28 23:36:01.704   570   623 I BufferQueueConsumer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe3800,id:234,api:0,p:-1,c:570) setConsumerName: com.android.documentsui/com.android.documentsui.picker.PickActivity#0
+10-28 23:36:01.704   570   623 I BufferQueueConsumer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe3800,id:234,api:0,p:-1,c:570) setDefaultBufferSize: width=640 height=480
+10-28 23:36:01.709   570  1040 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe3800,id:234,api:1,p:9018,c:570) connect(P): api=1 producer=(9018:com.android.documentsui) producerControlledByApp=false
+10-28 23:36:01.796  1093  1116 I ActivityTaskManager: Displayed com.android.documentsui/.picker.PickActivity: +300ms
+10-28 23:36:02.214   570  1040 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:1,p:13016,c:570) disconnect(P): api 1
+10-28 23:36:02.280   570   570 I BufferQueue: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de88d2000,id:233,api:1,p:-1,c:-1) ~BufferQueueCore
+10-28 23:36:02.357  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:03.243   570  1683 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe3800,id:234,api:1,p:9018,c:570) queueBuffer: fps=2.72 dur=1469.48 max=1292.80 min=44.91
+10-28 23:36:04.600  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:04.681 13016 13016 I LTWS_PCAP: PICKER RESULT uri=content://com.android.providers.downloads.documents/document/msf%3A19
+10-28 23:36:04.682 13016 13016 I LTWS_PCAP: SERVICE start requested for content://com.android.providers.downloads.documents/document/msf%3A19
+10-28 23:36:04.688   570  1683 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe3800,id:234,api:1,p:9018,c:570) queueBuffer: fps=43.59 dur=1445.36 max=528.16 min=11.86
+10-28 23:36:04.703  1093  1275 I WindowManager: Relayout Window{3981f99 u0 com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity}: oldVis=4 newVis=0 focusMayChange = true
+10-28 23:36:04.708   570  1683 I BufferQueueConsumer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:0,p:-1,c:570) setConsumerName: com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0
+10-28 23:36:04.708   570  1683 I BufferQueueConsumer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:0,p:-1,c:570) setDefaultBufferSize: width=640 height=480
+10-28 23:36:04.715   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) connect(P): api=1 producer=(13016:com.projectrevivesolutions.layertime.controller.diag) producerControlledByApp=false
+10-28 23:36:04.782 13016 13016 I LTWS_PCAP: SERVICE onStartCommand action=com.projectrevivesolutions.layertime.controller.PCAP_IMPORT data=content://com.android.providers.downloads.documents/document/msf%3A19
+10-28 23:36:04.796 13016 13016 I LTWS_PCAP: IMPORT start requested uri=content://com.android.providers.downloads.documents/document/msf%3A19 running=false
+10-28 23:36:04.830 13016 13334 I LTWS_PCAP: PHASE copy
+10-28 23:36:04.842 13016 13334 I LTWS_PCAP: PCAP file=lt_test_bulk_3000.pcap bytes=139224
+10-28 23:36:04.842 13016 13334 I LTWS_PCAP: PHASE init
+10-28 23:36:04.842 13016 13334 I LTWS_PCAP: PHASE decode
+10-28 23:36:04.843 13016 13334 I LTWS_PCAP: PCAP opened type=pcap size=139224 wireshark=4.4.19
+10-28 23:36:04.871 13016 13334 I LTWS_PCAP: FRAME 1 len=26 encap=IEEE 802.11 Wireless LAN fields=79 wlan.fc.type_subtype=0x000c@0+1 wlan.sa=00:11:22:33:aa:bb@10+6 wlan.da=ff:ff:ff:ff:ff:ff@4+6 wlan.bssid=00:11:22:33:aa:bb@16+6 wlan.seq=7@22+2 wlan.fixed.reason_code=0x0007@24+2
+10-28 23:36:04.898 13016 13334 I LTWS_PCAP: FRAME 2 len=26 encap=IEEE 802.11 Wireless LAN fields=82 wlan.fc.type_subtype=0x000a@0+1 wlan.sa=00:11:22:33:aa:bb@10+6 wlan.da=00:11:22:33:44:55@4+6 wlan.bssid=00:11:22:33:aa:bb@16+6 wlan.seq=8@22+2 wlan.fixed.reason_code=0x0008@24+2
+10-28 23:36:04.933 13016 13334 I LTWS_PCAP: FRAME 3 len=51 encap=IEEE 802.11 Wireless LAN fields=110 wlan.fc.type_subtype=0x0008@0+1 wlan.sa=00:11:22:33:aa:bb@10+6 wlan.da=ff:ff:ff:ff:ff:ff@4+6 wlan.bssid=00:11:22:33:aa:bb@16+6 wlan.seq=9@22+2 wlan.ssid=4c:54:2d:54:45:53:54@38+7 wlan.ds.current_channel=6@50+1
+10-28 23:36:04.958 13016 13334 I LTWS_PCAP: FRAME 4 len=29 encap=IEEE 802.11 Wireless LAN fields=81 wlan.fc.type_subtype=0x0004@0+1 wlan.sa=02:00:00:00:00:01@10+6 wlan.da=ff:ff:ff:ff:ff:ff@4+6 wlan.bssid=ff:ff:ff:ff:ff:ff@16+6 wlan.seq=10@22+2 wlan.ssid=@26+0
+10-28 23:36:04.975 13016 13334 I LTWS_PCAP: FRAME 5 len=20 encap=IEEE 802.11 Wireless LAN fields=49 MALFORMED wlan.fc.type_subtype=0x000c@0+1
+10-28 23:36:05.078   570   623 I BufferQueueProducer: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe3800,id:234,api:1,p:9018,c:570) disconnect(P): api 1
+10-28 23:36:05.229   570   570 I BufferQueue: [com.android.documentsui/com.android.documentsui.picker.PickActivity#0](this:0x7ddcfe3800,id:234,api:1,p:-1,c:-1) ~BufferQueueCore
+10-28 23:36:06.782  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:09.025  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:09.854 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 219 frames (7% of file) 44/s elapsed 5 s
+10-28 23:36:09.962   570   622 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.77 dur=5182.94 max=4930.60 min=11.25
+10-28 23:36:11.315  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:13.592  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:14.859 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 453 frames (15% of file) 47/s elapsed 10 s
+10-28 23:36:14.946   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=4984.43 max=4984.43 min=4984.43
+10-28 23:36:15.856  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:18.134  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:19.874 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 693 frames (23% of file) 48/s elapsed 15 s
+10-28 23:36:19.969   570   622 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=5023.15 max=5023.15 min=5023.15
+10-28 23:36:20.426  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:22.718  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:24.884 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 927 frames (30% of file) 47/s elapsed 20 s
+10-28 23:36:24.975   570   622 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=5005.50 max=5005.50 min=5005.50
+10-28 23:36:24.997  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:27.234  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:29.518  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:29.902 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 1,164 frames (38% of file) 47/s elapsed 25 s
+10-28 23:36:29.982   570   622 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=5007.51 max=5007.51 min=5007.51
+10-28 23:36:31.813  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:34.102  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:34.910 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 1,400 frames (46% of file) 47/s elapsed 30 s
+10-28 23:36:34.998   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=5015.17 max=5015.17 min=5015.17
+10-28 23:36:36.405  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:38.690  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:39.918 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 1,644 frames (54% of file) 49/s elapsed 35 s
+10-28 23:36:39.997   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=4999.27 max=4999.27 min=4999.27
+10-28 23:36:40.971  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:43.267  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:44.940 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 1,881 frames (62% of file) 47/s elapsed 40 s
+10-28 23:36:45.026   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=5029.27 max=5029.27 min=5029.27
+10-28 23:36:45.567  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:47.857  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:49.956 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 2,113 frames (70% of file) 46/s elapsed 45 s
+10-28 23:36:50.048   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=5021.57 max=5021.57 min=5021.57
+10-28 23:36:50.090  2396  2396 V NotificationFragment: onNotificationPosted: StatusBarNotification(pkg=com.projectrevivesolutions.layertime.controller.diag user=UserHandle{0} id=1002 tag=null key=0|com.projectrevivesolutions.layertime.controller.diag|1002|null|10058: Notification(channel=layertime_pcap_import pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x6a color=0x00000000 actions=1 vis=PRIVATE))
+10-28 23:36:50.091  2396  2396 D NotificationHelper: title: LayerTime capture import
+10-28 23:36:50.093  2396  2396 V NotificationFragment: onNotificationPosted: StatusBarNotification(pkg=com.projectrevivesolutions.layertime.controller.diag user=UserHandle{0} id=1002 tag=null key=0|com.projectrevivesolutions.layertime.controller.diag|1002|null|10058: Notification(channel=layertime_pcap_import pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x6a color=0x00000000 actions=1 vis=PRIVATE))
+10-28 23:36:50.093  2396  2396 D NotificationHelper: title: LayerTime capture import
+10-28 23:36:50.096  2396  2396 V NotificationFragment: onNotificationPosted: StatusBarNotification(pkg=com.projectrevivesolutions.layertime.controller.diag user=UserHandle{0} id=1002 tag=null key=0|com.projectrevivesolutions.layertime.controller.diag|1002|null|10058: Notification(channel=layertime_pcap_import pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x6a color=0x00000000 actions=1 vis=PRIVATE))
+10-28 23:36:50.096  2396  2396 D NotificationHelper: title: LayerTime capture import
+10-28 23:36:50.098  2396  2396 V NotificationFragment: onNotificationPosted: StatusBarNotification(pkg=com.projectrevivesolutions.layertime.controller.diag user=UserHandle{0} id=1002 tag=null key=0|com.projectrevivesolutions.layertime.controller.diag|1002|null|10058: Notification(channel=layertime_pcap_import pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x6a color=0x00000000 actions=1 vis=PRIVATE))
+10-28 23:36:50.099  2396  2396 D NotificationHelper: title: LayerTime capture import
+10-28 23:36:50.105  2396  2396 V NotificationFragment: onNotificationPosted: StatusBarNotification(pkg=com.projectrevivesolutions.layertime.controller.diag user=UserHandle{0} id=1002 tag=null key=0|com.projectrevivesolutions.layertime.controller.diag|1002|null|10058: Notification(channel=layertime_pcap_import pri=0 contentView=null vibrate=null sound=null defaults=0x0 flags=0x6a color=0x00000000 actions=1 vis=PRIVATE))
+10-28 23:36:50.105  2396  2396 D NotificationHelper: title: LayerTime capture import
+10-28 23:36:50.131  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:52.363  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:54.650  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:54.983 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 2,347 frames (78% of file) 47/s elapsed 50 s
+10-28 23:36:55.065   570   622 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=5017.30 max=5017.30 min=5017.30
+10-28 23:36:56.944  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:59.231  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:36:59.996 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 2,585 frames (86% of file) 47/s elapsed 55 s
+10-28 23:37:00.072   570   623 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=5007.33 max=5007.33 min=5007.33
+10-28 23:37:01.528  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:03.802  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:05.000 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 2,820 frames (93% of file) 47/s elapsed 60 s
+10-28 23:37:05.079   570  1683 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.20 dur=5007.08 max=5007.08 min=5007.08
+10-28 23:37:06.097  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:08.393  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:08.834 13016 13334 I LTWS_PCAP: HEARTBEAT pcap 3,000 frames (100% of file) 47/s elapsed 64 s final
+10-28 23:37:08.835 13016 13334 I LTWS_PCAP: PCAP DONE frames=3000 kept=500 malformed=600 elapsed=64.0 s type=pcap file=lt_test_bulk_3000.pcap
+10-28 23:37:08.853  2396  2396 W NotificationHelper: removeNotificationEntry failed, packageName=com.projectrevivesolutions.layertime.controller.diag mTag=null id=1002
+10-28 23:37:08.869  2396  2396 W NotificationHelper: removeNotificationEntry failed, packageName=com.projectrevivesolutions.layertime.controller.diag mTag=null id=1002
+10-28 23:37:09.270   570   623 I BufferQueueProducer: [com.projectrevivesolutions.layertime.controller.diag/com.projectrevivesolutions.layertime.controller.ui.MainActivity#0](this:0x7de8950800,id:235,api:1,p:13016,c:570) queueBuffer: fps=0.24 dur=4190.76 max=4190.76 min=4190.76
+10-28 23:37:10.690  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:12.977  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:15.281  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:17.580  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:19.891  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:22.193  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:24.505  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:26.812  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:29.115  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:31.420  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:33.721  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:36.023  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:38.339  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:40.643  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:42.944  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:45.252  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:47.549  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:49.857  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:52.177  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:54.495  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:56.805  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:37:59.108  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:01.407  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:03.711  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:06.005  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:08.316  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:10.630  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:12.942  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:15.253  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:17.564  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:19.871  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:22.182  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:24.495  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:26.820  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:33.336  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:35.656  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:37.964  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:40.277  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:42.582  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:44.906  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:47.227  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:49.539  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:51.862  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:54.182  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:56.489  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:38:58.812  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:39:01.117  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:39:03.430  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:39:05.749  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:39:08.076  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:39:10.390  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
+10-28 23:39:12.716  1887  1887 I ADB_SERVICES: service_to_fd shell,v2,raw:pidof com.projectrevivesolutions.layertime.controller.diag
