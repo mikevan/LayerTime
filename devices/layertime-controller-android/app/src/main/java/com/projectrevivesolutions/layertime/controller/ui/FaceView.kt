@@ -58,6 +58,7 @@ fun FaceView(
     sunLabel: String = "SUN",
     sunValue: String = "--",
     sunAmPm: String? = null,
+    sunTag: String? = null,
     onCounter: () -> Unit,
     onRecon: () -> Unit,
     onOutsideCircle: () -> Unit = {},
@@ -116,12 +117,16 @@ fun FaceView(
             val lx = g.x(95f); val rx = g.x(359f)
             drawRing(lx, ry, rr, LtColors.Cyan, ::k)
             drawWeatherGlyph(lx, ry - k(37f), k(10f), LtColors.Cyan)
-            bands(g, lx, "TEMP", LtColors.Cyan, tempValue ?: "N/A", if (tempValue != null) Color.White else LtColors.Grey,
+            bands(g, lx, "TEMP", LtColors.Cyan, tempValue ?: "N/A", if (tempValue != null && tempValue != "--") Color.White else LtColors.Grey,
                 tempUnit, LtColors.Ivory)
             drawRing(rx, ry, rr, LtColors.Green, ::k)
-            drawSolarGlyph(rx, ry - k(37f), k(10f), LtColors.Green)
+            if (sunTag == null) drawSolarGlyph(rx, ry - k(37f), k(10f), LtColors.Green)
             bands(g, rx, sunLabel, if (sunValue != "--") LtColors.Green else LtColors.Grey, sunValue,
                 if (sunValue != "--") Color.White else LtColors.Grey, sunAmPm, LtColors.Ivory)
+            // MANUAL or the satellite count rides on a small riveted plate in the glyph's place at
+            // the top of the ring (the bottom row only has room for AM or PM). Its row inside the
+            // ring is about 84 px wide, so the plate is held to 80.
+            sunTag?.let { drawRingTag(rx, ry - k(37f), it, if (it.startsWith("SAT")) LtColors.Ivory else LtColors.Amber, g, k(80f)) }
 
             val (lb, rb) = faceButtonRects(size.width, size.height)
             drawFaceButton(lb, "COUNTER", "shield", g)
@@ -474,6 +479,24 @@ private fun DrawScope.drawBattery(g: FaceGeom, pct: Int) {
     ink(text, left + g.k(30f), g.y(60f), g.k(19f), col, align = Paint.Align.LEFT)
 }
 
+/** A small dark plate with a coloured rim and two rivets, centred on (x, y), carrying [text]. */
+private fun DrawScope.drawRingTag(x: Float, y: Float, text: String, color: Color, g: FaceGeom, maxW: Float) {
+    var cap = g.k(12f)
+    val probe = Paint().apply { typeface = LabelFace; letterSpacing = 0.06f; textSize = 100f }
+    val b = android.graphics.Rect(); probe.getTextBounds("H", 0, 1, b)
+    probe.textSize = 100f * cap / b.height()
+    val pad = g.k(22f)
+    var tw = probe.measureText(text)
+    if (tw + pad > maxW) { val f = (maxW - pad) / tw; cap *= f; tw *= f }
+    val w = tw + pad; val h = g.k(19f)
+    val tl = Offset(x - w / 2f, y - h / 2f)
+    drawRoundRect(Color(0xCC000000), Offset(tl.x + 1.5f, tl.y + 1.5f), Size(w, h), androidx.compose.ui.geometry.CornerRadius(h / 4f))
+    drawRoundRect(Color(0xFF1E140A), tl, Size(w, h), androidx.compose.ui.geometry.CornerRadius(h / 4f))
+    drawRoundRect(color, tl, Size(w, h), androidx.compose.ui.geometry.CornerRadius(h / 4f), style = Stroke(g.k(2f)))
+    rivet(Offset(tl.x + g.k(5.5f), y), g.k(2.6f)); rivet(Offset(tl.x + w - g.k(5.5f), y), g.k(2.6f))
+    ink(text, x, y + cap / 2f, cap, color)
+}
+
 /** LAYERTIME with capitals on rows 68..86 and the amber dashes either side. */
 private fun DrawScope.drawTitle(g: FaceGeom) {
     val tw = ink("LAYERTIME", g.cx, g.y(86f), g.k(19f), LtColors.Ivory)
@@ -500,7 +523,8 @@ private fun DrawScope.bands(
     val y = g.y(190f)
     ink(label, x, y - g.k(6f), g.k(19f), labelColor, maxW = g.k(100f))
     ink(value, x, y + g.k(31f), g.k(31f), valueColor, digits = true, maxW = g.k(104f))
-    unit?.let { ink(it, x, y + g.k(54f), g.k(19f), unitColor, maxW = g.k(80f)) }
+    // the unit row sits low in the ring, where its chord is about 60 px wide
+    unit?.let { ink(it, x, y + g.k(54f), g.k(19f), unitColor, maxW = g.k(56f)) }
 }
 
 private fun DrawScope.drawRing(x: Float, y: Float, r: Float, color: Color, s: (Float) -> Float) {

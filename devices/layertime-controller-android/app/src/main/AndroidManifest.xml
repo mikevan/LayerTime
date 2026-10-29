@@ -5,8 +5,10 @@
     <!-- BLE, legacy regime (Android 11 / API <= 30). -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <!-- Location was required to obtain BLE scan results before API 31. -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+    <!-- Location: required for BLE scan results before API 31, and on every version for
+         the face's sunrise and sunset ring (a GPS fix fed to SunTimes on the device). -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- BLE, runtime regime (Android 12 / API 31+). We never derive physical
          location from BLE scans, so neverForLocation is asserted. -->

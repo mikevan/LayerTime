@@ -262,24 +262,74 @@ private fun ControllerScreen() {
     var frozen by remember { mutableStateOf<FaceInputs?>(null) }
     // Ring data: ambient temperature only from a real sensor; sunrise/sunset from location.
     var ambientC by remember { mutableStateOf<Float?>(null) }
+    val hasTempSensor = remember { RingData.hasAmbientTemperature(context) }
+    // A sensor that sends nothing within 10 s is treated as absent (the LOKMAT watch lists an
+    // MTK ambient sensor that has never produced a reading).
+    var tempSilent by remember { mutableStateOf(false) }
+    var satUsed by remember { mutableIntStateOf(0) }
+    var satSeen by remember { mutableIntStateOf(0) }
     var location by remember { mutableStateOf(RingData.lastKnown(context)) }
+    var locPerm by remember { mutableStateOf(RingData.hasLocationPermission(context)) }
+    // Location is asked for when the app opens, not only at SCAN & CONNECT, because the
+    // sunrise and sunset ring needs it whether or not a wand is connected.
+    val locLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        locPerm = RingData.hasLocationPermission(context)
+    }
+    LaunchedEffect(Unit) {
+        if (!locPerm) locLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+    }
     DisposableEffect(Unit) {
-        val stop = RingData.watchAmbientTemperature(context) { ambientC = it }
-        if (location == null) RingData.requestOneFix(context) { location = it }
+        val stop = RingData.watchAmbientTemperature(context, onSilent = { tempSilent = true }) { ambientC = it; tempSilent = false }
+        onDispose { stop?.invoke() }
+    }
+    // Keep after a GPS fix: try for 3 minutes, rest 5, until one arrives; then refresh every
+    // 30 minutes. The LOKMAT watch has no network location, so GPS is the only source.
+    // Until the first fix there is no saved position, so the receiver keeps searching (a cold
+    // start with no assisted GPS, as on the LOKMAT watch without a SIM, can take many minutes).
+    // After that, a 3-minute refresh every 30 minutes.
+    LaunchedEffect(locPerm) {
+        if (!locPerm) return@LaunchedEffect
+        while (true) {
+            val fix = RingData.awaitFix(context, if (location == null) 60 * 60_000L else 180_000L)
+            if (fix != null) location = fix
+            delay(if (location != null) 30 * 60_000L else 60_000L)
+        }
+    }
+    DisposableEffect(locPerm) {
+        val stop = if (locPerm) RingData.watchSatellites(context) { u, n -> satUsed = u; satSeen = n } else null
         onDispose { stop?.invoke() }
     }
     val fahrenheit = remember { RingData.useFahrenheit() }
+    // N/A only when the device has no sensor; "--" while a sensor has not reported yet.
     val tempValue = ambientC?.let { c -> "%.0f°".format(if (fahrenheit) c * 9f / 5f + 32f else c) }
+        ?: if (hasTempSensor && !tempSilent) "--" else null
     val tempUnit = if (ambientC != null) (if (fahrenheit) "°F" else "°C") else null
-    val sun = remember(nowMs / 60_000L, location) {
-        location?.let { SunTimes.next(it.latitude, it.longitude, nowMs, java.util.TimeZone.getDefault()) }
+    // Position for the SUN ring: a GPS fix or a grid the operator entered, whichever is newer.
+    // A fresh GPS fix takes over from an older manual entry; entering a grid after the last
+    // fix means the operator knows better where they are now.
+    var manual by remember { mutableStateOf(RingData.manualPosition(context)) }
+    val useManual = manual != null && (location == null || manual!!.time > location!!.time)
+    val posLat = if (useManual) manual!!.lat else location?.latitude
+    val posLon = if (useManual) manual!!.lon else location?.longitude
+    val sun = remember(nowMs / 60_000L, posLat, posLon) {
+        if (posLat != null && posLon != null) SunTimes.next(posLat, posLon, nowMs, java.util.TimeZone.getDefault()) else null
     }
-    val sunLabel = when (sun?.first) { true -> "SUNRISE"; false -> "SUNSET"; null -> "SUN" }
+    val sunLabel = when (sun?.first) {
+        true -> "SUNRISE"; false -> "SUNSET"
+        null -> if (posLat != null) "SUN" else if (!locPerm) "NO LOC" else "NO FIX"
+    }
     val sunValue = sun?.let { SimpleDateFormat(if (is24) "H:mm" else "h:mm", Locale.US).format(Date(it.second)) } ?: "--"
-    val sunAmPm = sun?.let { if (is24) null else SimpleDateFormat("a", Locale.US).format(Date(it.second)) }
+    val sunAmPm = if (sun != null && !is24) SimpleDateFormat("a", Locale.US).format(Date(sun.second)) else null
+    // A tag on top of the ring: MANUAL whenever the position was entered by hand, so it is never
+    // mistaken for GPS; with no position yet, the receiver working (satellites used of seen).
+    val sunTag = when {
+        sun != null && useManual -> "MANUAL"
+        posLat == null && locPerm -> "SAT $satUsed/$satSeen"
+        else -> null
+    }
 
     val live = FaceInputs(conn, status, btOn, battery, hourText, minText, dateText,
-        tempValue, tempUnit, sunLabel, sunValue, sunAmPm)
+        tempValue, tempUnit, sunLabel, sunValue, sunAmPm, sunTag)
     val shown = if (faceParked) (frozen ?: live) else live
     // Plain holder, not state: the sliding layout installs its park action here each
     // composition without triggering another recomposition.
@@ -288,7 +338,7 @@ private fun ControllerScreen() {
     val face: @Composable (Modifier) -> Unit = { m ->
         FaceView(shown.conn, shown.status, shown.btOn, shown.battery, shown.hour, shown.min, shown.date,
             tempValue = shown.tempValue, tempUnit = shown.tempUnit,
-            sunLabel = shown.sunLabel, sunValue = shown.sunValue, sunAmPm = shown.sunAmPm,
+            sunLabel = shown.sunLabel, sunValue = shown.sunValue, sunAmPm = shown.sunAmPm, sunTag = shown.sunTag,
             onCounter = { page = "attacks"; faceActions.afterButton() }, onRecon = { page = "config"; faceActions.afterButton() },
             onOutsideCircle = { faceActions.outsideCircle() }, modifier = m)
     }
@@ -440,6 +490,14 @@ private fun ControllerScreen() {
                                 }
                             }
                             item {
+                                PositionPanel(
+                                    gpsTime = location?.time, manual = manual, useManual = useManual,
+                                    posLat = posLat, posLon = posLon,
+                                    onSet = { lat, lon -> manual = RingData.saveManual(context, lat, lon) },
+                                    onClear = { RingData.clearManual(context); manual = null },
+                                )
+                            }
+                            item {
                                 SciFiPanel("EXPORT") {
                                     Text("Writes a diagnostic bundle you can share.", color = LtColors.Ivory, fontSize = 11.sp)
                                     SciFiPrimary("EXPORT DIAGNOSTICS", enabled = true, large = true) {
@@ -498,7 +556,8 @@ private fun ControllerScreen() {
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val sliding = maxWidth >= maxHeight && maxWidth < maxHeight * 1.6f
+        // The watch layout of the design standard (claude/android_watch_design_standard.md).
+        val sliding = WatchFormFactor.matches(maxWidth.value, maxHeight.value)
         if (sliding) {
             // Short, wide, near-square screens (the LOKMAT watch): the face is a full-height
             // square on the left, over the panel. It slides off to the left when the operator
@@ -568,6 +627,7 @@ private data class FaceInputs(
     val conn: ConnState, val status: com.projectrevivesolutions.layertime.controller.link.StatusSnapshot?,
     val btOn: Boolean, val battery: Int, val hour: String, val min: String, val date: String,
     val tempValue: String?, val tempUnit: String?, val sunLabel: String, val sunValue: String, val sunAmPm: String?,
+    val sunTag: String?,
 )
 
 /** Empty-list text that matches the real state instead of always saying "connect a wand". */
@@ -777,5 +837,101 @@ private fun EventRowCard(e: EventRow) {
                 e.detail?.let { Text("detail: $it", color = LtColors.Grey, fontSize = 11.sp, fontFamily = ConsoleFonts.mono) }
             }
         }
+    }
+}
+
+/**
+ * POSITION: where the SUN ring's position comes from, the position as MGRS, and a
+ * field to enter one by hand (MGRS, UTM, or latitude and longitude). The watch's GPS
+ * stays the first source; a manual entry is used when it is newer than the last fix.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PositionPanel(
+    gpsTime: Long?, manual: RingData.Manual?, useManual: Boolean, posLat: Double?, posLon: Double?,
+    onSet: (Double, Double) -> Unit, onClear: () -> Unit,
+) {
+    var text by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf<Pair<String, Boolean>?>(null) }   // text, isError
+    val fmt = remember { SimpleDateFormat("MMM dd HH:mm", Locale.US) }
+    SciFiPanel("POSITION", statusColor = when { posLat == null -> LtColors.Red; useManual -> LtColors.Amber; else -> LtColors.Green }) {
+        val source = when {
+            posLat == null -> "NONE"
+            useManual -> "MANUAL  ${fmt.format(Date(manual!!.time)).uppercase()}"
+            else -> "GPS  ${fmt.format(Date(gpsTime ?: 0L)).uppercase()}"
+        }
+        HudReadout("SOURCE", source, when { posLat == null -> LtColors.Red; useManual -> LtColors.Amber; else -> LtColors.Green })
+        if (posLat != null && posLon != null) {
+            Text(GridPosition.toMgrs(posLat, posLon), color = LtColors.Ivory, fontSize = 13.sp, fontFamily = ConsoleFonts.mono,
+                letterSpacing = 1.sp)
+        }
+        // Entry box: the HUD keypad below types into it. The system keyboard is not used, because
+        // the LOKMAT watch's keyboard would not accept the digits after "18S UJ".
+        Box(Modifier.fillMaxWidth().readoutWell().padding(horizontal = 10.dp, vertical = 6.dp)) {
+            if (text.isEmpty()) Text("18S UJ 23478 06483", color = LtColors.Grey, fontFamily = ConsoleFonts.mono, fontSize = 15.sp)
+            else Text(text + "_", color = LtColors.Ivory, fontFamily = ConsoleFonts.mono, fontSize = 15.sp, letterSpacing = 1.sp)
+        }
+        GridKeypad { key ->
+            message = null
+            text = when (key) {
+                "DEL" -> text.dropLast(1)
+                "CLEAR" -> ""
+                "SPACE" -> if (text.isEmpty() || text.endsWith(" ")) text else "$text "
+                else -> if (text.length < 32) text + key else text
+            }
+        }
+        Text("Enter MGRS, UTM, or latitude and longitude with the keypad. The GPS takes over again with its next fix.",
+            color = LtColors.Grey, fontSize = 10.sp)
+        message?.let { (m, err) -> Text(m, color = if (err) LtColors.Red else LtColors.Green, fontSize = 11.sp) }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            SciFiPrimary("SET POSITION", enabled = text.isNotBlank()) {
+                when (val r = GridPosition.parse(text)) {
+                    is GridPosition.Parsed.Ok -> {
+                        onSet(r.position.lat, r.position.lon)
+                        message = "Position set from ${r.format}: ${GridPosition.toMgrs(r.position.lat, r.position.lon)}." to false
+                        text = ""
+                    }
+                    is GridPosition.Parsed.Error -> message = r.message to true
+                }
+            }
+            SciFiOutline("CLEAR MANUAL", enabled = manual != null) { onClear(); message = "Manual position cleared." to false }
+        }
+    }
+}
+
+/**
+ * The console's own keypad for grid entry: digits, SPACE, DEL, CLEAR, minus, and a
+ * decimal point, and an ABC key that swaps in the 24 grid letters (A to Z without I
+ * and O, which MGRS and UTM never use). Keys scale with the panel text size.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun GridKeypad(onKey: (String) -> Unit) {
+    var letters by remember { mutableStateOf(false) }
+    val digits = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", ".")
+    val alpha = "ABCDEFGHJKLMNPQRSTUVWXYZ".map { it.toString() }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        for (k in if (letters) alpha else digits) HudKey(k, LtColors.ConsoleEdge) { onKey(k) }
+        HudKey(if (letters) "123" else "ABC", LtColors.Amber, wide = true) { letters = !letters }
+        HudKey("SPACE", LtColors.ConsoleEdge, wide = true) { onKey("SPACE") }
+        HudKey("DEL", LtColors.Amber, wide = true) { onKey("DEL") }
+        HudKey("CLEAR", LtColors.Red, wide = true) { onKey("CLEAR") }
+    }
+}
+
+/** One keypad key: a small glass pill with a lit rim. */
+@Composable
+private fun HudKey(label: String, edge: Color, wide: Boolean = false, onClick: () -> Unit) {
+    val scale = LocalDensity.current.fontScale
+    Box(
+        Modifier.size(width = (if (wide) 70.dp else 40.dp) * scale, height = 36.dp * scale)
+            .glassPill(edge, true)
+            .border(2.dp, railBrush(edge), PillShape)
+            .clip(PillShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = edge, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = ConsoleFonts.heading,
+            style = TextStyle(shadow = Shadow(edge, Offset.Zero, 8f)))
     }
 }

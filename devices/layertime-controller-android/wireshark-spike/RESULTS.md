@@ -557,3 +557,57 @@ at 10%.
 ## Build 38 (0.1.37)
 Bronze one step stronger: dial #3C2916 -> #281B0E -> #140D07, polishing arcs and sheen about
 60% stronger, bezel glaze 25% (was 18%).
+
+## Build 39 (0.1.38)
+Rings. Diagnosis on the watch (b38_rings_diag.txt): Android 10, location granted, mode 3,
+network location disabled and no active network, no last known location at all; an MTK
+AMBIENT_TEMPERATURE sensor exists (on-change) and was registered but never delivered a
+reading. Fixes: the sensor's readings are logged (first three, then one a minute, and a line
+if nothing arrives in 10 s), and TEMP shows "--" while waiting (N/A only with no sensor).
+Location: asked for when the app opens; GPS (and network when enabled) is retried, 3 minutes
+on and 5 off, until a fix, then refreshed every 30 minutes; the last fix is saved in prefs so a
+restart keeps it; the ring reads NO FIX while searching and NO LOC without permission.
+ACCESS_FINE_LOCATION is no longer capped at API 30, and COARSE is declared.
+The watch layout rule is now WatchFormFactor (unit tested), tied to the design standard.
+
+## Build 40 (0.1.39)
+Evidence from b39_hw_diag.txt. TEMP: sensorservice's recent-events record has STEP_COUNTER,
+LIGHT, and ACCELEROMETER but never AMBIENT_TEMPERATURE, so the listed MTK ambient sensor has
+never produced a reading; the product listings name no temperature sensor. GPS: the MediaTek
+GNSS stack is real (MNLD hal_gps_start, GNSS HAL wakelock, MtkAgpsNative), but assisted GPS
+fails with no SIM ("IMSI is invalid") and no cell data, so every start is an unassisted cold
+start; no fix arrived in 2 minutes.
+Changes: a temperature sensor silent for 10 s is treated as absent and TEMP shows N/A. The
+receiver keeps searching (up to an hour per attempt) until the first fix, then refreshes for
+3 minutes every 30. GnssStatus is logged every 30 s (satellites used, in view, best C/N0), and
+the SUN ring's bottom line shows SAT used/seen while there is no position.
+
+## Build 41 (0.1.40)
+GPS evidence (b40_rings_log.txt): the receiver works (22 satellites in view within 30 s) but
+the strongest signal was 21 to 23 dB-Hz, an indoor level, then 0; no fix. A later outdoor try
+also gave no fix (log not yet collected). The LayerWand (T-Dongle-C5) has no GNSS, and the
+watch cannot pair with a phone, so the watch's sources are its own GPS and manual entry.
+Manual position: a POSITION panel in the console takes MGRS (any precision, spaced or not),
+UTM, or decimal latitude and longitude (with N/S/E/W or signs), converts on the watch
+(GridPosition: Snyder transverse Mercator series on WGS84, MGRS AA lettering, band-resolved
+northing, Norway and Svalbard zone exceptions; polar areas refused), and saves it. The SUN
+ring uses whichever is newer, the last GPS fix or the manual entry, and marks a manual
+position MANUAL in amber. GridPositionTest checks 9 reference points from the Python mgrs
+package and PROJ (both hemispheres, equator, 32V, 33X) to 1 m and 0.5 m, plus parsing and
+refusals.
+
+## Build 42 (0.1.41)
+Outdoor GPS (b40_outdoor_log.txt, 13:17 to 14:04): at most 1 satellite in view, mostly 0,
+never above 24.4 dB-Hz, no fix; worse than at the desk. This watch's GNSS reception is not
+usable, so manual entry is its primary position source.
+Position entry: on the watch the system keyboard would not accept the digits after "18S UJ".
+The POSITION panel now has its own HUD keypad (digits, minus, decimal point, ABC for the 24
+grid letters without I and O, SPACE, DEL, CLEAR) typing into a readout well; the system
+keyboard is not used.
+
+## Build 43 (0.1.42)
+"PM MANUAL" and "SAT 0/0" on the SUN ring's bottom row ran outside the ring: that row's chord
+is only about 60 px. The bottom row now carries only AM or PM (held to 56 px), and MANUAL, or
+the satellite count while there is no position, sits on a small riveted plate (dark bronze,
+coloured rim, held to 80 px) in place of the sun glyph at the top of the ring, where the
+chord is about 84 px.
