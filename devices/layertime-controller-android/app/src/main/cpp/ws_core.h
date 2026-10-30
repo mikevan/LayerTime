@@ -68,6 +68,13 @@ const char *ltws_pcap_file_type(const ltws_pcap *p);  /* Wireshark's file-type n
 int64_t     ltws_pcap_file_size(const ltws_pcap *p);  /* bytes, or -1 if unknown */
 void        ltws_pcap_close(ltws_pcap *p);
 
+/* Vendor lookup in Wireshark's built-in IEEE registry (MA-L, MA-M, MA-S, and
+ * CID blocks), by the longest matching prefix of a 6-byte address, most
+ * significant byte first. Needs no initialization. Returns 1 and sets the
+ * out pointers (static storage, do not free) when a block matches, else 0. */
+int ltws_manuf_lookup(const uint8_t addr[6], const char **short_name,
+                      const char **long_name, unsigned *mask_bits);
+
 void ltws_free(char *s);
 
 #endif

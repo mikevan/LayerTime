@@ -8,6 +8,7 @@ import com.projectrevivesolutions.layertime.controller.model.ConnState
 import com.projectrevivesolutions.layertime.controller.model.DeviceReport
 import com.projectrevivesolutions.layertime.controller.model.EventRow
 import com.projectrevivesolutions.layertime.controller.model.LogEntry
+import com.projectrevivesolutions.layertime.controller.model.RssiSample
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -139,6 +140,7 @@ object ControllerRepository {
             detail = existing?.detail,
             firstSeenMillis = existing?.firstSeenMillis ?: t,
             lastUpdatedMillis = t,
+            rssiHistory = ((existing?.rssiHistory ?: emptyList()) + RssiSample(t, e.rssi)).takeLast(RssiSample.KEEP),
         )
         mirror[e.eventId] = row
         publishEvents()

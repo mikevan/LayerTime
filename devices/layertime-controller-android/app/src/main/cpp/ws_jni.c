@@ -109,3 +109,24 @@ JNIEXPORT void JNICALL JFN(nativePcapClose)(JNIEnv *env, jclass clazz, jlong han
     (void)env; (void)clazz;
     if (handle) ltws_pcap_close((ltws_pcap *)(intptr_t)handle);
 }
+
+/* Vendor of a 6-byte address from Wireshark's built-in IEEE registry. Returns
+ * UTF-8 bytes "short<TAB>long<TAB>maskBits", or null when no block matches.
+ * Bytes, not a jstring, because vendor names are UTF-8 and NewStringUTF
+ * expects modified UTF-8. */
+JNIEXPORT jbyteArray JNICALL JFN(nativeManufLookup)(JNIEnv *env, jclass clazz, jbyteArray addr) {
+    (void)clazz;
+    if (addr == NULL || (*env)->GetArrayLength(env, addr) != 6) return NULL;
+    uint8_t a[6];
+    (*env)->GetByteArrayRegion(env, addr, 0, 6, (jbyte *)a);
+    const char *sn = NULL, *ln = NULL;
+    unsigned mask = 0;
+    if (!ltws_manuf_lookup(a, &sn, &ln, &mask)) return NULL;
+    char buf[512];
+    int n = snprintf(buf, sizeof(buf), "%s\t%s\t%u", sn, ln, mask);
+    if (n < 0) return NULL;
+    if (n >= (int)sizeof(buf)) n = (int)sizeof(buf) - 1;
+    jbyteArray out = (*env)->NewByteArray(env, n);
+    if (out) (*env)->SetByteArrayRegion(env, out, 0, n, (const jbyte *)buf);
+    return out;
+}

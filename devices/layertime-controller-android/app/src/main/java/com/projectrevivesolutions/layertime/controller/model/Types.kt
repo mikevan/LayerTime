@@ -35,7 +35,14 @@ data class EventRow(
     val detail: String? = null,
     val firstSeenMillis: Long,
     val lastUpdatedMillis: Long,
+    /** Signal readings from successive EVENT_SUMMARY updates, oldest first, at most [RssiSample.KEEP]. */
+    val rssiHistory: List<RssiSample> = emptyList(),
 )
+
+/** One signal reading for an event, as the phone received it. */
+data class RssiSample(val timeMillis: Long, val rssi: Int) {
+    companion object { const val KEEP = 32 }
+}
 
 /** Result of a screen-off / background reception test window. */
 data class BackgroundTest(

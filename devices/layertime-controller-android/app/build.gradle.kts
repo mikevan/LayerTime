@@ -12,8 +12,8 @@ android {
         applicationId = "com.projectrevivesolutions.layertime.controller"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
         targetSdk = 34
-        versionCode = 52
-        versionName = "0.1.51" // build 52: Low-confidence detections are listed without an alert
+        versionCode = 53
+        versionName = "0.1.52" // build 53: tappable signals, QUICK LOOK with Wireshark vendor lookup
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

@@ -273,6 +273,28 @@ object WiresharkDecoder {
     fun decodeTree(frame: ByteArray): List<Field>? =
         if (loaded) nativeDecodeTree(frame)?.let { parseTree(it) } else null
 
+    /** A vendor from Wireshark's built-in IEEE registry. [maskBits] is the matched block size: 24 (MA-L), 28 (MA-M), or 36 (MA-S). */
+    data class Vendor(val shortName: String, val longName: String, val maskBits: Int)
+
+    /** Parse the native lookup result "short<TAB>long<TAB>maskBits" (UTF-8). Pure; unit-tested. */
+    fun parseVendor(raw: ByteArray?): Vendor? {
+        val p = raw?.toString(Charsets.UTF_8)?.split('\t') ?: return null
+        if (p.size < 3 || p[0].isBlank()) return null
+        return Vendor(p[0], p[1].ifBlank { p[0] }, p[2].toIntOrNull() ?: 0)
+    }
+
+    /**
+     * Vendor of a 6-byte address (most significant byte first), looked up in
+     * the IEEE registry compiled into libwireshark. Null when no registered
+     * block matches, or when the decoder cannot load (see [failure]). Loads
+     * the native library on first use, which takes a moment: call it off the
+     * main thread. Needs no epan initialization.
+     */
+    fun vendorOf(address: ByteArray): Vendor? {
+        if (address.size != 6 || !ensureLoaded()) return null
+        return parseVendor(nativeManufLookup(address))
+    }
+
     /** Decode frames from a pcap/pcapng file; returns the tab-separated summary (or an error string). */
     fun decodePcap(path: String, maxFrames: Int): String? = if (loaded) nativeDecodePcap(path, maxFrames) else null
 
@@ -288,4 +310,5 @@ object WiresharkDecoder {
     private external fun nativePcapFileType(handle: Long): String
     private external fun nativePcapFileSize(handle: Long): Long
     private external fun nativePcapClose(handle: Long)
+    private external fun nativeManufLookup(address: ByteArray): ByteArray?
 }

@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +49,9 @@ import com.projectrevivesolutions.layertime.controller.ui.theme.railBrush
 import com.projectrevivesolutions.layertime.controller.service.PcapImportService
 import com.projectrevivesolutions.layertime.controller.wireshark.PcapImport
 import com.projectrevivesolutions.layertime.controller.wireshark.WiresharkDecoder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -61,6 +65,8 @@ private enum class Prov(val label: String, val color: Color) {
     METADATA("METADATA", LtColors.Cyan),      // supplied by the wand's receiver (rx_ctrl)
     CALC("CALCULATED", LtColors.Amber),       // a statistic computed here
     INFERRED("INFERRED", Color(0xFFF5B83D)),  // a conclusion the wand's classifier drew
+    WIRESHARK("WIRESHARK", LtColors.Green),   // looked up by Wireshark on this device
+    GUIDANCE("GUIDANCE", LtColors.Amber),      // fixed advice text for this kind of detection
     UNAVAIL("UNAVAILABLE", LtColors.Grey),    // not present, with a reason
 }
 
@@ -96,6 +102,8 @@ fun EventDetailScreen(
             }
         }
 
+        item { QuickLook(e) }
+
         item {
             Section("1 - DETECTION SUMMARY") {
                 Field("Classification", e.detectorName, Prov.INFERRED, "The wand's on-board classifier concluded this; it is not a decoded frame-type field.")
@@ -117,15 +125,15 @@ fun EventDetailScreen(
 
         item {
             Section("2 - ADDRESSES AND TARGETS") {
-                Field("Transmitter (TA)", null, Prov.UNAVAIL, noFrames)
+                Field("Transmitter address", e.sourceId?.ifBlank { null }, Prov.DECODED,
+                    "The address the wand's classifier matched: the sender of the Wi-Fi frame, or the Bluetooth advertiser. Untrusted; addresses can be spoofed.")
                 Field("Receiver (RA)", null, Prov.UNAVAIL, noFrames)
                 Field("Source (SA)", null, Prov.UNAVAIL, noFrames)
                 Field("Destination (DA)", null, Prov.UNAVAIL, noFrames)
                 Field("BSSID", null, Prov.UNAVAIL, noFrames)
                 Field("Broadcast / multicast", null, Prov.UNAVAIL, noFrames)
-                Field("SSID", if (e.sourceId.isNullOrBlank()) null else e.sourceId, Prov.DECODED,
-                    "From the wand's source-id text, observed over the air and untrusted. Not correlated to a specific management frame here.")
-                Field("Vendor (OUI) lookup", null, Prov.UNAVAIL, "No MAC address is available. A match would be an address-prefix lookup, not verified device identity.")
+                Field("SSID", null, Prov.UNAVAIL, "Not carried as its own field by Link 0.1. When the detector reports one, it appears in Observed behavior on card 1.")
+                Field("Vendor lookup", null, Prov.UNAVAIL, "See QUICK LOOK at the top: Wireshark's vendor lookup of the transmitter address. A match is a prefix lookup, not verified device identity.")
             }
         }
 
@@ -177,6 +185,93 @@ fun EventDetailScreen(
         }
 
         captureImportItems(capture, "7 - IMPORTED CAPTURE (WIRESHARK)", e.eventId)
+    }
+}
+
+/** Wireshark's vendor lookup for one address, as the QUICK LOOK card shows it. */
+private sealed interface VendorLookup {
+    data object NoAddress : VendorLookup
+    data object Looking : VendorLookup
+    data class Found(val vendor: WiresharkDecoder.Vendor) : VendorLookup
+    data object NotRegistered : VendorLookup
+    data class DecoderUnavailable(val reason: String) : VendorLookup
+}
+
+/**
+ * QUICK LOOK: only what helps a fast investigation with nothing but the watch
+ * and a LayerWand. What it is, who sent it, whether it is getting closer,
+ * whether it is still around, where on the air, and what to do. Fields with
+ * no data are left out rather than listed as unavailable; the full record is
+ * in the cards below.
+ */
+@Composable
+private fun QuickLook(e: EventRow) {
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) { delay(1000); value = System.currentTimeMillis() }
+    }
+    val address = remember(e.sourceId) { SignalAnalysis.parseAddress(e.sourceId) }
+    val vendor by produceState<VendorLookup>(if (address == null) VendorLookup.NoAddress else VendorLookup.Looking, e.sourceId) {
+        if (address == null) return@produceState
+        value = withContext(Dispatchers.Default) {
+            val v = WiresharkDecoder.vendorOf(address)
+            when {
+                v != null -> VendorLookup.Found(v)
+                WiresharkDecoder.failure() != null ->
+                    VendorLookup.DecoderUnavailable(WiresharkDecoder.failure()?.explanation() ?: "The decoder did not load.")
+                else -> VendorLookup.NotRegistered
+            }
+        }
+    }
+    val (what, todo) = SignalAnalysis.advice(e.detector)
+    val heard = SignalAnalysis.lastHeardSeconds(e.ageSeconds, e.lastUpdatedMillis, now)
+    val trend = SignalAnalysis.trend(e.rssiHistory, now)
+
+    Section("QUICK LOOK") {
+        // What is it?
+        Field("What it is", e.detectorName, Prov.INFERRED, what)
+        Field("Confidence", LinkConstants.Confidence.name(e.confidence), Prov.INFERRED,
+            if (e.confidence == 0) "Low: logged and listed, never alerted. Often an ordinary device that shares parts with the target." else null)
+        e.detail?.ifBlank { null }?.let { Field("Observed", it, Prov.DECODED, "Text from the air; untrusted.") }
+
+        // Who is it?
+        e.sourceId?.ifBlank { null }?.let { id ->
+            Field("Transmitter", id, Prov.DECODED)
+            if (address != null) {
+                val kind = SignalAnalysis.addressKind(address, e.sourceKind)
+                Field("Address type", kind.label, Prov.CALC, kind.meaning)
+            }
+            when (val v = vendor) {
+                is VendorLookup.Found -> Field("Vendor", v.vendor.longName, Prov.WIRESHARK,
+                    "Wireshark's IEEE registry, ${v.vendor.maskBits}-bit block. A registered prefix names the radio's maker, not the device or its owner." +
+                        (if (e.sourceKind == SignalAnalysis.SOURCE_BLE) " Only meaningful if this Bluetooth device uses a public address." else ""))
+                is VendorLookup.NotRegistered -> Field("Vendor", "Not in the registry", Prov.WIRESHARK,
+                    "No registered block matches. Usual for randomized addresses.")
+                is VendorLookup.Looking -> Field("Vendor", "Looking up", Prov.WIRESHARK, "Loading Wireshark. The first lookup takes a few seconds.")
+                is VendorLookup.DecoderUnavailable -> Field("Vendor", null, Prov.UNAVAIL, v.reason)
+                is VendorLookup.NoAddress -> {}
+            }
+        }
+
+        // Is it getting closer?
+        if (trend != null) {
+            Field("Signal", "${trend.latest} dBm, strongest ${trend.strongest} dBm", Prov.METADATA)
+            Field("Trend", trend.state.label, Prov.CALC,
+                if (trend.state == SignalAnalysis.TrendState.TOO_FEW)
+                    "Needs three readings within a minute. Readings arrive as the wand updates this detection."
+                else "%+d dB over %d readings in the last minute. Walk and watch it: stronger means closer. A few dB either way is just body position.".format(trend.changeDb, trend.readings))
+        }
+
+        // Is it still there?
+        Field("Last heard", if (heard < 1) "just now" else "${heard}s ago", Prov.CALC,
+            if (heard <= SignalAnalysis.ACTIVE_SECONDS) "Still around." else "Not heard for over a minute. It may have left, or gone quiet.")
+        Field("Sightings", "${e.count} since ${tsFmt.format(Date(e.firstSeenMillis))}", Prov.CALC)
+
+        // Where on the air?
+        Field("Radio", "${LinkConstants.SourceKind.name(e.sourceKind)}, ${LinkConstants.Band.name(e.band)}" +
+            (if (e.channel > 0) ", channel ${e.channel}" else ""), Prov.METADATA)
+
+        // What should I do?
+        Field("What to do", todo, Prov.GUIDANCE)
     }
 }
 

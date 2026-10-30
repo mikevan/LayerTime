@@ -246,6 +246,8 @@ private fun ControllerScreen() {
     var showLog by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf("main") }
     var selectedEvent by remember { mutableStateOf<EventRow?>(null) }
+    // The list ATTACK DETAIL was opened from, so BACK returns there.
+    var detailFrom by remember { mutableStateOf("attacks") }
     val sensorsOn = remember { mutableStateMapOf<Int, Boolean>().apply { MissionPrefs.readSensors(context).forEach { put(it, true) } } }
     var battery by remember { mutableIntStateOf(batteryPct(context)) }
     var btOn by remember { mutableStateOf(bluetoothOn(context)) }
@@ -463,7 +465,7 @@ private fun ControllerScreen() {
                                     Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 3.dp)
                                         .hudPanel(edge = LtColors.Amber, radius = 16.dp, elevation = 4.dp)
                                         .clip(ConsoleShape)
-                                        .clickable { selectedEvent = e; page = "detail" }
+                                        .clickable { selectedEvent = e; detailFrom = "attacks"; page = "detail" }
                                         .padding(21.dp)
                                 ) {
                                     Column {
@@ -480,8 +482,9 @@ private fun ControllerScreen() {
                     "capture" -> CaptureOnlyScreen { page = "attacks" }
 
                     "detail" -> {
-                        val ev = selectedEvent
-                        if (ev != null) EventDetailScreen(ev, deviceLabel, conn) { page = "attacks" }
+                        // The live row, so QUICK LOOK follows updates while it is open.
+                        val ev = selectedEvent?.let { sel -> events.firstOrNull { it.eventId == sel.eventId && it.sessionId == sel.sessionId } ?: sel }
+                        if (ev != null) EventDetailScreen(ev, deviceLabel, conn) { page = detailFrom }
                         else LazyColumn(Modifier.fillMaxSize()) { item { Text("No detection selected.", color = LtColors.Grey) } }
                     }
 
@@ -583,7 +586,9 @@ private fun ControllerScreen() {
                             if (events.isEmpty()) {
                                 item { Text(emptyEventsMessage(active, status), color = LtColors.Grey, fontSize = 12.sp) }
                             }
-                            items(events, key = { it.eventId }) { e -> EventRowCard(e) }
+                            items(events, key = { it.eventId }) { e ->
+                                EventRowCard(e) { selectedEvent = e; detailFrom = "main"; page = "detail" }
+                            }
                             item {
                                 SciFiOutline(if (showLog) "HIDE LOG  //  ${log.size}" else "SHOW LOG  //  ${log.size}", enabled = true) {
                                     showLog = !showLog
@@ -884,9 +889,10 @@ private fun TargetButton(label: String, value: Int, current: Int, onPick: (Int) 
 }
 
 @Composable
-private fun EventRowCard(e: EventRow) {
+private fun EventRowCard(e: EventRow, onOpen: () -> Unit) {
     Box(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 3.dp)
-        .hudPanel(edge = LtColors.Amber, radius = 16.dp, elevation = 4.dp)) {
+        .hudPanel(edge = LtColors.Amber, radius = 16.dp, elevation = 4.dp)
+        .clip(ConsoleShape).clickable { onOpen() }) {
         Row(Modifier.fillMaxWidth().clip(ConsoleShape)) {
             Box(Modifier.width(3.dp).fillMaxHeight().background(LtColors.Amber))
             Column(Modifier.padding(19.dp)) {
@@ -898,6 +904,7 @@ private fun EventRowCard(e: EventRow) {
                     fontFamily = ConsoleFonts.mono)
                 e.sourceId?.let { Text("id: $it", color = LtColors.Grey, fontSize = 11.sp, fontFamily = ConsoleFonts.mono) }
                 e.detail?.let { Text("detail: $it", color = LtColors.Grey, fontSize = 11.sp, fontFamily = ConsoleFonts.mono) }
+                Text("TAP FOR DETAIL", color = LtColors.Cyan, fontSize = 10.sp, letterSpacing = 1.sp)
             }
         }
     }

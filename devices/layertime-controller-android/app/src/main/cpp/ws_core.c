@@ -15,6 +15,7 @@
 #include <wiretap/wtap.h>
 #include <wsutil/privileges.h>
 #include <wsutil/wslog.h>
+#include <epan/manuf.h>
 
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static int g_attempted = 0;
@@ -371,3 +372,15 @@ void ltws_pcap_close(ltws_pcap *p) {
 }
 
 void ltws_free(char *s) { g_free(s); }
+
+int ltws_manuf_lookup(const uint8_t addr[6], const char **short_name,
+                      const char **long_name, unsigned *mask_bits) {
+    const char *ln = NULL;
+    unsigned mask = 0;
+    const char *sn = ws_manuf_lookup(addr, &ln, &mask);
+    if (sn == NULL) return 0;
+    if (short_name) *short_name = sn;
+    if (long_name) *long_name = ln ? ln : sn;
+    if (mask_bits) *mask_bits = mask;
+    return 1;
+}
