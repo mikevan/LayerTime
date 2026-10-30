@@ -24,6 +24,12 @@ import com.projectrevivesolutions.layertime.controller.ui.MainActivity
  * alert the same detections again. More than three new at once collapse into one
  * summary alert. While the LayerWand reports sleep mode, alerts are silent, as on
  * the Garmin face.
+ *
+ * Low-confidence detections never raise an alert. LayerTime-Sensors defines Low as
+ * "worth logging, not worth an alert": since its 1.1.0, every Flock prefix that
+ * belongs to a module maker (Liteon, Silicon Labs, Espressif, and others found in
+ * ordinary laptops and gadgets) is Low. They still arrive, show in DETECTED ATTACKS,
+ * and count as seen; they just do not buzz the wrist. See [AlertPolicy].
  */
 class DetectionAlerts(private val ctx: Context) {
     private val prefs = ctx.getSharedPreferences("layertime_alerts", Context.MODE_PRIVATE)
@@ -73,11 +79,13 @@ class DetectionAlerts(private val ctx: Context) {
     }
 
     private fun alert(fresh: List<EventRow>, sleepMode: Boolean) {
-        if (fresh.size > 3) {
-            val latest = fresh.last()
-            post(SUMMARY_ID, "${fresh.size} new detections.", "Latest: ${describe(latest)}", sleepMode)
+        val worth = fresh.filter { AlertPolicy.worthAnAlert(it.confidence) }
+        if (worth.size < fresh.size) Log.i(TAG, "${fresh.size - worth.size} new low-confidence detection(s) listed without an alert")
+        if (worth.size > 3) {
+            val latest = worth.last()
+            post(SUMMARY_ID, "${worth.size} new detections.", "Latest: ${describe(latest)}", sleepMode)
         } else {
-            for (e in fresh) post(NOTIF_BASE + (e.eventId % 1000).toInt(), "${e.detectorName} detected.", describe(e), sleepMode)
+            for (e in worth) post(NOTIF_BASE + (e.eventId % 1000).toInt(), "${e.detectorName} detected.", describe(e), sleepMode)
         }
     }
 
@@ -115,4 +123,16 @@ class DetectionAlerts(private val ctx: Context) {
         private const val SUMMARY_ID = 1999
         private val VIBRATION = longArrayOf(0, 400, 150, 400)
     }
+}
+
+/**
+ * Which detections raise an alert. Kept apart from [DetectionAlerts] so it can be
+ * tested on the JVM. Link confidence values: 0 Low, 1 Medium, 2 High. Low is logged
+ * and listed, never alerted. Any other value alerts, including one this build does
+ * not know, so a future confidence level can never silence the wrist by accident.
+ */
+object AlertPolicy {
+    const val CONFIDENCE_LOW = 0
+
+    fun worthAnAlert(confidence: Int): Boolean = confidence != CONFIDENCE_LOW
 }

@@ -12,8 +12,8 @@ android {
         applicationId = "com.projectrevivesolutions.layertime.controller"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
         targetSdk = 34
-        versionCode = 51
-        versionName = "0.1.50" // build 51: real gravel in the roll sounds, roll 980 ms
+        versionCode = 52
+        versionName = "0.1.51" // build 52: Low-confidence detections are listed without an alert
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
