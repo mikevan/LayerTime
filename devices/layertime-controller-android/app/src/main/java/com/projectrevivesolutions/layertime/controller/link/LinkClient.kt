@@ -76,6 +76,11 @@ class LinkClient(private val appContext: Context) {
     private var textField: Int = -1
 
     private var lastSeenChangeSeq: Long = 0
+    // Link health: when the last Status arrived and what schedule it reported.
+    private var lastStatusAt = 0L
+    private var lastSchedule = 0
+    private var lastNextReportS = 0
+    private var healthCheck: Runnable? = null
     private var handshakeDone = false
     private var scanTimeout: Runnable? = null
     private var autoStartTarget: Int? = null
@@ -152,6 +157,8 @@ class LinkClient(private val appContext: Context) {
     }
 
     fun stop() = handler.post {
+        stopHealthCheck()
+        repo.setReconnecting(false)
         wantConnected = false
         reconnectPending?.let { handler.removeCallbacks(it) }; reconnectPending = null
         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
@@ -161,6 +168,46 @@ class LinkClient(private val appContext: Context) {
         handshakeDone = false; linkBusy = false; gattBusy = false
         linkQueue.clear(); gattOps.clear(); summaries.clear(); textFrags.clear()
         repo.setConn(ConnState.IDLE)
+    }
+
+    // ---- link health (Status heartbeat watchdog) ----
+
+    /** Checks once a second; the clock starts at connect so a link that never sends Status is caught too. */
+    private fun startHealthCheck() {
+        stopHealthCheck()
+        lastStatusAt = android.os.SystemClock.elapsedRealtime()
+        healthCheck = object : Runnable {
+            override fun run() {
+                val silence = android.os.SystemClock.elapsedRealtime() - lastStatusAt
+                when (LinkHealth.state(silence, lastSchedule, lastNextReportS)) {
+                    LinkHealth.State.OK -> repo.setLinkStale(false)
+                    LinkHealth.State.STALE -> repo.setLinkStale(true)
+                    LinkHealth.State.LOST -> { linkLost(silence); return }
+                }
+                handler.postDelayed(this, 1_000L)
+            }
+        }.also { handler.postDelayed(it, 1_000L) }
+    }
+
+    private fun stopHealthCheck() {
+        healthCheck?.let { handler.removeCallbacks(it) }; healthCheck = null
+        repo.setLinkStale(false)
+    }
+
+    /** No Status within the allowance: drop the connection ourselves and reconnect. */
+    private fun linkLost(silenceMs: Long) {
+        healthCheck = null
+        repo.setLinkStale(false)
+        repo.log(LogEntry.Category.ERROR, "link lost: no Status for ${silenceMs / 1000} s; dropping and reconnecting")
+        gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
+        gatt = null; control = null; statusCh = null; dataCh = null
+        handshakeDone = false; linkBusy = false; gattBusy = false
+        linkQueue.clear(); gattOps.clear()
+        requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
+        repo.noteBackgroundDisconnect()
+        repo.setConn(ConnState.DISCONNECTED, "no Status for ${silenceMs / 1000} s")
+        if (wantConnected) repo.setReconnecting(true)
+        scheduleReconnect("link timed out")
     }
 
     /** Schedule a reconnect with capped exponential backoff, unless stop() ran. */
@@ -216,8 +263,10 @@ class LinkClient(private val appContext: Context) {
                     BluetoothProfile.STATE_CONNECTED -> {
                         repo.setConn(ConnState.DISCOVERING, "gattStatus=$status")
                         g.discoverServices()
+                        startHealthCheck()
                     }
                     BluetoothProfile.STATE_DISCONNECTED -> {
+                        stopHealthCheck()
                         handshakeDone = false; linkBusy = false; gattBusy = false
                         linkQueue.clear(); gattOps.clear()
                         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
@@ -226,7 +275,7 @@ class LinkClient(private val appContext: Context) {
                         // The contract is pull-not-push: monitoring continues on
                         // the Node while we are away, so we simply reconnect and
                         // re-pull with GET_CHANGED from lastSeenChangeSeq.
-                        if (wantConnected) scheduleReconnect("gattStatus=$status")
+                        if (wantConnected) { repo.setReconnecting(true); scheduleReconnect("gattStatus=$status") }
                     }
                 }
             }
@@ -402,6 +451,9 @@ class LinkClient(private val appContext: Context) {
             repo.log(LogEntry.Category.ERROR, "bad Status length ${value.size}"); return
         }
         repo.onStatus(s)
+        lastStatusAt = android.os.SystemClock.elapsedRealtime()
+        lastSchedule = s.schedule; lastNextReportS = s.nextReportS
+        repo.setLinkStale(false)
         // Pull changed events whenever the Node's changeSeq has advanced.
         if (handshakeDone && s.changeSeq > lastSeenChangeSeq) getChanged()
     }
@@ -415,6 +467,7 @@ class LinkClient(private val appContext: Context) {
                         "version mismatch: server ${f.serverMajor}.${f.serverMinor}, client ${LinkConstants.CLIENT_MAJOR}.${LinkConstants.CLIENT_MINOR}")
                 } else {
                     handshakeDone = true
+                    repo.setReconnecting(false)
                     reconnectAttempts = 0 // link restored; reset backoff
                     repo.setConn(ConnState.CONNECTED, "link up, server ${f.serverMajor}.${f.serverMinor}")
                     autoStartTarget?.let { reconStart(it) }

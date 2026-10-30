@@ -1,0 +1,7 @@
+Gravel in the face roll sounds (res/raw/face_slide_out.wav and face_slide_in.wav)
+
+Source: "car tires start and stop on gravel shoulder", Pixabay sound effects
+(file freesound_community-car-tires-start-and-stop-on-gravel-shoulder-6852.mp3).
+Used under the Pixabay Content License: https://pixabay.com/service/license-summary/
+One second of the stopping sound and one second of the moving sound are mixed with
+LayerTime's own synthesized metal clunk and groove thud.

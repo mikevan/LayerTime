@@ -14,6 +14,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.projectrevivesolutions.layertime.controller.R
 import com.projectrevivesolutions.layertime.controller.link.LinkClient
+import com.projectrevivesolutions.layertime.controller.link.LinkConstants
 import com.projectrevivesolutions.layertime.controller.model.ConnState
 import com.projectrevivesolutions.layertime.controller.state.ControllerRepository
 import kotlinx.coroutines.launch
@@ -39,6 +40,15 @@ class LinkForegroundService : LifecycleService() {
         createChannel()
         lifecycleScope.launch {
             ControllerRepository.conn.collect { updateNotification(it) }
+        }
+        // Always-on alerts: the service keeps running with the screen off or another app open,
+        // so it is the one that raises a notification for every new detection.
+        val alerts = DetectionAlerts(applicationContext)
+        lifecycleScope.launch {
+            ControllerRepository.events.collect { list ->
+                val sleep = (ControllerRepository.status.value?.flags ?: 0) and LinkConstants.StatusFlag.SLEEP_MODE != 0
+                alerts.onEvents(list, sleep)
+            }
         }
     }
 

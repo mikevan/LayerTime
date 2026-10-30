@@ -62,7 +62,11 @@ fun FaceView(
     onCounter: () -> Unit,
     onRecon: () -> Unit,
     onOutsideCircle: () -> Unit = {},
+    linkStale: Boolean = false,
+    reconnecting: Boolean = false,
     modifier: Modifier = Modifier,
+    /** False when the caller draws the black left half itself (the rolling face, so it does not rotate). */
+    drawLeftBlack: Boolean = true,
 ) {
     val owl = ImageBitmap.imageResource(R.drawable.layertime_owl)
     BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -89,7 +93,7 @@ fun FaceView(
 
             // Left of the vertical bisector the background is black; right of it the face is
             // transparent outside the circle, so the console layer shows through.
-            drawRect(LtColors.Bg, topLeft = Offset(0f, 0f), size = Size(cx, size.height))
+            if (drawLeftBlack) drawRect(LtColors.Bg, topLeft = Offset(0f, 0f), size = Size(cx, size.height))
             drawBronzeDial(cx, cy, d / 2f)
 
             drawBattery(g, batteryPct)
@@ -132,7 +136,7 @@ fun FaceView(
             drawFaceButton(lb, "COUNTER", "shield", g)
             drawFaceButton(rb, "RECON", "radar", g)
 
-            drawRecon(g, conn, status)
+            drawRecon(g, conn, status, linkStale, reconnecting)
             // Date: XTINY, ink rows 401..419.
             ink(dateText, cx, g.y(419f), k(19f), Color.White, maxW = k(210f))
 
@@ -597,21 +601,31 @@ private fun DrawScope.drawSolarGlyph(cx: Float, cy: Float, r: Float, color: Colo
  * in 19 px capitals on rows 334..353 and the count in 27 px capitals on rows
  * 359..386; width is the wider text plus 44, at least 220, and inside the bezel.
  */
-private fun DrawScope.drawRecon(g: FaceGeom, conn: ConnState, status: StatusSnapshot?) {
+private fun DrawScope.drawRecon(g: FaceGeom, conn: ConnState, status: StatusSnapshot?, stale: Boolean = false, reconnecting: Boolean = false) {
     val connected = conn == ConnState.CONNECTED
     var mode: String
     val count: String
     var color: Color
     if (!connected) {
-        mode = if (conn == ConnState.DISCONNECTED) "RECONNECTING" else "NO LAYERWAND"
-        count = if (conn == ConnState.FAILED) "LINK FAILED" else "SEARCHING"
+        // After a lost link the app is reconnecting, not looking for a wand it never had:
+        // RECONNECTING with the last known count, greyed, as on the Garmin face.
+        if (reconnecting || conn == ConnState.DISCONNECTED) {
+            mode = "RECONNECTING"
+            count = ReconText.countText(status?.eventCount ?: 0)
+        } else {
+            mode = "NO LAYERWAND"
+            count = if (conn == ConnState.FAILED) "LINK FAILED" else "SEARCHING"
+        }
         color = LtColors.Grey
     } else {
         mode = if (status != null) ReconText.modeText(status.flags, status.active) else "RECON OFF"
         count = ReconText.countText(status?.eventCount ?: 0)
         color = LtColors.Amber
     }
-    val alert = connected && status?.alertPending == true
+    // As on the Garmin face: connected but the Status heartbeat is late reads LINK STALE in
+    // amber with the last known count greyed.
+    if (connected && stale) { mode = "LINK STALE"; color = LtColors.Amber }
+    val alert = connected && !stale && status?.alertPending == true
     if (alert) { mode = "ALERT  $mode"; color = LtColors.Red }
 
     val tB = g.y(326f); val bB = g.y(393f); val mid = (tB + bB) / 2f
@@ -629,7 +643,7 @@ private fun DrawScope.drawRecon(g: FaceGeom, conn: ConnState, status: StatusSnap
     l(Offset(lx + k, tB), Offset(lx + seg, tB)); l(Offset(rx - seg, tB), Offset(rx - k, tB))
     l(Offset(lx + k, bB), Offset(lx + seg, bB)); l(Offset(rx - seg, bB), Offset(rx - k, bB))
     ink(mode, g.cx, g.y(353f), g.k(19f), color, maxW = w - g.k(40f))
-    ink(count, g.cx, g.y(386f), g.k(27f), if (connected && !alert) Color.White else color, maxW = w - g.k(40f))
+    ink(count, g.cx, g.y(386f), g.k(27f), if (connected && stale) LtColors.Grey else if (connected && !alert) Color.White else color, maxW = w - g.k(40f))
 }
 
 /** The two face button rectangles (COUNTER left, RECON right): Garmin [22,262,133,63] and [299,262,133,63]. */

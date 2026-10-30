@@ -132,6 +132,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ControllerRepository.deviceReport = DeviceReportBuilder.build(applicationContext)
+        intent?.getStringExtra(EXTRA_PAGE)?.let { NavRequest.page.value = it }
         setContent {
             LayerTimeControllerTheme {
                 Surface(Modifier.fillMaxSize(), color = LtColors.Bg) { ControllerScreen() }
@@ -139,7 +140,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() { super.onResume(); com.projectrevivesolutions.layertime.controller.service.AppVisibility.inFront = true }
+    override fun onPause() { com.projectrevivesolutions.layertime.controller.service.AppVisibility.inFront = false; super.onPause() }
+
+    /** A detection alert was tapped while the controller was already open. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra(EXTRA_PAGE)?.let { NavRequest.page.value = it }
+    }
+
     companion object {
+        /** Console page to open, set by a detection alert ("attacks"). */
+        const val EXTRA_PAGE = "com.projectrevivesolutions.layertime.controller.PAGE"
+
         fun requiredPermissions(): Array<String> =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                 buildList {
@@ -151,6 +164,26 @@ class MainActivity : ComponentActivity() {
 }
 
 private val logFmt = SimpleDateFormat("HH:mm:ss", Locale.US)
+
+/** A page the console should open, from a tapped detection alert; consumed once. */
+internal object NavRequest { val page = kotlinx.coroutines.flow.MutableStateFlow<String?>(null) }
+
+/**
+ * The mission setup, saved on the watch so a restart or Android recreating the screen
+ * does not reset it: the Recon target (ALL or DEAUTH) and the sensor checkboxes. The
+ * sensor selection is not sent to the LayerWand yet; that needs Link 0.2.
+ */
+internal object MissionPrefs {
+    private const val PREFS = "layertime_mission"
+    fun readTarget(ctx: Context): Int = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .getInt("target", LinkConstants.ReconTarget.ALL)
+    fun writeTarget(ctx: Context, t: Int) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("target", t).apply() }
+    fun readSensors(ctx: Context): Set<Int> = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .getStringSet("sensors", emptySet())!!.mapNotNull { it.toIntOrNull() }.toSet()
+    fun writeSensors(ctx: Context, on: Set<Int>) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putStringSet("sensors", on.map { it.toString() }.toSet()).apply()
+    }
+}
 
 /**
  * Text size for the data panel. Android sizes text by the density a device
@@ -205,12 +238,15 @@ private fun ControllerScreen() {
     val events by repo.events.collectAsState()
     val log by repo.log.collectAsState()
     val background by repo.background.collectAsState()
+    val linkStale by repo.linkStale.collectAsState()
+    val reconnecting by repo.reconnecting.collectAsState()
 
-    var target by remember { mutableIntStateOf(LinkConstants.ReconTarget.ALL) }
+    var target by remember { mutableIntStateOf(MissionPrefs.readTarget(context)) }
+    LaunchedEffect(target) { MissionPrefs.writeTarget(context, target) }
     var showLog by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf("main") }
     var selectedEvent by remember { mutableStateOf<EventRow?>(null) }
-    val sensorsOn = remember { mutableStateMapOf<Int, Boolean>() }
+    val sensorsOn = remember { mutableStateMapOf<Int, Boolean>().apply { MissionPrefs.readSensors(context).forEach { put(it, true) } } }
     var battery by remember { mutableIntStateOf(batteryPct(context)) }
     var btOn by remember { mutableStateOf(bluetoothOn(context)) }
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -329,18 +365,23 @@ private fun ControllerScreen() {
     }
 
     val live = FaceInputs(conn, status, btOn, battery, hourText, minText, dateText,
-        tempValue, tempUnit, sunLabel, sunValue, sunAmPm, sunTag)
+        tempValue, tempUnit, sunLabel, sunValue, sunAmPm, sunTag, linkStale, reconnecting)
     val shown = if (faceParked) (frozen ?: live) else live
     // Plain holder, not state: the sliding layout installs its park action here each
     // composition without triggering another recomposition.
     val faceActions = remember { FaceActions() }
+    // A tapped detection alert opens DETECTED ATTACKS and slides the face out of the way.
+    val navPage by NavRequest.page.collectAsState()
+    LaunchedEffect(navPage) {
+        navPage?.let { page = it; NavRequest.page.value = null; faceActions.afterButton() }
+    }
 
-    val face: @Composable (Modifier) -> Unit = { m ->
-        FaceView(shown.conn, shown.status, shown.btOn, shown.battery, shown.hour, shown.min, shown.date,
+    val face: @Composable (Modifier, Boolean) -> Unit = { m, leftBlack ->
+        FaceView(shown.conn, shown.status, shown.btOn, shown.battery, shown.hour, shown.min, shown.date, linkStale = shown.linkStale, reconnecting = shown.reconnecting,
             tempValue = shown.tempValue, tempUnit = shown.tempUnit,
             sunLabel = shown.sunLabel, sunValue = shown.sunValue, sunAmPm = shown.sunAmPm, sunTag = shown.sunTag,
             onCounter = { page = "attacks"; faceActions.afterButton() }, onRecon = { page = "config"; faceActions.afterButton() },
-            onOutsideCircle = { faceActions.outsideCircle() }, modifier = m)
+            onOutsideCircle = { faceActions.outsideCircle() }, modifier = m, drawLeftBlack = leftBlack)
     }
 
     var textMult by remember { mutableStateOf(PanelTextScale.read(context)) }
@@ -372,6 +413,10 @@ private fun ControllerScreen() {
                                 }
                             }
                             item { Text("Check a connector to enable its sensor for the mission.", color = LtColors.Ivory, fontSize = 11.sp) }
+                            item {
+                                Text("Saved on this watch. The LayerWand runs all detectors until Link 0.2 can send this selection.",
+                                    color = LtColors.Amber, fontSize = 11.sp)
+                            }
                             items(SENSOR_IDS) { id ->
                                 val on = sensorsOn[id] == true
                                 Row(
@@ -381,7 +426,10 @@ private fun ControllerScreen() {
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Checkbox(
-                                        checked = on, onCheckedChange = { sensorsOn[id] = it },
+                                        checked = on, onCheckedChange = {
+                                            sensorsOn[id] = it
+                                            MissionPrefs.writeSensors(context, sensorsOn.filterValues { v -> v }.keys)
+                                        },
                                         colors = CheckboxDefaults.colors(
                                             checkedColor = LtColors.Green, uncheckedColor = LtColors.Grey, checkmarkColor = LtColors.Bg,
                                         ),
@@ -439,7 +487,7 @@ private fun ControllerScreen() {
 
                     else -> {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            item { HudStatusStrip(active, connecting, events.size) }
+                            item { HudStatusStrip(active, connecting, events.size, linkStale) }
                             item {
                                 SciFiPanel("CONNECTION", statusColor = if (active) LtColors.Green else LtColors.Red, statusCount = wands) {
                                     if (active && server != null) {
@@ -497,6 +545,7 @@ private fun ControllerScreen() {
                                     onClear = { RingData.clearManual(context); manual = null },
                                 )
                             }
+                            item { LayerTimeButtonPanel(nowMs) }
                             item {
                                 SciFiPanel("EXPORT") {
                                     Text("Writes a diagnostic bundle you can share.", color = LtColors.Ivory, fontSize = 11.sp)
@@ -573,15 +622,18 @@ private fun ControllerScreen() {
                 if (faceParked) return
                 frozen = live; faceParked = true
                 sounds.slideOut()
-                scope.launch { slide.animateTo(-travelPx, tween(260)) }
+                scope.launch { slide.animateTo(-travelPx, tween(ROLL_MS)) }
             }
             fun unpark() {
                 if (!faceParked) return
                 sounds.slideBack()
-                scope.launch { slide.animateTo(0f, tween(260)); faceParked = false; frozen = null }
+                scope.launch { slide.animateTo(0f, tween(ROLL_MS)); faceParked = false; frozen = null }
             }
             faceActions.afterButton = { park() }
             faceActions.outsideCircle = { park() }
+            // The LayerTime button (the watch's green side button, which sends Back): inside the
+            // app it slides the face in or out. Pages have their own on-screen BACK buttons.
+            androidx.activity.compose.BackHandler { if (faceParked) unpark() else park() }
 
             // The panel is a fixed layer that never moves: laid out once across the screen,
             // starting right of the parked sliver. The face is a true circle on top of it, so
@@ -594,31 +646,42 @@ private fun ControllerScreen() {
                 // also press whatever control is under the finger.
                 Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { park() } })
             }
-            // Not clipped: the face draws its own black left half and is transparent outside
-            // the circle on the right, so the panel shows through the right-hand corners.
-            Box(Modifier.size(faceSize).graphicsLayer { translationX = slide.value }) {
-                face(Modifier.fillMaxSize())
-                if (faceParked) {
-                    // The sliver is the handle; it never reaches the face buttons underneath.
-                    Box(Modifier.fillMaxHeight().width(sliver).offset(x = faceSize - sliver)
-                        .pointerInput(Unit) { detectTapGestures { unpark() } })
-                }
+            // The face rolls off to the left: it slides and turns together, the turn equal to the
+            // distance travelled over the radius (rolling without slipping), so it rotates
+            // counter-clockwise as it goes left. The black left half is a separate layer that
+            // slides but does not turn; the face itself is transparent outside the circle, so
+            // the panel shows through the corners.
+            val radiusPx = with(LocalDensity.current) { faceSize.toPx() } / 2f
+            Box(Modifier.size(faceSize).graphicsLayer { translationX = slide.value }
+                .drawBehind { drawRect(LtColors.Bg, size = Size(size.width / 2f, size.height)) })
+            Box(Modifier.size(faceSize).graphicsLayer {
+                translationX = slide.value
+                rotationZ = Math.toDegrees((slide.value / radiusPx).toDouble()).toFloat()
+            }) {
+                face(Modifier.fillMaxSize(), false)
+            }
+            if (faceParked) {
+                // The visible sliver at the left edge is the handle that rolls the face back.
+                Box(Modifier.fillMaxHeight().width(sliver).pointerInput(Unit) { detectTapGestures { unpark() } })
             }
         } else if (maxWidth >= maxHeight) {
             Row(Modifier.fillMaxSize()) {
-                face(Modifier.weight(0.42f).fillMaxHeight())
+                face(Modifier.weight(0.42f).fillMaxHeight(), true)
                 Box(Modifier.width(1.dp).fillMaxHeight().background(LtColors.Dim))
                 dataPane(Modifier.weight(0.58f).fillMaxSize(), PaddingValues(10.dp))
             }
         } else {
             Column(Modifier.fillMaxSize()) {
-                face(Modifier.fillMaxWidth().weight(0.46f))
+                face(Modifier.fillMaxWidth().weight(0.46f), true)
                 Box(Modifier.fillMaxWidth().height(1.dp).background(LtColors.Dim))
                 dataPane(Modifier.fillMaxWidth().weight(0.54f), PaddingValues(10.dp))
             }
         }
     }
 }
+
+/** Roll time in ms; matches the 1 s of real gravel in the roll sounds so the thud lands as the face stops. */
+private const val ROLL_MS = 980
 
 private class FaceActions { var afterButton: () -> Unit = {}; var outsideCircle: () -> Unit = {} }
 
@@ -627,7 +690,7 @@ private data class FaceInputs(
     val conn: ConnState, val status: com.projectrevivesolutions.layertime.controller.link.StatusSnapshot?,
     val btOn: Boolean, val battery: Int, val hour: String, val min: String, val date: String,
     val tempValue: String?, val tempUnit: String?, val sunLabel: String, val sunValue: String, val sunAmPm: String?,
-    val sunTag: String?,
+    val sunTag: String?, val linkStale: Boolean, val reconnecting: Boolean,
 )
 
 /** Empty-list text that matches the real state instead of always saying "connect a wand". */
@@ -724,12 +787,12 @@ private fun SlashAccent(edge: Color) {
  * the console name, link state, and event count, and a scan glow sweeping across.
  */
 @Composable
-private fun HudStatusStrip(active: Boolean, connecting: Boolean, events: Int) {
+private fun HudStatusStrip(active: Boolean, connecting: Boolean, events: Int, stale: Boolean = false) {
     val edge = LtColors.ConsoleEdge
     val t = rememberInfiniteTransition(label = "scan")
     val p by t.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = LinearEasing)), label = "scanP")
-    val linkText = when { active -> "LINK ONLINE"; connecting -> "LINKING"; else -> "LINK OFFLINE" }
-    val linkColor = when { active -> LtColors.Green; connecting -> LtColors.Amber; else -> LtColors.Red }
+    val linkText = when { active && stale -> "LINK STALE"; active -> "LINK ONLINE"; connecting -> "LINKING"; else -> "LINK OFFLINE" }
+    val linkColor = when { active && stale -> LtColors.Amber; active -> LtColors.Green; connecting -> LtColors.Amber; else -> LtColors.Red }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 2.dp)
             .drawBehind {
@@ -933,5 +996,26 @@ private fun HudKey(label: String, edge: Color, wide: Boolean = false, onClick: (
     ) {
         Text(label, color = edge, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = ConsoleFonts.heading,
             style = TextStyle(shadow = Shadow(edge, Offset.Zero, 8f)))
+    }
+}
+
+/**
+ * LAYERTIME BUTTON: whether the green side button is set up as the LayerTime button
+ * (an accessibility service the operator turns on once), and a shortcut to the
+ * Accessibility settings to turn it on.
+ */
+@Composable
+private fun LayerTimeButtonPanel(nowMs: Long) {
+    val context = LocalContext.current
+    val on = remember(nowMs / 3_000L) { com.projectrevivesolutions.layertime.controller.service.LayerTimeKeyService.isEnabled(context) }
+    SciFiPanel("LAYERTIME BUTTON", statusColor = if (on) LtColors.Green else LtColors.Amber) {
+        HudReadout("GREEN BUTTON", if (on) "ACTIVE" else "OFF", if (on) LtColors.Green else LtColors.Amber)
+        Text(
+            if (on) "A short press opens LayerTime from anywhere. Hold it for Back in other apps. In LayerTime it slides the face in or out."
+            else "Turn on LayerTime button in Accessibility settings so the green side button opens LayerTime from anywhere.",
+            color = LtColors.Ivory, fontSize = 11.sp)
+        if (!on) SciFiOutline("OPEN ACCESSIBILITY SETTINGS", enabled = true) {
+            runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }
     }
 }

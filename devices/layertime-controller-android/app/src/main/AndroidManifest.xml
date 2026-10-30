@@ -73,6 +73,20 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- The LayerTime button (green side button on the LOKMAT watch). -->
+        <service
+            android:name=".service.LayerTimeKeyService"
+            android:exported="true"
+            android:label="@string/key_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/layertime_key_service" />
+        </service>
+
         <service
             android:name=".service.LinkForegroundService"
             android:exported="false"

@@ -46,6 +46,21 @@ object ControllerRepository {
 
     @Volatile var deviceReport: DeviceReport? = null
 
+    /** True after a link to a LayerWand was lost, until it is back or the operator disconnects. */
+    private val _reconnecting = MutableStateFlow(false)
+    val reconnecting: StateFlow<Boolean> = _reconnecting.asStateFlow()
+    fun setReconnecting(on: Boolean) { _reconnecting.value = on }
+
+    /** True while connected but the Status heartbeat is more than 3 s late (LinkHealth). */
+    private val _linkStale = MutableStateFlow(false)
+    val linkStale: StateFlow<Boolean> = _linkStale.asStateFlow()
+    fun setLinkStale(stale: Boolean) {
+        if (_linkStale.value != stale) {
+            _linkStale.value = stale
+            log(LogEntry.Category.LINK, if (stale) "link stale: Status heartbeat late" else "link healthy")
+        }
+    }
+
     // Event mirror keyed by eventId for the current session.
     private var currentSession: Int = -1
     private val mirror = ConcurrentHashMap<Long, EventRow>()
@@ -65,6 +80,16 @@ object ControllerRepository {
 
     fun onServerInfo(ack: Frame.HelloAck) {
         _server.value = ack
+        // HELLO_ACK carries the session id, and the LayerWand can send events before its
+        // first STATUS. Take the session from here so no event is filed under session -1
+        // (an unknown session broke detection-alert de-duplication across LayerWand restarts).
+        if (ack.sessionId != currentSession) {
+            if (currentSession != -1) log(LogEntry.Category.LINK,
+                "new session ${ack.sessionId} from HELLO_ACK (was $currentSession): clearing event mirror")
+            currentSession = ack.sessionId
+            mirror.clear()
+            publishEvents()
+        }
         val caps = LinkConstants.Capability.describe(ack.capabilities).joinToString(",")
         log(LogEntry.Category.LINK,
             "HELLO_ACK server ${ack.serverMajor}.${ack.serverMinor}, session=${ack.sessionId}, " +

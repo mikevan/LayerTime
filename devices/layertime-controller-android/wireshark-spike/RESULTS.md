@@ -611,3 +611,86 @@ is only about 60 px. The bottom row now carries only AM or PM (held to 56 px), a
 the satellite count while there is no position, sits on a small riveted plate (dark bronze,
 coloured rim, held to 80 px) in place of the sun glyph at the top of the ring, where the
 chord is about 84 px.
+
+## Build 44 (0.1.43)
+Always-on, first part. Found: the MISSION CONFIGURATION sensor checkboxes were never sent
+anywhere (Link 0.1 carries only START with a target, STOP, and CLEAR), and the Recon target
+and checkboxes were Compose state, lost when Android recreated the screen.
+Changes: the target and the checkboxes are saved (MissionPrefs); the page now says the
+selection is saved on the watch and the LayerWand runs all detectors until Link 0.2 can send
+it. The link service raises a high-priority notification with vibration for every new
+detection (DetectionAlerts): new means an event id above the highest already alerted for
+that session, remembered across restarts; more than three at once collapse into one summary;
+silent while the LayerWand reports sleep mode. Tapping an alert opens DETECTED ATTACKS with
+the face slid away. Log tag LT_ALERTS.
+
+## Build 45 (0.1.44)
+Build 44 on the watch: the first detection raised notification 2001 on the Detection alerts
+channel (importance high, vibration 0/400/150/400), but LT_ALERTS logged session -1: the
+LayerWand sent the event before its first STATUS, and the session was only learned from
+STATUS. After a LayerWand restart, event ids begin at 1 again, so events filed under -1 could
+be taken as already alerted, a missed alert. Fixes: the session is taken from HELLO_ACK, which
+precedes every event (clearing the mirror on a change, as STATUS does); an event with an
+unknown session still alerts, tracked in memory only; and if every event id in the alerted
+session is below the last alerted id, the LayerWand restarted with a reused session number and
+de-duplication starts over.
+
+## Build 46 (0.1.45)
+Unplugging the LayerWand did not time the link out on the watch: the app relied only on a
+GATT disconnect callback, which did not arrive, and never watched the Status heartbeat that
+contracts/link.md names as the link-health signal (Status is notified once a second). Added
+LinkHealth (unit tested): STALE after 3 s without Status (the Garmin face's threshold), LOST
+after 8 s, with a scheduled Recon window (schedule 1) extending the allowance by nextReportS.
+LinkClient checks once a second from connect; on LOST it drops the GATT connection itself,
+marks DISCONNECTED, and reconnects with the existing backoff. While STALE, the console strip
+reads LINK STALE in amber and the face's Recon bracket reads LINK STALE with the count greyed,
+as on the Garmin.
+
+## Build 47 (0.1.46)
+Watch buttons, measured with getevent (b46_keys.txt): the green side button sends KEY_BACK on
+mtk-kpd, the red one KEY_POWER (never delivered to apps). The green button becomes the
+LayerTime button through an accessibility service (LayerTimeKeyService) that filters only
+the Back key and watches window changes to know which app is in front; it reads no window
+content. Inside LayerTime the key passes through and slides the face in or out
+(BackHandler). Anywhere else a short press opens LayerTime and a hold of 500 ms performs the
+normal Back, so other apps keep Back. A LAYERTIME BUTTON panel shows whether it is on and
+opens Accessibility settings. Open question to verify on the watch: whether Android 10 lets
+the accessibility service bring LayerTime to the front from the background; fallback is the
+display-over-other-apps permission.
+Reconnect wording: after a lost link (GATT disconnect or the heartbeat watchdog) the face
+reads RECONNECTING with the last count greyed until the link is back, instead of NO LAYERWAND
+once scanning restarts.
+
+## Build 48 (0.1.47)
+Build 47 on the watch: the run block force-stopped the app right after enabling the
+accessibility service, and a force stop disables an app's accessibility services, so the
+button was off (enabled_accessibility_services null, accessibility_enabled 0). Run blocks no
+longer force-stop. With the service on, green in the app and hold-for-Back worked, but a short
+press outside LayerTime did not bring it back. The service decided "LayerTime in front" from
+window-change events; it now reads the activity's own onResume/onPause flag (AppVisibility,
+same process), and logs every green press with that state under LT_BUTTON so the next run
+shows whether the key arrives and whether the activity start is refused.
+
+## Build 49 (0.1.48)
+Link check after build 48 (b48_wand.txt): a freshly started LayerWand advertised and the watch
+connected 4.5 s after boot; the earlier failure (watch scan heard nothing; app had started 33
+scans) was not reproduced and is not yet explained. Not changed in this build.
+The face now rolls off to the left instead of sliding: translation plus a rotation equal to
+the distance travelled over the radius (rolling without slipping), counter-clockwise going
+left, over 380 ms (was a 260 ms slide). The black left half is drawn by a separate layer that
+slides without turning (FaceView drawLeftBlack = false in the sliding layout), and the handle
+that rolls it back is a fixed strip at the screen's left edge, outside the turning layer.
+
+## Build 50 (0.1.49)
+Roll sounds replace the slide sounds (same file names, same SoundPool). Out (0.95 s): gravel
+under a rolling disc for the 380 ms roll, then a heavy metal clunk against a stop at 370 ms.
+In (0.70 s): gravel, then a light damped thud as the face drops into a fitted groove at 385 ms.
+Synthesized with numpy by wireshark-spike/make_face_sounds.py (seeded, reproducible).
+
+## Build 51 (0.1.50)
+The synthesized gravel (builds 50 and two previews) sounded like static. The roll sounds now
+use a real recording chosen by Michael: one second (2.0 to 3.0 s of his cuts) of a car
+stopping on gravel for rolling out, and one second of a car moving on gravel for rolling back,
+each followed at 0.98 s by the synthesized metal clunk or groove thud. Source and license in
+assets/licenses/SOUND_gravel.txt (Pixabay). The roll is now 980 ms (ROLL_MS, was 380) so the
+thud lands as the face stops.
