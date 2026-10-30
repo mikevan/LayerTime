@@ -11,3 +11,5 @@ devices/lilygo-tultra/bin/
 __pycache__/
 devices/garmin-tactix/developer_key
 tools/ci/logs/
+# Native (NDK) build cache from the Android controller build; rebuilds itself.
+.ndk-cache/
