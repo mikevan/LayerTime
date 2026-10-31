@@ -159,6 +159,19 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_ser
 ./tests_link_server
 ```
 
+### Link 0.2 Phase 0 measurement
+
+`test_link_measure` covers the measurement helpers in `src/core/link/LinkMeasure`:
+the test-only BULK op the measurement firmware (`tdongle_c5_measure`) answers,
+and the CRC-32 check that tells whether a captured Wi-Fi frame ends with its
+FCS. It also proves the Node dispatcher, release or test build, still answers
+BULK with ERROR UnknownOp. See `claude/link_0_2_phase0_plan.md` in the project.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_measure test_link_measure/test_link_measure.cpp ../src/core/link/LinkMeasure.cpp ../src/core/link/LinkCodec.cpp
+./tests_link_measure
+```
+
 ## Core and platform boundary
 
 Checks the source tree itself. Every `#include` under `src/` and under the

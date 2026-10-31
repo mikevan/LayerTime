@@ -38,6 +38,9 @@
 #include "core/link/LinkCodec.h"
 #include "core/link/LinkPipe.h"
 #include "core/link/LinkServer.h"
+#if defined(LAYERTIME_MEASURE)
+#include "core/link/LinkMeasure.h"
+#endif
 
 namespace layertime {
 namespace tdongle_c5 {
@@ -96,7 +99,27 @@ public:
     void onDisconnected();
     void onControlWritten(const uint8_t *data, size_t len);
 
+#if defined(LAYERTIME_MEASURE)
+    // Link 0.2 Phase 0 measurement build only. The connection's ATT MTU (23
+    // until the central asks for more), and the BULK runs answered so far.
+    void onMtuChanged(uint16_t mtu) { _mtu = mtu; }
+    uint16_t mtu() const { return _mtu; }
+    uint32_t bulkRuns() const { return _bulkRuns; }
+    const link::measure::BulkDone &lastBulk() const { return _lastBulk; }
+    // A BULK frame NimBLE keeps refusing for this long ends the run early.
+    static constexpr uint32_t kBulkStallMs = 2000;
+#endif
+
 private:
+#if defined(LAYERTIME_MEASURE)
+    // Answers BULK on the loop task: count Data notifications of the
+    // requested size (capped by the MTU), then BULK_DONE. Blocks the loop
+    // for the length of the run, which the measurement build accepts.
+    void runBulk(const uint8_t *request, size_t len);
+    uint16_t _mtu = 23;
+    uint32_t _bulkRuns = 0;
+    link::measure::BulkDone _lastBulk;
+#endif
     void notifyStatus(uint32_t nowMs);
     void lockIo() const;
     void unlockIo() const;

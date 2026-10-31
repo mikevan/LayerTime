@@ -107,6 +107,18 @@ namespace {
 constexpr uint32_t kReportMs = 10000;
 constexpr uint32_t kDisplayMs = 1000;
 constexpr uint32_t kSerialWaitMs = 3000;
+// USB serial must never stall the loop (2026-10-30). Espressif's USB serial
+// driver keeps treating the port as read while the cable is in, even after
+// the program reading it has closed, so each print waited up to 100 ms per
+// chunk and up to 20 chunks. With the logger closed one loop pass took 182 s,
+// Status stopped, and the watch dropped and reconnected every 10 s. A print
+// now waits at most kSerialTxTimeoutMs per chunk (about 40 ms per print with
+// nobody reading), and the 10 s report is skipped while the last one has not
+// drained. Same fault as D4 (2026-10-02), which was wrongly judged lab-only.
+constexpr uint32_t kSerialTxTimeoutMs = 2;
+// The USB serial TX ring holds 256 bytes; a report prints only when at least
+// this much of it is free, which a reading logger guarantees within ms.
+constexpr int kSerialDrainedBytes = 128;
 constexpr uint8_t kLedBrightness = 1;
 // The status LED stays dark so the LayerWand can be concealed (Michael,
 // 2026-10-01). Set true to restore blue at boot and red on each new
@@ -238,6 +250,7 @@ uint32_t gScreenWokeMs = 0;
 Rgb gLedColor{0, 0, 32};
 uint32_t gLedSentAfterTransfers = 0;
 uint32_t gLastReportMs = 0;
+uint32_t gReportsSkipped = 0; // 10 s reports skipped while nothing read the port
 uint32_t gLastDisplayMs = 0;
 uint32_t gLastLoopMs = 0;
 uint32_t gLastHopCount = 0;
@@ -321,6 +334,80 @@ void printHistogram(const char *name, const recon::IntervalHistogram &h)
     Serial.println();
 }
 
+#if defined(LAYERTIME_MEASURE)
+// ---- Link 0.2 Phase 0 measurement (claude/link_0_2_phase0_plan.md) ------------
+// Every line starts with "M<n>" so the log can be read back by machine.
+
+uint32_t meanOf(uint32_t sum, uint32_t n) { return n ? sum / n : 0; }
+
+void printMeasure(const char *when)
+{
+    const C5ReconRadio::Measure &m = gRadio.measure();
+    Serial.printf("[%s] M1 wifi frames %lu fcs match %lu mismatch %lu short %lu max len %lu "
+                  "len<=64,128,256,512,1024,1600,more %lu,%lu,%lu,%lu,%lu,%lu,%lu\n", when,
+                  static_cast<unsigned long>(m.wifiFrames), static_cast<unsigned long>(m.fcsMatch),
+                  static_cast<unsigned long>(m.fcsMismatch), static_cast<unsigned long>(m.tooShort),
+                  static_cast<unsigned long>(m.maxLen), static_cast<unsigned long>(m.lenBuckets[0]),
+                  static_cast<unsigned long>(m.lenBuckets[1]), static_cast<unsigned long>(m.lenBuckets[2]),
+                  static_cast<unsigned long>(m.lenBuckets[3]), static_cast<unsigned long>(m.lenBuckets[4]),
+                  static_cast<unsigned long>(m.lenBuckets[5]), static_cast<unsigned long>(m.lenBuckets[6]));
+    Serial.printf("[%s] M2 us crc mean %lu max %lu | classify mean %lu max %lu | copy psram mean %lu max %lu n %lu | "
+                  "rings %s | peak/s mgmt %lu deauth %lu\n", when,
+                  static_cast<unsigned long>(meanOf(m.crcUsSum, m.fcsMatch + m.fcsMismatch)),
+                  static_cast<unsigned long>(m.crcUsMax),
+                  static_cast<unsigned long>(meanOf(m.classifyUsSum, m.classified)),
+                  static_cast<unsigned long>(m.classifyUsMax),
+                  static_cast<unsigned long>(meanOf(m.copyPsramUsSum, m.copyPsram)),
+                  static_cast<unsigned long>(m.copyPsramUsMax), static_cast<unsigned long>(m.copyPsram),
+                  m.ringsOk ? "ok" : "NOT ALLOCATED", static_cast<unsigned long>(m.mgmtPerSecPeak),
+                  static_cast<unsigned long>(m.deauthPerSecPeak));
+    Serial.printf("[%s] M3 free internal %lu largest %lu | free psram %lu largest %lu\n", when,
+                  static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                  static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                  static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
+                  static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)));
+    Serial.printf("[%s] M4 adverts %lu extended %lu max len %lu len<=31,62,255,more %lu,%lu,%lu,%lu | "
+                  "peak/s %lu | addresses this min %lu peak/min %lu\n", when,
+                  static_cast<unsigned long>(m.adverts), static_cast<unsigned long>(m.advExtended),
+                  static_cast<unsigned long>(m.advMaxLen), static_cast<unsigned long>(m.advLenBuckets[0]),
+                  static_cast<unsigned long>(m.advLenBuckets[1]), static_cast<unsigned long>(m.advLenBuckets[2]),
+                  static_cast<unsigned long>(m.advLenBuckets[3]), static_cast<unsigned long>(m.advertsPerSecPeak),
+                  static_cast<unsigned long>(m.addressesThisMin), static_cast<unsigned long>(m.addressesPerMinPeak));
+    Serial.printf("[%s] M5 mtu %u bulk runs %lu\n", when, static_cast<unsigned>(gLink.mtu()),
+                  static_cast<unsigned long>(gLink.bulkRuns()));
+}
+
+// M3: can evidence windows of these sizes be allocated now, with Recon and
+// the Link running? Each pool is freed again at once.
+void measureAllocation()
+{
+    static const uint16_t kWindows[3] = {8, 16, 32};
+    constexpr size_t kFramesPerWindow = 16;
+    constexpr size_t kFrameBytes = 256;
+    for (uint16_t w : kWindows) {
+        const size_t bytes = static_cast<size_t>(w) * kFramesPerWindow * kFrameBytes;
+        void *p = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
+        void *i = heap_caps_malloc(bytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        Serial.printf("M3 pool %u windows x %u frames x %u bytes = %lu bytes: psram %s, internal %s\n",
+                      static_cast<unsigned>(w), static_cast<unsigned>(kFramesPerWindow),
+                      static_cast<unsigned>(kFrameBytes), static_cast<unsigned long>(bytes),
+                      p ? "ok" : "FAILED", i ? "ok" : "FAILED");
+        heap_caps_free(p);
+        heap_caps_free(i);
+    }
+}
+#endif
+
+// The boot record's last-known state (gBoot), kept current every report
+// period whether or not the report is printed.
+void touchBootState()
+{
+    const AcquisitionStatus a = gMonitor.acquisition();
+    gBoot.touch(millis() / 1000, static_cast<uint32_t>(gMode) | (acqBits(a) << 8) |
+                                     (static_cast<uint32_t>(static_cast<uint8_t>(a.active)) << 16) |
+                                     (gLink.connected() ? (1u << 24) : 0u));
+}
+
 void printCounters(const char *when)
 {
     const C5ReconRadio::Counters &c = gRadio.counters();
@@ -328,9 +415,7 @@ void printCounters(const char *when)
     const ReconState r = gCore.reconState();
     unlockEvents(nullptr);
     const AcquisitionStatus a = gMonitor.acquisition();
-    gBoot.touch(millis() / 1000, static_cast<uint32_t>(gMode) | (acqBits(a) << 8) |
-                                     (static_cast<uint32_t>(static_cast<uint8_t>(a.active)) << 16) |
-                                     (gLink.connected() ? (1u << 24) : 0u));
+    touchBootState();
     char boot[120];
     gBoot.format(boot, sizeof(boot));
     Serial.printf("[%s] %s\n", when, boot);
@@ -398,6 +483,9 @@ void printCounters(const char *when)
     printHistogram("hop interval ms", gHopInterval);
     printHistogram("pass ms", gPassTime);
     printHistogram("pass to pass ms", gPassToPass);
+#if defined(LAYERTIME_MEASURE)
+    printMeasure(when);
+#endif
 }
 
 // Copies the events out under the lock and prints them after it.
@@ -537,6 +625,7 @@ void setup()
     gBoot.begin(); // before anything else: the reset reason of this boot
     C5SdLog::holdCardDeselected(); // the card's CS floats otherwise (TDongleC5Pins.h)
     Serial.begin(115200);
+    Serial.setTxTimeoutMs(kSerialTxTimeoutMs); // see kSerialTxTimeoutMs
     const uint32_t waitStart = millis();
     while (!Serial && millis() - waitStart < kSerialWaitMs) delay(10);
 
@@ -577,6 +666,18 @@ void setup()
     }
     gRadio.setStageLog(&gStage);
     gRadio.begin(true); // Wi-Fi first, as in 2A; both bands
+#if defined(LAYERTIME_MEASURE)
+    {
+        // The measurement must not take internal RAM from the Link; this line
+        // shows it does not (both numbers should match within a few bytes).
+        const size_t before = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        gRadio.beginMeasure();
+        const size_t after = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        Serial.printf("MEASURE build: Link 0.2 Phase 0. PSRAM ring and address set %s. Internal RAM free %lu before, %lu after.\n",
+                      gRadio.measure().ringsOk ? "allocated" : "NOT ALLOCATED",
+                      static_cast<unsigned long>(before), static_cast<unsigned long>(after));
+    }
+#endif
     // The channel plan: what this radio accepts under the regulatory rules it
     // runs with (no country is set here, so nothing new is written to
     // flash), 5 GHz first. An empty probe leaves the reference plan.
@@ -635,6 +736,9 @@ void setup()
     gServer.refresh();
     gLink.updateStatus();
     showStatus();
+#if defined(LAYERTIME_MEASURE)
+    measureAllocation();
+#endif
     printCounters("boot");
 }
 
@@ -680,6 +784,25 @@ void loop()
                       static_cast<unsigned>(s.lastCommandArgument), static_cast<unsigned>(s.lastCommandResult),
                       static_cast<unsigned long>(now));
     }
+#if defined(LAYERTIME_MEASURE)
+    static uint32_t lastBulkRuns = 0;
+    static uint16_t lastMtu = 0;
+    if (gLink.mtu() != lastMtu) {
+        lastMtu = gLink.mtu();
+        Serial.printf("M5 mtu now %u at %lu ms\n", static_cast<unsigned>(lastMtu), static_cast<unsigned long>(now));
+    }
+    if (gLink.bulkRuns() != lastBulkRuns) {
+        lastBulkRuns = gLink.bulkRuns();
+        const link::measure::BulkDone &b = gLink.lastBulk();
+        const uint32_t bytes = static_cast<uint32_t>(b.sent) * b.size;
+        Serial.printf("M5 bulk run %lu: sent %u x %u bytes = %lu bytes in %lu ms (%lu bytes/s), mtu %u, "
+                      "notify refused %lu\n", static_cast<unsigned long>(lastBulkRuns), static_cast<unsigned>(b.sent),
+                      static_cast<unsigned>(b.size), static_cast<unsigned long>(bytes),
+                      static_cast<unsigned long>(b.elapsedMs),
+                      static_cast<unsigned long>(b.elapsedMs ? bytes * 1000ull / b.elapsedMs : 0),
+                      static_cast<unsigned>(b.mtu), static_cast<unsigned long>(b.refused));
+    }
+#endif
     applyEarlyWarningIfChanged();
     gServer.refresh();
     gLink.updateStatus();
@@ -755,7 +878,17 @@ void loop()
         gLastReportMs = now;
         gHeapOk = gHeapOk && heapIntact();
         recordHeap();
-        printCounters("periodic");
+        if (Serial.availableForWrite() >= kSerialDrainedBytes) {
+            if (gReportsSkipped > 0) {
+                Serial.printf("serial: %lu reports skipped while nothing read the port\n",
+                              static_cast<unsigned long>(gReportsSkipped));
+                gReportsSkipped = 0;
+            }
+            printCounters("periodic");
+        } else {
+            ++gReportsSkipped;
+            touchBootState();
+        }
     }
 
     // While the screen is lit it holds the snapshot wakeScreen() drew: every

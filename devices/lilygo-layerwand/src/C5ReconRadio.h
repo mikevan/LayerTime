@@ -130,6 +130,46 @@ public:
     const Counters &counters() const { return _counters; }
     void clearCounters() { _counters = Counters{}; }
 
+#if defined(LAYERTIME_MEASURE)
+    // Link 0.2 Phase 0 measurement build only (claude/link_0_2_phase0_plan.md).
+    // Written by the Wi-Fi task (M1, M2) and the NimBLE host task (M4); read
+    // by the loop for the serial report. Counters only, so a torn read
+    // costs one report line, never correctness.
+    struct Measure {
+        // M1: does rx_ctrl.sig_len include the 4-byte FCS?
+        uint32_t wifiFrames = 0;
+        uint32_t fcsMatch = 0;     // last 4 bytes are the CRC-32 of the rest
+        uint32_t fcsMismatch = 0;  // they are not: no FCS, or a corrupt frame
+        uint32_t tooShort = 0;     // under 8 bytes, not checked
+        uint32_t lenBuckets[7] = {0}; // <=64, <=128, <=256, <=512, <=1024, <=1600, more
+        uint32_t maxLen = 0;
+        // M2: what evidence capture would cost on the Wi-Fi task, in us.
+        uint32_t crcUsMax = 0, crcUsSum = 0;
+        uint32_t classifyUsMax = 0, classifyUsSum = 0, classified = 0;
+        uint32_t copyPsramUsMax = 0, copyPsramUsSum = 0, copyPsram = 0;
+        uint32_t mgmtPerSecPeak = 0;
+        uint32_t deauthPerSecPeak = 0;
+        bool ringsOk = false;
+        // M4: Bluetooth advertisements.
+        uint32_t adverts = 0;
+        uint32_t advLenBuckets[4] = {0}; // <=31, <=62, <=255, more
+        uint32_t advExtended = 0;        // not a legacy advertisement
+        uint32_t advMaxLen = 0;
+        uint32_t advertsPerSecPeak = 0;
+        uint32_t addressesPerMinPeak = 0;
+        uint32_t addressesThisMin = 0;
+    };
+    const Measure &measure() const { return _measure; }
+    // Allocates the copy ring and the M4 address set, both in PSRAM. Call
+    // once before Recon starts. Nothing here takes internal RAM: on
+    // 2026-10-30 this build had 6.4 KB less internal RAM than the LayerWand
+    // (a 4 KB internal copy ring and a 2 KB address set in .bss), and the
+    // watch could not connect until the LayerWand firmware was flashed back.
+    void beginMeasure();
+    static constexpr size_t kMeasureSlotBytes = 256;
+    static constexpr size_t kMeasurePsramSlots = 64;
+#endif
+
 private:
     static void promiscuousThunk(void *buf, int type);
     void onPromiscuousPacket(void *buf, int type);
@@ -155,6 +195,18 @@ private:
     Counters _counters;
     PeerSightings _peers; // guarded in C5ReconRadio.cpp
     static C5ReconRadio *_activeInstance;
+#if defined(LAYERTIME_MEASURE)
+    void measureWifi(const uint8_t *frame, uint16_t len);
+    void measureBle(const NimBLEAdvertisedDevice *device);
+    Measure _measure;
+    uint8_t *_ringPsram = nullptr;
+    uint32_t _ringTurn = 0;
+    uint32_t _wifiSecStart = 0, _mgmtThisSec = 0, _deauthThisSec = 0;
+    uint32_t _bleSecStart = 0, _advertsThisSec = 0;
+    uint32_t _bleMinStart = 0;
+    static constexpr size_t kAddressSlots = 512;
+    uint32_t *_addressSeen = nullptr; // kAddressSlots entries, in PSRAM
+#endif
 };
 
 } // namespace tdongle_c5

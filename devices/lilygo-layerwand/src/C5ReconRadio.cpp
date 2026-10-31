@@ -32,6 +32,11 @@
 #include <NimBLEDevice.h>
 #include <WiFi.h>
 #include <esp_timer.h>
+#if defined(LAYERTIME_MEASURE)
+#include <esp_heap_caps.h>
+#include <string.h>
+#include "core/link/LinkMeasure.h"
+#endif
 #include <esp_wifi.h>
 #include <freertos/FreeRTOS.h>
 #include <soc/soc_caps.h>
@@ -119,6 +124,114 @@ void C5ReconRadio::begin(bool dualBand)
     (void)dualBand;
 #endif
 }
+
+#if defined(LAYERTIME_MEASURE)
+// ---- Link 0.2 Phase 0 measurement (measurement build only) ---------------------
+
+void C5ReconRadio::beginMeasure()
+{
+    _ringPsram = static_cast<uint8_t *>(heap_caps_malloc(kMeasureSlotBytes * kMeasurePsramSlots, MALLOC_CAP_SPIRAM));
+    _addressSeen = static_cast<uint32_t *>(heap_caps_calloc(kAddressSlots, sizeof(uint32_t), MALLOC_CAP_SPIRAM));
+    _measure.ringsOk = _ringPsram != nullptr && _addressSeen != nullptr;
+}
+
+namespace {
+inline void addTime(uint32_t us, uint32_t &max, uint32_t &sum)
+{
+    sum += us;
+    if (us > max) max = us;
+}
+} // namespace
+
+// Runs on the Wi-Fi task for every frame, before classification.
+void C5ReconRadio::measureWifi(const uint8_t *frame, uint16_t len)
+{
+    Measure &m = _measure;
+    ++m.wifiFrames;
+    static const uint16_t kLenEdges[6] = {64, 128, 256, 512, 1024, 1600};
+    uint8_t b = 6;
+    for (uint8_t i = 0; i < 6; ++i) if (len <= kLenEdges[i]) { b = i; break; }
+    ++m.lenBuckets[b];
+    if (len > m.maxLen) m.maxLen = len;
+
+    // M1: is the last 4 bytes the frame's FCS?
+    if (len < 8) {
+        ++m.tooShort;
+    } else {
+        const int64_t t0 = esp_timer_get_time();
+        const bool fcs = link::measure::endsWithFcs(frame, len);
+        addTime(static_cast<uint32_t>(esp_timer_get_time() - t0), m.crcUsMax, m.crcUsSum);
+        if (fcs) ++m.fcsMatch; else ++m.fcsMismatch;
+    }
+
+    // M2: management and deauth rates, per one-second window.
+    const uint32_t now = millis();
+    if (now - _wifiSecStart >= 1000) {
+        if (_mgmtThisSec > m.mgmtPerSecPeak) m.mgmtPerSecPeak = _mgmtThisSec;
+        if (_deauthThisSec > m.deauthPerSecPeak) m.deauthPerSecPeak = _deauthThisSec;
+        _mgmtThisSec = 0;
+        _deauthThisSec = 0;
+        _wifiSecStart = now;
+    }
+    if (len >= 1 && ((frame[0] >> 2) & 0x03) == 0) {
+        ++_mgmtThisSec;
+        const uint8_t subtype = (frame[0] >> 4) & 0x0F;
+        if (subtype == 0x0C || subtype == 0x0A) ++_deauthThisSec;
+    }
+
+    // M2: what keeping the frame would cost, copied into a PSRAM ring, where
+    // evidence would be kept. The internal-RAM comparison ring was removed
+    // 2026-10-30. It had answered its question (287 copies each: PSRAM mean
+    // 8 us, max 15; internal mean 1 us, max 4), and its 4 KB of internal RAM
+    // was part of what kept the watch from connecting.
+    if (!m.ringsOk) return;
+    const size_t n = len < kMeasureSlotBytes ? len : kMeasureSlotBytes;
+    const uint32_t turn = _ringTurn++;
+    const int64_t t0 = esp_timer_get_time();
+    memcpy(_ringPsram + (turn % kMeasurePsramSlots) * kMeasureSlotBytes, frame, n);
+    addTime(static_cast<uint32_t>(esp_timer_get_time() - t0), m.copyPsramUsMax, m.copyPsramUsSum);
+    ++m.copyPsram;
+}
+
+// Runs on the NimBLE host task for every advertisement.
+void C5ReconRadio::measureBle(const NimBLEAdvertisedDevice *device)
+{
+    Measure &m = _measure;
+    ++m.adverts;
+    const size_t len = device->getPayload().size();
+    ++m.advLenBuckets[len <= 31 ? 0 : len <= 62 ? 1 : len <= 255 ? 2 : 3];
+    if (len > m.advMaxLen) m.advMaxLen = static_cast<uint32_t>(len);
+    if (!device->isLegacyAdvertisement()) ++m.advExtended;
+
+    const uint32_t now = millis();
+    if (now - _bleSecStart >= 1000) {
+        if (_advertsThisSec > m.advertsPerSecPeak) m.advertsPerSecPeak = _advertsThisSec;
+        _advertsThisSec = 0;
+        _bleSecStart = now;
+    }
+    ++_advertsThisSec;
+
+    // Distinct addresses per minute: a small open-addressed set of address
+    // hashes, cleared each minute. A rare hash collision undercounts by one.
+    // The set lives in PSRAM (beginMeasure); without it, this count is skipped.
+    if (_addressSeen == nullptr) return;
+    if (now - _bleMinStart >= 60000) {
+        if (m.addressesThisMin > m.addressesPerMinPeak) m.addressesPerMinPeak = m.addressesThisMin;
+        m.addressesThisMin = 0;
+        memset(_addressSeen, 0, kAddressSlots * sizeof(uint32_t));
+        _bleMinStart = now;
+    }
+    const uint8_t *a = device->getAddress().getVal();
+    uint32_t h = 2166136261u;
+    for (int i = 0; i < 6; ++i) h = (h ^ a[i]) * 16777619u;
+    if (h == 0) h = 1;
+    for (size_t probe = 0; probe < kAddressSlots; ++probe) {
+        uint32_t &slot = _addressSeen[(h + probe) % kAddressSlots];
+        if (slot == h) break;
+        if (slot == 0) { slot = h; ++m.addressesThisMin; break; }
+    }
+}
+#endif
 
 uint8_t C5ReconRadio::probeChannelPlan(uint8_t *out, uint8_t capacity)
 {
@@ -248,16 +361,29 @@ void C5ReconRadio::onPromiscuousPacket(void *buf, int type)
     // A reset asked for from another task is done here, on the only task
     // that classifies, before this frame is classified.
     if (_resetRequested.exchange(false)) _wifiClassifier.reset();
+#if defined(LAYERTIME_MEASURE)
+    measureWifi(packet->payload, packet->rx_ctrl.sig_len);
+    const int64_t classifyStart = esp_timer_get_time();
+#endif
     // Frame classification lives in core; this side only unpacks what the
     // Wi-Fi driver handed over, exactly as the T-Ultra does.
     _wifiClassifier.classify(packet->payload, packet->rx_ctrl.sig_len, packet->rx_ctrl.rssi,
                              channel, millis(), wantsThunk, this, wifiCandidateThunk, this);
+#if defined(LAYERTIME_MEASURE)
+    const uint32_t classifyUs = static_cast<uint32_t>(esp_timer_get_time() - classifyStart);
+    _measure.classifyUsSum += classifyUs;
+    ++_measure.classified;
+    if (classifyUs > _measure.classifyUsMax) _measure.classifyUsMax = classifyUs;
+#endif
 }
 
 void C5ReconRadio::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
 {
     if (!device) return;
     ++_counters.adverts;
+#if defined(LAYERTIME_MEASURE)
+    measureBle(device);
+#endif
     if (_firstAdvertInScan) {
         _firstAdvertInScan = false;
         if (_stage) _stage->record(recon::Stage::BleAdvert, static_cast<uint8_t>(_currentBleScanDetector), 0, _counters.adverts);

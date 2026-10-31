@@ -29,6 +29,9 @@
 #include <esp_random.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#if defined(LAYERTIME_MEASURE)
+#include <freertos/task.h>
+#endif
 #include <string.h>
 
 #include "core/link/LinkCodec.h"
@@ -62,6 +65,12 @@ public:
         if (gLink) gLink->onDisconnected();
         // advertiseOnDisconnect(true) restarts advertising; nothing to do here.
     }
+#if defined(LAYERTIME_MEASURE)
+    void onMTUChange(uint16_t mtu, NimBLEConnInfo &) override
+    {
+        if (gLink) gLink->onMtuChanged(mtu);
+    }
+#endif
 };
 
 class ControlCallbacks : public NimBLECharacteristicCallbacks {
@@ -204,6 +213,16 @@ void C5Link::serviceRequests(uint32_t nowMs)
     _answeringConnection = _connection;
     unlockIo();
     if (n > 0) {
+#if defined(LAYERTIME_MEASURE)
+        if (request[0] == link::measure::kOpBulk) {
+            runBulk(request, n);
+            lockIo();
+            _pipe.finish();
+            unlockIo();
+            ++_requestsAnswered;
+            return;
+        }
+#endif
         // The server takes the event-log lock where it needs it; the io lock
         // is not held here, and pushFrame takes it per frame.
         _server->handle(_identity, heartbeat, request, n, nowMs, pushFrame, this);
@@ -248,8 +267,13 @@ void C5Link::notifyStatus(uint32_t nowMs)
     }
 }
 
-void C5Link::onConnected(const char *peer, uint16_t)
+void C5Link::onConnected(const char *peer, uint16_t mtu)
 {
+#if defined(LAYERTIME_MEASURE)
+    _mtu = mtu;
+#else
+    (void)mtu;
+#endif
     strncpy(_peer, peer, sizeof(_peer) - 1);
     _peer[sizeof(_peer) - 1] = '\0';
     _connected = true;
@@ -274,7 +298,11 @@ void C5Link::onControlWritten(const uint8_t *data, size_t len)
         const uint8_t op = data[0];
         const bool deferred = op == static_cast<uint8_t>(link::Op::Command) ||
                               op == static_cast<uint8_t>(link::Op::GetChanged) ||
-                              op == static_cast<uint8_t>(link::Op::GetText);
+                              op == static_cast<uint8_t>(link::Op::GetText)
+#if defined(LAYERTIME_MEASURE)
+                              || op == link::measure::kOpBulk
+#endif
+                              ;
         lockIo();
         const bool busy = _pipe.busy();
         const bool accepted = !busy && deferred && _pipe.offer(data, len);
@@ -302,6 +330,52 @@ void C5Link::onControlWritten(const uint8_t *data, size_t len)
     }
     gData->notify(reply, n);
 }
+
+#if defined(LAYERTIME_MEASURE)
+void C5Link::runBulk(const uint8_t *request, size_t len)
+{
+    namespace m = link::measure;
+    m::BulkRequest r;
+    size_t size = 0;
+    if (!m::decodeBulk(request, len, r) || (size = m::bulkFrameSize(r.size, _mtu)) == 0) {
+        uint8_t reply[link::kMaxFrame];
+        link::Error e;
+        e.reqId = len >= 2 ? request[1] : 0;
+        e.status = link::LinkStatus::BadLength;
+        if (_connected) gData->notify(reply, link::encodeError(e, reply));
+        return;
+    }
+    uint8_t frame[m::kBulkMaxSize];
+    const uint32_t start = millis();
+    uint32_t refused = 0;
+    uint16_t sent = 0;
+    bool stalled = false;
+    for (uint16_t seq = 0; seq < r.count && _connected && !stalled; ++seq) {
+        const size_t n = m::fillBulkFrame(r.reqId, seq, r.count, size, frame);
+        const uint32_t tryStart = millis();
+        while (_connected && !gData->notify(frame, n)) {
+            // NimBLE is out of buffers: let the stack drain, then retry.
+            ++refused;
+            if (millis() - tryStart > kBulkStallMs) { stalled = true; break; }
+            vTaskDelay(1);
+        }
+        if (!stalled && _connected) ++sent;
+    }
+    m::BulkDone d;
+    d.reqId = r.reqId;
+    d.sent = sent;
+    d.size = static_cast<uint8_t>(size);
+    d.mtu = _mtu;
+    d.refused = refused;
+    d.elapsedMs = millis() - start;
+    uint8_t done[m::kBulkDoneSize];
+    const size_t dn = m::encodeBulkDone(d, done);
+    const uint32_t tryStart = millis();
+    while (_connected && !gData->notify(done, dn) && millis() - tryStart < kBulkStallMs) vTaskDelay(1);
+    _lastBulk = d;
+    ++_bulkRuns;
+}
+#endif
 
 size_t C5Link::sendNextProbe()
 {
