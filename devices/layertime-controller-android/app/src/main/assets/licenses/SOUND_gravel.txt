@@ -1,4 +1,4 @@
-Gravel in the face roll sounds (res/raw/face_slide_out.wav and face_slide_in.wav)
+Gravel in the face roll sound (res/raw/face_slide_in.wav, played both ways)
 
 Source: "car tires start and stop on gravel shoulder", Pixabay sound effects
 (file freesound_community-car-tires-start-and-stop-on-gravel-shoulder-6852.mp3).

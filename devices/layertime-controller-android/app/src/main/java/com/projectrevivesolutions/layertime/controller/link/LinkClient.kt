@@ -136,7 +136,7 @@ class LinkClient(private val appContext: Context) {
         autoStartTarget = autoStart
         val a = adapter
         if (a == null || !a.isEnabled) {
-            repo.setConn(ConnState.FAILED, "Bluetooth is off"); return@post
+            repo.setConn(ConnState.FAILED, ConnNotice.BLUETOOTH_OFF); return@post
         }
         if (locationSwitchBlocksScanning(appContext)) {
             repo.log(LogEntry.Category.ERROR, LOCATION_OFF_MESSAGE)
@@ -267,6 +267,11 @@ class LinkClient(private val appContext: Context) {
                     }
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         stopHealthCheck()
+                        // A measurement in progress ends with the connection, and the MTU resets.
+                        mtuRequested = false
+                        if (pingBurstLeft > 0) { pingBurstLeft = 0; LinkMeasure.addLine("PING burst stopped: the link dropped.") }
+                        bulkRun?.let { reportBulk(it, null, "the link dropped.") }
+                        LinkMeasure.setMtu(23)
                         handshakeDone = false; linkBusy = false; gattBusy = false
                         linkQueue.clear(); gattOps.clear()
                         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
@@ -317,6 +322,19 @@ class LinkClient(private val appContext: Context) {
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
             handler.post { gattOpComplete() }
+        }
+
+        // Only the LINK MEASURE panel asks for a larger MTU (measureRequestMtu).
+        override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+            handler.post {
+                LinkMeasure.setMtu(mtu)
+                LinkMeasure.addLine(if (status == BluetoothGatt.GATT_SUCCESS) "MTU is now $mtu (asked for ${LinkMeasure.MTU_REQUEST})."
+                    else "MTU request failed, status $status. MTU stays $mtu.")
+                repo.log(LogEntry.Category.LINK, "MTU changed to $mtu status=$status")
+                // Only complete the GATT op we started; a change the LayerWand
+                // started must not release another op still in flight.
+                if (mtuRequested) { mtuRequested = false; gattOpComplete() }
+            }
         }
 
         override fun onCharacteristicWrite(g: BluetoothGatt, ch: BluetoothGattCharacteristic, status: Int) {
@@ -382,6 +400,8 @@ class LinkClient(private val appContext: Context) {
         val reqId = frame[1].toInt() and 0xFF
         pending = Pending(reqId, kind)
         linkBusy = true
+        if (kind == LinkConstants.Op.PING && pingBurstLeft > 0) pingSentNs = android.os.SystemClock.elapsedRealtimeNanos()
+        if (kind == LinkMeasure.OP_BULK) bulkRun?.requestedNs = android.os.SystemClock.elapsedRealtimeNanos()
         if (kind == LinkConstants.Op.GET_CHANGED) summaries.clear()
         if (kind == LinkConstants.Op.GET_TEXT) textFrags.clear()
         enqueueGatt { sendControl(frame) }
@@ -395,6 +415,8 @@ class LinkClient(private val appContext: Context) {
                 repo.log(LogEntry.Category.ERROR,
                     "request #$reqId op=0x%02X timed out after ${REQUEST_TIMEOUT_MS}ms; freeing link gate".format(kind))
                 finishLink()
+                if (kind == LinkConstants.Op.PING && pingBurstLeft > 0) onBurstPing(null)
+                if (kind == LinkMeasure.OP_BULK) bulkRun?.let { reportBulk(it, null, "timed out") }
             }
         }.also { handler.postDelayed(it, REQUEST_TIMEOUT_MS) }
     }
@@ -459,6 +481,7 @@ class LinkClient(private val appContext: Context) {
     }
 
     private fun onDataFrame(value: ByteArray) {
+        if (LinkMeasure.isBulk(value) && bulkRun != null) { onBulkFrame(value); return }
         when (val f = LinkCodec.decodeFrame(value)) {
             is Frame.HelloAck -> {
                 repo.onServerInfo(f)
@@ -475,7 +498,14 @@ class LinkClient(private val appContext: Context) {
                 }
                 finishLink()
             }
-            is Frame.Ack -> { repo.log(LogEntry.Category.COMMAND, "ACK token=0x%08X hb=${f.heartbeat}".format(f.token)); finishLink() }
+            is Frame.Ack -> {
+                if (pingBurstLeft > 0) {
+                    val rttMs = (android.os.SystemClock.elapsedRealtimeNanos() - pingSentNs) / 1e6
+                    finishLink(); onBurstPing(rttMs)
+                } else {
+                    repo.log(LogEntry.Category.COMMAND, "ACK token=0x%08X hb=${f.heartbeat}".format(f.token)); finishLink()
+                }
+            }
             is Frame.Result -> {
                 repo.log(LogEntry.Category.COMMAND,
                     "RESULT cmd=${f.commandType} => ${LinkConstants.CommandResult.name(f.commandResult)}")
@@ -502,10 +532,115 @@ class LinkClient(private val appContext: Context) {
             }
             is Frame.Error -> {
                 repo.log(LogEntry.Category.ERROR, "ERROR linkStatus=${LinkConstants.LinkStatus.name(f.linkStatus)} reqId=${f.reqId}")
+                val wasBulk = pending?.kind == LinkMeasure.OP_BULK
                 finishLink()
+                if (wasBulk) bulkRun?.let {
+                    reportBulk(it, null, "the LayerWand answered ${LinkConstants.LinkStatus.name(f.linkStatus)}. " +
+                        "BULK needs the measurement firmware (tdongle_c5_measure).")
+                }
             }
             is Frame.Unknown -> repo.log(LogEntry.Category.ERROR, "unknown frame type=0x%02X: ${LinkCodec.toHex(f.raw)}".format(f.type))
         }
+    }
+
+    // ---- Link 0.2 Phase 0 measurement (the LINK MEASURE panel) ----
+
+    private var mtuRequested = false
+    private var pingBurstLeft = 0
+    private var pingBurstTotal = 0
+    private var pingLost = 0
+    private var pingSentNs = 0L
+    private val pingRtts = ArrayList<Double>()
+
+    private class BulkRun(val count: Int, val size: Int) {
+        var requestedNs = 0L
+        var firstNs = 0L
+        var lastNs = 0L
+        var received = 0
+        var bytes = 0L
+        var broken = 0
+        var outOfOrder = 0
+        var lastSeq = -1
+    }
+    private var bulkRun: BulkRun? = null
+
+    /** Ask the LayerWand for a larger ATT MTU. Affects this connection until it drops. */
+    fun measureRequestMtu() = handler.post {
+        if (!handshakeDone) { LinkMeasure.addLine("MTU request: not connected."); return@post }
+        LinkMeasure.setRunning("Requesting MTU ${LinkMeasure.MTU_REQUEST}.")
+        enqueueGatt {
+            val g = gatt
+            mtuRequested = g != null && g.requestMtu(LinkMeasure.MTU_REQUEST)
+            if (!mtuRequested) { LinkMeasure.addLine("MTU request could not be sent."); gattOpComplete() }
+        }
+    }
+
+    /** One request at a time, each sent when the last reply arrives: the round trip that limits HUNT polling. */
+    fun measurePingBurst(count: Int = 100) = handler.post {
+        if (!handshakeDone) { LinkMeasure.addLine("PING burst: not connected."); return@post }
+        if (pingBurstLeft > 0 || bulkRun != null) return@post
+        pingRtts.clear(); pingLost = 0; pingBurstTotal = count; pingBurstLeft = count
+        LinkMeasure.setRunning("PING burst, $count requests.")
+        submit(LinkConstants.Op.PING, LinkCodec.ping(nextReqId(), 0))
+    }
+
+    private fun onBurstPing(rttMs: Double?) {
+        if (rttMs != null) pingRtts.add(rttMs) else pingLost++
+        pingBurstLeft--
+        if (pingBurstLeft > 0) {
+            submit(LinkConstants.Op.PING, LinkCodec.ping(nextReqId(), 0)); return
+        }
+        val s = LinkMeasure.stats(pingRtts)
+        LinkMeasure.addLine(if (s == null) "PING burst: no replies of $pingBurstTotal." else
+            "PING x$pingBurstTotal: lost $pingLost, round trip ms min %.0f, median %.0f, p95 %.0f, max %.0f. Fastest steady poll about %.1f per second."
+                .format(s.min, s.median, s.p95, s.max, 1000.0 / s.p95))
+        repo.log(LogEntry.Category.LINK, "MEASURE ping burst done: ${LinkMeasure.state.value.lines.lastOrNull()}")
+    }
+
+    /** BULK: the LayerWand sends count frames of size bytes (capped at MTU minus 3), then BULK_DONE. */
+    fun measureBulk(count: Int, size: Int) = handler.post {
+        if (!handshakeDone) { LinkMeasure.addLine("BULK: not connected."); return@post }
+        if (pingBurstLeft > 0 || bulkRun != null) return@post
+        bulkRun = BulkRun(count, size)
+        LinkMeasure.setRunning("BULK, $count frames of up to $size bytes.")
+        submit(LinkMeasure.OP_BULK, LinkMeasure.bulk(nextReqId(), count, size))
+    }
+
+    private fun onBulkFrame(value: ByteArray) {
+        val run = bulkRun ?: return
+        val now = android.os.SystemClock.elapsedRealtimeNanos()
+        val done = LinkMeasure.decodeDone(value)
+        if (done != null) {
+            finishLink()
+            reportBulk(run, done, null)
+            return
+        }
+        if (run.firstNs == 0L) run.firstNs = now
+        run.lastNs = now
+        run.received++
+        run.bytes += value.size
+        if (!LinkMeasure.dataFrameIntact(value)) run.broken++
+        val seq = LinkMeasure.dataSeq(value)
+        if (seq != run.lastSeq + 1) run.outOfOrder++
+        run.lastSeq = seq
+        // A long run must not trip the 5 s request timeout while frames keep arriving.
+        pending?.let { armRequestTimeout(it.reqId, it.kind) }
+    }
+
+    private fun reportBulk(run: BulkRun, done: LinkMeasure.Done?, failure: String?) {
+        bulkRun = null
+        val spanMs = if (run.lastNs > run.firstNs) (run.lastNs - run.firstNs) / 1e6 else 0.0
+        val totalMs = if (run.requestedNs > 0) (android.os.SystemClock.elapsedRealtimeNanos() - run.requestedNs) / 1e6 else 0.0
+        val rate = if (totalMs > 0) run.bytes * 1000.0 / totalMs else 0.0
+        val line = buildString {
+            append("BULK ${run.count} x ${run.size}: ")
+            if (failure != null) append("$failure ")
+            append("received ${run.received} frames, ${run.bytes} bytes, broken ${run.broken}, out of order ${run.outOfOrder}, ")
+            append("%.0f ms request to done (%.0f ms first to last frame), %.0f bytes/s at the watch.".format(totalMs, spanMs, rate))
+            if (done != null) append(" LayerWand: sent ${done.sent} x ${done.size} bytes in ${done.elapsedMs} ms at MTU ${done.mtu}, notify refused ${done.refused}.")
+        }
+        LinkMeasure.addLine(line)
+        repo.log(LogEntry.Category.LINK, "MEASURE $line")
     }
 
     // Deferred GET_TEXT so it does not reenter while a GET_CHANGED run is open.

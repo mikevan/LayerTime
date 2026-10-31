@@ -20,6 +20,8 @@
 
     <!-- Foreground service that holds the GATT link while the screen is off. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- The short buzz when a button press registers (ui/PressFeedback.kt). Normal permission, granted at install. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"
         tools:targetApi="34" />
     <!-- Foreground service that keeps a capture import decoding while the app is off screen. -->

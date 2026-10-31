@@ -19,6 +19,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -84,6 +86,9 @@ import com.projectrevivesolutions.layertime.controller.diag.DeviceReportBuilder
 import com.projectrevivesolutions.layertime.controller.diag.Exporter
 import com.projectrevivesolutions.layertime.controller.link.LinkClient
 import com.projectrevivesolutions.layertime.controller.link.LinkConstants
+import com.projectrevivesolutions.layertime.controller.link.LinkMeasure
+import com.projectrevivesolutions.layertime.controller.link.ConnNotice
+import com.projectrevivesolutions.layertime.controller.BuildConfig
 import com.projectrevivesolutions.layertime.controller.model.ConnState
 import com.projectrevivesolutions.layertime.controller.model.EventRow
 import com.projectrevivesolutions.layertime.controller.model.LogEntry
@@ -240,6 +245,7 @@ private fun ControllerScreen() {
     val background by repo.background.collectAsState()
     val linkStale by repo.linkStale.collectAsState()
     val reconnecting by repo.reconnecting.collectAsState()
+    val connDetail by repo.connDetail.collectAsState()
 
     var target by remember { mutableIntStateOf(MissionPrefs.readTarget(context)) }
     LaunchedEffect(target) { MissionPrefs.writeTarget(context, target) }
@@ -378,18 +384,22 @@ private fun ControllerScreen() {
         navPage?.let { page = it; NavRequest.page.value = null; faceActions.afterButton() }
     }
 
-    val face: @Composable (Modifier, Boolean) -> Unit = { m, leftBlack ->
+    // sliding: the rolling watch layout, where the caller draws the black half, the
+    // light, and the cast shadow as separate layers that do not turn with the face.
+    val face: @Composable (Modifier, Boolean) -> Unit = { m, sliding ->
         FaceView(shown.conn, shown.status, shown.btOn, shown.battery, shown.hour, shown.min, shown.date, linkStale = shown.linkStale, reconnecting = shown.reconnecting,
             tempValue = shown.tempValue, tempUnit = shown.tempUnit,
             sunLabel = shown.sunLabel, sunValue = shown.sunValue, sunAmPm = shown.sunAmPm, sunTag = shown.sunTag,
             onCounter = { page = "attacks"; faceActions.afterButton() }, onRecon = { page = "config"; faceActions.afterButton() },
-            onOutsideCircle = { faceActions.outsideCircle() }, modifier = m, drawLeftBlack = leftBlack)
+            onOutsideCircle = { faceActions.outsideCircle() }, modifier = m, drawLeftBlack = !sliding, drawLighting = !sliding)
     }
 
     var textMult by remember { mutableStateOf(PanelTextScale.read(context)) }
     LaunchedEffect(Unit) { ConsoleFonts.index = PanelTextScale.readFont(context) }
 
-    val dataPane: @Composable (Modifier, PaddingValues) -> Unit = { paneMod, outerPad ->
+    // onHull: the watch layout, where the console's frame is part of the salvaged hull drawn
+    // behind it (HullRelief.kt), so the pane draws no frame or surface of its own.
+    val dataPane: @Composable (Modifier, PaddingValues, Boolean) -> Unit = { paneMod, outerPad, onHull ->
         BoxWithConstraints(paneMod.padding(outerPad)) {
             val autoScale = PanelTextScale.auto(maxWidth.value, maxHeight.value)
             val fontScale = autoScale * textMult
@@ -397,11 +407,11 @@ private fun ControllerScreen() {
             CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale)) {
             ProvideTextStyle(TextStyle(fontFamily = ConsoleFonts.body)) {
             Box(
-                Modifier.fillMaxSize()
+                (if (onHull) Modifier.fillMaxSize() else Modifier.fillMaxSize()
                     .consoleFrame(surface = LtColors.ConsoleBg, radius = 20.dp, elevation = 10.dp)
-                    .drawWithContent { drawContent(); drawCornerBrackets(LtColors.ConsoleEdge, 20.dp.toPx()) }
+                    .drawWithContent { drawContent(); drawCornerBrackets(LtColors.ConsoleEdge, 20.dp.toPx()) })
                     .clip(RoundedCornerShape(20.dp))
-                    .padding(24.dp)
+                    .padding(CONSOLE_BAND)
             ) {
                 when (page) {
                     "config" -> {
@@ -500,7 +510,13 @@ private fun ControllerScreen() {
                                     if (active && deviceLabel.isNotBlank()) {
                                         Text(deviceLabel.uppercase(), color = LtColors.Cyan, fontSize = 10.sp, fontFamily = ConsoleFonts.mono)
                                     }
-                                    locationNotice?.let { Text(it, color = LtColors.Red, fontSize = 11.sp) }
+                                    // Why the link is where it is, and what to tap next (ConnNotice).
+                                    val notice = locationNotice?.let { ConnNotice.Notice(it, ConnNotice.Tone.PROBLEM) }
+                                        ?: ConnNotice.of(conn, connDetail, reconnecting)
+                                    notice?.let {
+                                        Text(it.text, color = if (it.tone == ConnNotice.Tone.PROBLEM) LtColors.Red else LtColors.Cyan,
+                                            fontSize = 11.sp)
+                                    }
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         SciFiPrimary("SCAN & CONNECT", enabled = !active && !connecting, large = true) { connect() }
                                         SciFiOutline("DISCONNECT", enabled = active || connecting || conn == ConnState.DISCONNECTED, large = true) {
@@ -549,6 +565,8 @@ private fun ControllerScreen() {
                                 )
                             }
                             item { LayerTimeButtonPanel(nowMs) }
+                            // Link 0.2 Phase 0 test panel; diagnostic (debug) builds only.
+                            if (BuildConfig.DEBUG) item { LinkMeasurePanel(active) }
                             item {
                                 SciFiPanel("EXPORT") {
                                     Text("Writes a diagnostic bundle you can share.", color = LtColors.Ivory, fontSize = 11.sp)
@@ -645,7 +663,23 @@ private fun ControllerScreen() {
             // the panel shows through the corners of the face's square, and sliding the face
             // away uncovers what it was hiding. The slide is translation only; nothing is
             // re-measured.
-            dataPane(Modifier.fillMaxSize(), PaddingValues(start = sliver + 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp))
+            // The salvaged hull: computed once per screen size off the main thread, then cached.
+            val density = LocalDensity.current
+            val hullSpec = with(density) {
+                HullSpec(
+                    w = maxWidth.roundToPx(), h = maxHeight.roundToPx(), dp = density.density,
+                    consoleL = (sliver + 4.dp).toPx(), consoleT = 8.dp.toPx(),
+                    consoleR = maxWidth.toPx() - 8.dp.toPx(), consoleB = maxHeight.toPx() - 8.dp.toPx(),
+                    band = CONSOLE_BAND.toPx(), faceR = faceSize.toPx() / 2f, homeCx = faceSize.toPx() / 2f, travel = travelPx,
+                )
+            }
+            val hull by androidx.compose.runtime.produceState<HullImages?>(null, hullSpec) {
+                value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { HullRelief.render(hullSpec) }
+            }
+            Canvas(Modifier.fillMaxSize()) { hull?.let { drawImage(it.hull) } ?: drawRect(LtColors.Bg) }
+            dataPane(Modifier.fillMaxSize(), PaddingValues(start = sliver + 4.dp, top = 8.dp, end = 8.dp, bottom = 8.dp), true)
+            // the cover glass over the panels: cracks, glow tubes, and the straps riveted through it
+            Canvas(Modifier.fillMaxSize()) { hull?.let { drawImage(it.overlay) } }
             if (!faceParked) {
                 // A tap anywhere in the visible strip only slides the face out; it does not
                 // also press whatever control is under the finger.
@@ -653,37 +687,42 @@ private fun ControllerScreen() {
             }
             // The face rolls off to the left: it slides and turns together, the turn equal to the
             // distance travelled over the radius (rolling without slipping), so it rotates
-            // counter-clockwise as it goes left. The black left half is a separate layer that
-            // slides but does not turn; the face itself is transparent outside the circle, so
-            // the panel shows through the corners.
+            // counter-clockwise as it goes left. Behind it is the hull plate, not black, so the
+            // look does not depend on an AMOLED screen; the face is transparent outside the
+            // circle, so the hull and the panel show through the corners.
             val radiusPx = with(LocalDensity.current) { faceSize.toPx() } / 2f
-            Box(Modifier.size(faceSize).graphicsLayer { translationX = slide.value }
-                .drawBehind { drawRect(LtColors.Bg, size = Size(size.width / 2f, size.height)) })
+            // The face's shadow on the console: slides with the face, never turns (FaceLight.kt).
+            FaceShadowLayer(Modifier.size(faceSize).graphicsLayer { translationX = slide.value })
             Box(Modifier.size(faceSize).graphicsLayer {
                 translationX = slide.value
                 rotationZ = Math.toDegrees((slide.value / radiusPx).toDouble()).toFloat()
             }) {
-                face(Modifier.fillMaxSize(), false)
+                face(Modifier.fillMaxSize(), true)
             }
+            // The light: slides with the face but does not turn, so the face rolls under it.
+            FaceLightLayer(Modifier.size(faceSize).graphicsLayer { translationX = slide.value })
             if (faceParked) {
                 // The visible sliver at the left edge is the handle that rolls the face back.
                 Box(Modifier.fillMaxHeight().width(sliver).pointerInput(Unit) { detectTapGestures { unpark() } })
             }
         } else if (maxWidth >= maxHeight) {
             Row(Modifier.fillMaxSize()) {
-                face(Modifier.weight(0.42f).fillMaxHeight(), true)
+                face(Modifier.weight(0.42f).fillMaxHeight(), false)
                 Box(Modifier.width(1.dp).fillMaxHeight().background(LtColors.Dim))
-                dataPane(Modifier.weight(0.58f).fillMaxSize(), PaddingValues(10.dp))
+                dataPane(Modifier.weight(0.58f).fillMaxSize(), PaddingValues(10.dp), false)
             }
         } else {
             Column(Modifier.fillMaxSize()) {
-                face(Modifier.fillMaxWidth().weight(0.46f), true)
+                face(Modifier.fillMaxWidth().weight(0.46f), false)
                 Box(Modifier.fillMaxWidth().height(1.dp).background(LtColors.Dim))
-                dataPane(Modifier.fillMaxWidth().weight(0.54f), PaddingValues(10.dp))
+                dataPane(Modifier.fillMaxWidth().weight(0.54f), PaddingValues(10.dp), false)
             }
         }
     }
 }
+
+/** The console's content inset; on the watch layout it is also the width of the hull's raised frame band. */
+private val CONSOLE_BAND = 24.dp
 
 /** Roll time in ms; matches the 1 s of real gravel in the roll sounds so the thud lands as the face stops. */
 private const val ROLL_MS = 980
@@ -703,6 +742,36 @@ internal fun emptyEventsMessage(connected: Boolean, status: com.projectrevivesol
     !connected -> "No detections yet. Connect a wand and start detection."
     status?.monitoring == true -> "No detections yet. Detection is running."
     else -> "No detections yet. Tap START to begin detection."
+}
+
+/**
+ * LINK MEASURE: the watch side of Link 0.2 Phase 0 (claude/link_0_2_phase0_plan.md,
+ * M5). A PING burst for the round trip that limits HUNT polling, and BULK runs for
+ * throughput at 20 bytes and at a larger MTU. BULK needs the LayerWand measurement
+ * firmware; a release LayerWand answers UnknownOp, and the panel says so.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LinkMeasurePanel(connected: Boolean) {
+    val st by LinkMeasure.state.collectAsState()
+    val idle = connected && st.running == null
+    val client = LinkForegroundService.active
+    SciFiPanel("LINK MEASURE  //  TEST") {
+        Text("Link 0.2 Phase 0. Run in order: PING, BULK at 20 bytes, MTU 247, then BULK at 244 bytes. " +
+            "BULK needs the LayerWand measurement firmware. The larger MTU lasts until this connection drops.",
+            color = LtColors.Ivory, fontSize = 11.sp)
+        HudReadout("MTU", "${st.mtu}", if (st.mtu > 23) LtColors.Green else LtColors.Cyan)
+        if (!connected) Text("Connect to a LayerWand first.", color = LtColors.Grey, fontSize = 11.sp)
+        st.running?.let { Text(it, color = LtColors.Green, fontSize = 11.sp, fontFamily = ConsoleFonts.mono) }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            SciFiOutline("PING x100", enabled = idle) { client?.measurePingBurst(100) }
+            SciFiOutline("BULK 200 x 20", enabled = idle) { client?.measureBulk(200, 20) }
+            SciFiOutline("MTU 247", enabled = idle && st.mtu <= 23) { client?.measureRequestMtu() }
+            SciFiOutline("BULK 200 x 244", enabled = idle) { client?.measureBulk(200, 244) }
+            SciFiOutline("CLEAR", enabled = st.lines.isNotEmpty() && st.running == null) { LinkMeasure.clear() }
+        }
+        st.lines.forEach { Text(it, color = LtColors.Ivory, fontSize = 10.sp, fontFamily = ConsoleFonts.mono) }
+    }
 }
 
 @Composable
@@ -854,9 +923,13 @@ fun SciFiPrimary(text: String, enabled: Boolean, large: Boolean = false, onClick
             .border(2.dp, railBrush(g), PillShape)
             .pillShine()
     else Modifier.glassPill(g, false).border(1.5.dp, g.copy(alpha = 0.28f), PillShape)
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val flash = rememberPressFlash()
     Button(
-        onClick = onClick, enabled = enabled, shape = PillShape, contentPadding = if (large) btnPadLarge else btnPadPill,
-        modifier = look.height(buttonHeight(large)),
+        onClick = { flash.fire(); onClick() }, enabled = enabled, shape = PillShape, contentPadding = if (large) btnPadLarge else btnPadPill,
+        modifier = look.height(buttonHeight(large)).pressFlash(flash, pressed && enabled),
+        interactionSource = source,
         elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.Transparent, contentColor = LtColors.Bg,
@@ -871,9 +944,13 @@ fun SciFiOutline(text: String, enabled: Boolean, large: Boolean = false, onClick
     val e = LtColors.ConsoleEdge
     val glow = if (enabled) Modifier.shadow(if (large) 6.dp else 4.dp, PillShape, clip = false,
         ambientColor = e.copy(alpha = 0.7f), spotColor = e).haloOnly(e, radius = buttonHeight(large) / 2) else Modifier
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val flash = rememberPressFlash()
     OutlinedButton(
-        onClick = onClick, enabled = enabled, shape = PillShape, contentPadding = if (large) btnPadLarge else btnPadPill,
-        modifier = glow.glassPill(e, enabled).height(buttonHeight(large)),
+        onClick = { flash.fire(); onClick() }, enabled = enabled, shape = PillShape, contentPadding = if (large) btnPadLarge else btnPadPill,
+        modifier = glow.glassPill(e, enabled).height(buttonHeight(large)).pressFlash(flash, pressed && enabled, e),
+        interactionSource = source,
         border = if (enabled) BorderStroke(2.5.dp, railBrush(e)) else BorderStroke(1.5.dp, e.copy(alpha = 0.28f)),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent, contentColor = e, disabledContentColor = LtColors.Grey),
     ) {
@@ -993,12 +1070,14 @@ private fun GridKeypad(onKey: (String) -> Unit) {
 @Composable
 private fun HudKey(label: String, edge: Color, wide: Boolean = false, onClick: () -> Unit) {
     val scale = LocalDensity.current.fontScale
+    val flash = rememberPressFlash()
     Box(
         Modifier.size(width = (if (wide) 70.dp else 40.dp) * scale, height = 36.dp * scale)
             .glassPill(edge, true)
             .border(2.dp, railBrush(edge), PillShape)
+            .pressFlash(flash, false, edge)
             .clip(PillShape)
-            .clickable { onClick() },
+            .clickable { flash.fire(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         Text(label, color = edge, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = ConsoleFonts.heading,

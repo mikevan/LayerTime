@@ -67,6 +67,8 @@ fun FaceView(
     modifier: Modifier = Modifier,
     /** False when the caller draws the black left half itself (the rolling face, so it does not rotate). */
     drawLeftBlack: Boolean = true,
+    /** False when the caller draws FaceLightLayer over the face itself (the rolling face: the light must not turn). */
+    drawLighting: Boolean = true,
 ) {
     val owl = ImageBitmap.imageResource(R.drawable.layertime_owl)
     BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -141,8 +143,9 @@ fun FaceView(
             ink(dateText, cx, g.y(419f), k(19f), Color.White, maxW = k(210f))
 
             // The bezel is drawn last: the battered rim holds a crystal above the metrics.
+            // The light (rim shading, recessed dial, crystal) goes on top (FaceLight.kt).
             drawSteampunkRim(cx, cy, d, ::sr)
-            drawCrystalSheen(cx, cy, d, ::sr)
+            if (drawLighting) drawFaceLighting(cx, cy, d)
         }
     }
 }
@@ -216,6 +219,11 @@ private val RivetShine = Color(0xFFEEF2F5)
 private val Rust = Color(0x668B4A1F)
 private val RustDark = Color(0x806B3A14)
 private val Scratch = Color(0x7A202428)
+/** The rim's steel grain, LtColors.Steel pulled toward its middle so it no longer paints its own light. */
+private val RimSteel = listOf(
+    Color(0xFF9AA2AA), Color(0xFF7E868E), Color(0xFF636970), Color(0xFF767E86),
+    Color(0xFF959DA5), Color(0xFF636970), Color(0xFF7E868E), Color(0xFF9AA2AA),
+)
 
 /**
  * A thick, battered metal rim: a brushed-steel band about 20/454 of the face
@@ -233,8 +241,9 @@ private fun DrawScope.drawSteampunkRim(cx: Float, cy: Float, d: Float, s: (Float
     val c = Offset(cx, cy)
     val rnd = Lcg(7)
 
-    // 1. Brushed-steel band.
-    drawCircle(Brush.sweepGradient(LtColors.Steel, c), radius = rMid, center = c, style = Stroke(band))
+    // 1. Brushed-steel band. Its bands are kept low in contrast: they are the metal's grain,
+    //    and the light and shade come from FaceLight.kt, from one direction.
+    drawCircle(Brush.sweepGradient(RimSteel, c), radius = rMid, center = c, style = Stroke(band))
     // warm bronze glaze over the steel so the whole circle reads as one warm, salvaged piece
     drawCircle(BronzeGlaze, radius = rMid, center = c, style = Stroke(band))
     // Subtle bevel: darker toward the inner edge, lighter toward the outer.
@@ -288,10 +297,7 @@ private fun DrawScope.drawSteampunkRim(cx: Float, cy: Float, d: Float, s: (Float
         // rivets either side of the seam
         for (side in listOf(-1f, 1f)) {
             val p = polar(rMid + rnd.range(-s(1.5f), s(1.5f)), deg + side * 5.5f)
-            drawCircle(RivetRim, s(3.4f), p)
-            drawCircle(RivetBody, s(2.5f), p)
-            drawCircle(RivetShine, s(0.9f), Offset(p.x - s(0.8f), p.y - s(0.8f)))
-            drawCircle(RimDark.copy(alpha = 0.5f), s(0.9f), Offset(p.x + s(0.9f), p.y + s(0.9f)))
+            domedRivet(p, s(3.4f))
         }
     }
 
@@ -316,13 +322,7 @@ private fun DrawScope.drawSteampunkRim(cx: Float, cy: Float, d: Float, s: (Float
     }
 }
 
-/** A faint glass highlight just inside the bezel, so the rim reads as holding a crystal. */
-private fun DrawScope.drawCrystalSheen(cx: Float, cy: Float, d: Float, s: (Float) -> Float) {
-    val r = d / 2f - s(24f)
-    val box = Size(2 * r, 2 * r); val tl = Offset(cx - r, cy - r)
-    drawArc(Color(0x2EBFD8FF), 200f, 70f, false, tl, box, style = Stroke(s(3f)))
-    drawArc(Color(0x14BFD8FF), 20f, 50f, false, tl, box, style = Stroke(s(2f)))
-}
+// The crystal's sheen moved to FaceLight.kt (2026-10-31), so it stays put while the face rolls.
 
 // ---- worn-metal treatment for the strokes inside the face ----
 // Each element keeps its stroke width. Under it goes a dark shadow stroke offset by one
@@ -379,6 +379,18 @@ private fun DrawScope.weldLine(a: Offset, b: Offset, tint: Color, rnd: Lcg, s: (
         drawCircle(RivetShine, maxOf(1f, r * 0.3f), Offset(cx - nx * r * 0.35f - ux * r * 0.2f, cy - ny * r * 0.35f - uy * r * 0.2f))
         t += step; i++
     }
+}
+
+/**
+ * A rivet head as a dome: a contact shadow on the plate below and to the right, a dark
+ * rim, and a body shaded from a highlight toward the upper left (the light in FaceLight).
+ */
+private fun DrawScope.domedRivet(p: Offset, r: Float) {
+    drawCircle(Color.Black.copy(alpha = 0.45f), r * 1.05f, Offset(p.x + r * 0.30f, p.y + r * 0.38f))
+    drawCircle(RivetRim, r, p)
+    val hl = Offset(p.x - r * 0.32f, p.y - r * 0.32f)
+    drawCircle(Brush.radialGradient(listOf(RivetShine, RivetBody, RivetRim), center = hl, radius = r * 1.1f),
+        r * 0.76f, p)
 }
 
 /** A small rivet no wider than the stroke it sits on. */

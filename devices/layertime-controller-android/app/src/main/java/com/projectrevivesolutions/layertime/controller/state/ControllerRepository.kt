@@ -27,6 +27,10 @@ object ControllerRepository {
     private val _conn = MutableStateFlow(ConnState.IDLE)
     val conn: StateFlow<ConnState> = _conn.asStateFlow()
 
+    /** The reason passed with the latest state; the CONNECTION panel turns it into a sentence (ConnNotice). */
+    private val _connDetail = MutableStateFlow<String?>(null)
+    val connDetail: StateFlow<String?> = _connDetail.asStateFlow()
+
     private val _device = MutableStateFlow<String>("")
     val deviceLabel: StateFlow<String> = _device.asStateFlow()
 
@@ -73,6 +77,7 @@ object ControllerRepository {
     }
 
     fun setConn(state: ConnState, detail: String? = null) {
+        _connDetail.value = detail
         _conn.value = state
         log(LogEntry.Category.CONNECTION, "state=$state" + (detail?.let { " ($it)" } ?: ""))
     }
