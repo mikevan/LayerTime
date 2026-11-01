@@ -104,7 +104,7 @@ class LinkClient(private val appContext: Context) {
         const val RECONNECT_MAX_MS = 15_000L
 
         /** Shown when BLE scanning is blocked by the system Location switch (Android 11 and older). */
-        const val LOCATION_OFF_MESSAGE = "Turn on Location in Settings; this Android version needs it to scan for the wand."
+        const val LOCATION_OFF_MESSAGE = "Turn on Location in Settings; this Android version needs it to scan for the Hunter."
 
         /**
          * On Android 11 (API 30) and older, Android returns no BLE scan results unless
@@ -134,6 +134,18 @@ class LinkClient(private val appContext: Context) {
 
     /** Begin scanning for a LayerWand. [autoStart] optionally issues ReconStart after HELLO. */
     fun start(autoStart: Int? = null) = handler.post {
+        // One tap is one clean attempt (build 69). Before this, a tap during a reconnect wait
+        // left the scheduled retry in place; when it fired it closed the connection the tap had
+        // just started, so the first tap looked dead and a second was needed. A tap could also
+        // start a second scan on top of a running one, which Android rejects.
+        reconnectPending?.let { handler.removeCallbacks(it) }; reconnectPending = null
+        stopScan()
+        if (!handshakeDone) {
+            gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
+            gatt = null; control = null; statusCh = null; dataCh = null
+            linkBusy = false; gattBusy = false
+            linkQueue.clear(); gattOps.clear()
+        }
         wantConnected = true
         reconnectAttempts = 0
         autoStartTarget = autoStart
@@ -155,7 +167,7 @@ class LinkClient(private val appContext: Context) {
         repo.setConn(ConnState.SCANNING, "by service UUID ${LinkConstants.SERVICE_UUID}")
         scanner?.startScan(listOf(filter), settings, scanCallback)
         scanTimeout = Runnable {
-            if (gatt == null) { stopScan(); repo.setConn(ConnState.FAILED, "no LayerWand found in 20s") }
+            if (gatt == null) { stopScan(); repo.setConn(ConnState.FAILED, "no Hunter found in 20s") }
         }.also { handler.postDelayed(it, 20_000) }
     }
 
@@ -244,12 +256,14 @@ class LinkClient(private val appContext: Context) {
             if (gatt != null) return // already connecting/connected
             stopScan()
             val name = runCatching { device.name }.getOrNull() ?: result.scanRecord?.deviceName
-            repo.setDeviceLabel((name ?: "LayerWand") + " / " + device.address)
+            repo.setDeviceLabel((name ?: "Hunter") + " / " + device.address)
             repo.setConn(ConnState.CONNECTING, "${name ?: "?"} ${device.address} rssi=${result.rssi}")
             connect(device)
         }
 
         override fun onScanFailed(errorCode: Int) {
+            // A scan is already running for this callback: not a failure, it keeps scanning.
+            if (errorCode == SCAN_FAILED_ALREADY_STARTED) { repo.log(LogEntry.Category.CONNECTION, "scan already running; continuing"); return }
             repo.setConn(ConnState.FAILED, "scan failed code=$errorCode")
         }
     }
@@ -278,7 +292,7 @@ class LinkClient(private val appContext: Context) {
                         LinkMeasure.setMtu(23)
                         handshakeDone = false; linkBusy = false; gattBusy = false
                         huntPollOutstanding = false
-                        if (huntWanted) HuntSession.setProblem("The link to the LayerWand dropped. Reconnecting.")
+                        if (huntWanted) HuntSession.setProblem("The link to the Hunter dropped. Reconnecting.")
                         linkQueue.clear(); gattOps.clear()
                         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
                         repo.noteBackgroundDisconnect()
@@ -551,11 +565,11 @@ class LinkClient(private val appContext: Context) {
                 if (huntOp == LinkHunt.OP_GET_HUNT) huntPollOutstanding = false
                 if (huntOp != null && huntWanted) HuntSession.setProblem(
                     if (f.linkStatus == LinkConstants.LinkStatus.UNKNOWN_OP)
-                        "This LayerWand cannot hunt yet. Flash it with the hunt firmware."
-                    else "The LayerWand refused the hunt request (${LinkConstants.LinkStatus.name(f.linkStatus)}).")
+                        "This Hunter cannot hunt yet. Flash it with the hunt firmware."
+                    else "The Hunter refused the hunt request (${LinkConstants.LinkStatus.name(f.linkStatus)}).")
                 finishLink()
                 if (wasBulk) bulkRun?.let {
-                    reportBulk(it, null, "the LayerWand answered ${LinkConstants.LinkStatus.name(f.linkStatus)}. " +
+                    reportBulk(it, null, "the Hunter answered ${LinkConstants.LinkStatus.name(f.linkStatus)}. " +
                         "BULK needs the measurement firmware (tdongle_c5_measure).")
                 }
             }
@@ -657,7 +671,7 @@ class LinkClient(private val appContext: Context) {
             if (failure != null) append("$failure ")
             append("received ${run.received} frames, ${run.bytes} bytes, broken ${run.broken}, out of order ${run.outOfOrder}, ")
             append("%.0f ms request to done (%.0f ms first to last frame), %.0f bytes/s at the watch.".format(totalMs, spanMs, rate))
-            if (done != null) append(" LayerWand: sent ${done.sent} x ${done.size} bytes in ${done.elapsedMs} ms at MTU ${done.mtu}, notify refused ${done.refused}.")
+            if (done != null) append(" Hunter: sent ${done.sent} x ${done.size} bytes in ${done.elapsedMs} ms at MTU ${done.mtu}, notify refused ${done.refused}.")
         }
         LinkMeasure.addLine(line)
         repo.log(LogEntry.Category.LINK, "MEASURE $line")
@@ -684,7 +698,7 @@ class LinkClient(private val appContext: Context) {
     private fun sendHuntStart() {
         val id = nextReqId()
         submit(LinkHunt.OP_HUNT_START, LinkHunt.huntStart(id))
-        repo.log(LogEntry.Category.COMMAND, "HUNT_START (any LayerVixen) #$id")
+        repo.log(LogEntry.Category.COMMAND, "HUNT_START (any Vixen) #$id")
     }
 
     /** Starts (or restarts) a hunt for any LayerVixen and keeps polling until huntStop(). */
@@ -692,7 +706,7 @@ class LinkClient(private val appContext: Context) {
         huntWanted = true
         huntReadings = 0
         if (handshakeDone) sendHuntStart()
-        else HuntSession.setProblem("The LayerWand is not connected. Reconnecting.")
+        else HuntSession.setProblem("The Hunter is not connected. Reconnecting.")
         handler.removeCallbacks(huntPoll)
         handler.post(huntPoll)
     }
@@ -712,9 +726,9 @@ class LinkClient(private val appContext: Context) {
         if (op == LinkHunt.OP_HUNT_START) {
             repo.log(LogEntry.Category.COMMAND, "RESULT HUNT_START => " +
                 if (result == LinkHunt.STARTED) "started" else "target not supported ($result)")
-            if (result != LinkHunt.STARTED && huntWanted) HuntSession.setProblem("This LayerWand cannot hunt a LayerVixen.")
+            if (result != LinkHunt.STARTED && huntWanted) HuntSession.setProblem("This Hunter cannot hunt a Vixen.")
         } else {
-            repo.log(LogEntry.Category.COMMAND, "RESULT HUNT_STOP => stopped; Recon resumes on the LayerWand")
+            repo.log(LogEntry.Category.COMMAND, "RESULT HUNT_STOP => stopped; Recon resumes on the Hunter")
         }
     }
 

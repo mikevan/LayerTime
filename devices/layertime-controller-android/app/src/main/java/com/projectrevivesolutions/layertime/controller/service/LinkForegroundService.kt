@@ -94,10 +94,10 @@ class LinkForegroundService : LifecycleService() {
     }
 
     private fun buildNotification(state: ConnState): Notification {
-        val label = ControllerRepository.deviceLabel.value.ifBlank { "LayerWand" }
+        val label = ControllerRepository.deviceLabel.value.ifBlank { "Hunter" }
         val text = when (state) {
             ConnState.CONNECTED -> "Linked to $label"
-            ConnState.SCANNING -> "Scanning for a LayerWand"
+            ConnState.SCANNING -> "Scanning for a Hunter"
             ConnState.CONNECTING, ConnState.DISCOVERING, ConnState.HANDSHAKING -> "Connecting to $label"
             ConnState.DISCONNECTED -> "Reconnecting to $label"
             ConnState.FAILED -> "Link failed"
@@ -106,7 +106,7 @@ class LinkForegroundService : LifecycleService() {
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             Notification.Builder(this, CHANNEL_ID) else @Suppress("DEPRECATION") Notification.Builder(this)
         return builder
-            .setContentTitle("LayerTime Controller")
+            .setContentTitle("LayerScope")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)

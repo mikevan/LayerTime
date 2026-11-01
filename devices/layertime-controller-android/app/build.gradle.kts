@@ -9,11 +9,11 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.projectrevivesolutions.layertime.controller"
+        applicationId = "com.projectrevivesolutions.layerscope"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
         targetSdk = 34
-        versionCode = 67
-        versionName = "0.1.66" // build 67: HUNT step trail counts steps from the accelerometer (the step sensor never reported)
+        versionCode = 69
+        versionName = "0.1.68" // build 69: LayerWand is now the Hunter in every string, aperture on the face, DETECTION EVENTS in a HUD panel, 12 sp minimum text
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

@@ -52,6 +52,8 @@ internal data class HullSpec(
     val band: Float,
     /** The face: radius, home centre x (its centre y is faceR), and how far it slides, px. */
     val faceR: Float, val homeCx: Float, val travel: Float,
+    /** False on the hunt screen (build 69): nothing rolls there, so no gear rack and no roll scratches. */
+    val faceTrack: Boolean = true,
 )
 
 internal class HullImages(val hull: ImageBitmap, val overlay: ImageBitmap)
@@ -138,25 +140,25 @@ internal object HullRelief {
         // the gear rack the face rolls on
         p.style = Paint.Style.FILL; p.color = gray(0.72f)
         val rt = rackTop(s); val re = rackEnd(s)
-        c.drawRect(0f, rt, re, h.toFloat(), p)
+        if (s.faceTrack) c.drawRect(0f, rt, re, h.toFloat(), p)
         // Teeth (Michael, 2026-10-31: much bigger; the strip under them stays as it is): gear-tooth
         // profiles, wide at the root and narrow at the tip, standing well proud of the strip.
         p.color = gray(0.97f)
         val pitch = 14f * dp; val root = 8f * dp; val tip = 4f * dp; val tall = TOOTH_TALL * dp
         x = 0f
-        while (x < re - root) {
+        while (s.faceTrack && x < re - root) {
             c.drawPath(Path().apply {
                 moveTo(x, rt + 2f * dp); lineTo(x + (root - tip) / 2f, rt + 2f * dp - tall)
                 lineTo(x + (root + tip) / 2f, rt + 2f * dp - tall); lineTo(x + root, rt + 2f * dp); close()
             }, p)
             x += pitch
         }
-        p.color = gray(0.92f); c.drawRect(re - 4f * dp, rt - tall, re + 3f * dp, h.toFloat(), p)   // end stop
+        if (s.faceTrack) { p.color = gray(0.92f); c.drawRect(re - 4f * dp, rt - tall, re + 3f * dp, h.toFloat(), p) }   // end stop
 
         val px = IntArray(w * h); hb.getPixels(px, 0, w, 0, 0, w, h); hb.recycle()
         val hgt = FloatArray(w * h) { i -> (px[i] and 0xFF) / 255f + (rnd.nextFloat() - 0.5f) * 0.016f }
         val rackTopAll = (rt - TOOTH_TALL * dp + 2f * dp).toInt()
-        val rackMask = BooleanArray(w * h) { i -> i / w >= rackTopAll && i % w < (re + 3f * dp).toInt() && (i / w >= rt.toInt() || hgt0(px[i]) > 0.9f) }
+        val rackMask = BooleanArray(w * h) { i -> s.faceTrack && i / w >= rackTopAll && i % w < (re + 3f * dp).toInt() && (i / w >= rt.toInt() || hgt0(px[i]) > 0.9f) }
         boxBlur(hgt, w, h, max(1, (1.6f * dp).toInt())); boxBlur(hgt, w, h, max(1, (1.6f * dp).toInt()))
 
         // ---- 2. scratches: the face's real paths, cut only into the high surfaces ----
@@ -165,7 +167,7 @@ internal object HullRelief {
         val lit = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = android.graphics.Color.RED }
         val dark = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = android.graphics.Color.GREEN }
         val sr = Random(23)
-        repeat(110) {
+        repeat(if (s.faceTrack) 110 else 0) {
             val r = s.faceR * (0.62f + 0.37f * sr.nextFloat()); val t0 = sr.nextFloat() * 2f * PI.toFloat()
             val s0 = -sr.nextFloat() * s.travel * 0.85f
             val s1 = max(-s.travel, s0 - s.faceR * (0.13f + 0.42f * sr.nextFloat()))

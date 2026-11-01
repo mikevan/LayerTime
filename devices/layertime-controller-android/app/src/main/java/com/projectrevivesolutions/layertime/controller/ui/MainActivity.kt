@@ -56,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -423,13 +424,13 @@ private fun ControllerScreen() {
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     SciFiOutline("‹ BACK", enabled = true) { page = "main" }
                                     Text("MISSION CONFIGURATION", color = LtColors.ConsoleEdge, fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp, letterSpacing = 2.sp, style = glowText())
+                                        fontSize = 16.sp, letterSpacing = 2.sp, style = glowText())
                                 }
                             }
-                            item { Text("Check a connector to enable its sensor for the mission.", color = LtColors.Ivory, fontSize = 11.sp) }
+                            item { Text("Check a connector to enable its sensor for the mission.", color = LtColors.Ivory, fontSize = 12.sp) }
                             item {
-                                Text("Saved on this watch. The LayerWand runs all detectors until Link 0.2 can send this selection.",
-                                    color = LtColors.Amber, fontSize = 11.sp)
+                                Text("Saved on this watch. The Hunter runs all detectors until Link 0.2 can send this selection.",
+                                    color = LtColors.Amber, fontSize = 12.sp)
                             }
                             items(SENSOR_IDS) { id ->
                                 val on = sensorsOn[id] == true
@@ -450,7 +451,7 @@ private fun ControllerScreen() {
                                     )
                                     Text(LinkConstants.ReconTarget.name(id),
                                         color = if (on) LtColors.Green else LtColors.Ivory,
-                                        fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
+                                        fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp)
                                 }
                             }
                         }
@@ -463,14 +464,14 @@ private fun ControllerScreen() {
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     SciFiOutline("‹ BACK", enabled = true) { page = "main" }
                                     Text("DETECTED ATTACKS  //  ${events.size}", color = LtColors.ConsoleEdge,
-                                        fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 2.sp, style = glowText())
+                                        fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 2.sp, style = glowText())
                                 }
                             }
                             item {
                                 SciFiOutline("DECODE A CAPTURE FILE", enabled = true, large = true) { page = "capture" }
                             }
                             if (events.isEmpty()) {
-                                item { Text(emptyEventsMessage(active, status), color = LtColors.Grey, fontSize = 12.sp) }
+                                item { Text(emptyEventsMessage(active, status), color = LtColors.Grey, fontSize = 14.sp) }
                             }
                             items(events, key = { it.eventId }) { e ->
                                 Box(
@@ -482,9 +483,9 @@ private fun ControllerScreen() {
                                 ) {
                                     Column {
                                         Text("#${e.eventId}  ${e.detectorName}", color = LtColors.Amber,
-                                            fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp)
+                                            fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp)
                                         Text("${LinkConstants.SourceKind.name(e.sourceKind)} · ${LinkConstants.Band.name(e.band)} · ch ${e.channel} · ${e.rssi} dBm · x${e.count}   → TAP FOR DETAIL",
-                                            color = LtColors.Ivory, fontSize = 11.sp, fontFamily = ConsoleFonts.mono)
+                                            color = LtColors.Ivory, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                                     }
                                 }
                             }
@@ -507,17 +508,17 @@ private fun ControllerScreen() {
                                 SciFiPanel("CONNECTION", statusColor = if (active) LtColors.Green else LtColors.Red, statusCount = wands) {
                                     if (active && server != null) {
                                         Text("SERVER 0.${server!!.serverMinor}  ·  SES ${server!!.sessionId}  ·  MAXF ${server!!.maxFrame}",
-                                            color = LtColors.Ivory, fontSize = 10.sp, fontFamily = ConsoleFonts.mono)
+                                            color = LtColors.Ivory, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                                     }
                                     if (active && deviceLabel.isNotBlank()) {
-                                        Text(deviceLabel.uppercase(), color = LtColors.Cyan, fontSize = 10.sp, fontFamily = ConsoleFonts.mono)
+                                        Text(deviceLabel.uppercase(), color = LtColors.Cyan, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                                     }
                                     // Why the link is where it is, and what to tap next (ConnNotice).
                                     val notice = locationNotice?.let { ConnNotice.Notice(it, ConnNotice.Tone.PROBLEM) }
                                         ?: ConnNotice.of(conn, connDetail, reconnecting)
                                     notice?.let {
                                         Text(it.text, color = if (it.tone == ConnNotice.Tone.PROBLEM) LtColors.Red else LtColors.Cyan,
-                                            fontSize = 11.sp)
+                                            fontSize = 12.sp)
                                     }
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         SciFiPrimary("SCAN & CONNECT", enabled = !active && !connecting, large = true) { connect() }
@@ -528,8 +529,8 @@ private fun ControllerScreen() {
                                 }
                             }
                             item {
-                                SciFiPanel("DETECTION  //  ONE WAND") {
-                                    HudReadout("CONNECTED WANDS", "$wands", if (wands > 0) LtColors.Green else LtColors.Cyan)
+                                SciFiPanel("DETECTION  //  ONE HUNTER") {
+                                    HudReadout("CONNECTED HUNTERS", "$wands", if (wands > 0) LtColors.Green else LtColors.Cyan)
                                     // Wraps onto a second line on narrow panels so CLEAR is never cut off.
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                         TargetButton("ALL", LinkConstants.ReconTarget.ALL, target) { target = it }
@@ -539,7 +540,7 @@ private fun ControllerScreen() {
                                         SciFiOutline("CLEAR", enabled = active) { LinkForegroundService.active?.clearEvents() }
                                     }
                                     // HUNT v1: the fox hunt. The whole screen becomes the hunt screen.
-                                    SciFiPrimary("HUNT LAYERVIXEN", enabled = active, large = true) {
+                                    SciFiPrimary("HUNT VIXEN", enabled = active, large = true) {
                                         HuntSession.begin(android.os.SystemClock.elapsedRealtime())
                                         LinkForegroundService.active?.huntStart()
                                     }
@@ -547,7 +548,7 @@ private fun ControllerScreen() {
                             }
                             item {
                                 SciFiPanel("SCREEN-OFF RECEPTION TEST") {
-                                    Text("Start, turn the screen off for a while, turn it on, then stop.", color = LtColors.Ivory, fontSize = 11.sp)
+                                    Text("Start, turn the screen off for a while, turn it on, then stop.", color = LtColors.Ivory, fontSize = 12.sp)
                                     background?.let { bt ->
                                         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                             HudReadout("RECEIVED", "${bt.eventsReceivedDuring}", LtColors.Amber)
@@ -576,7 +577,7 @@ private fun ControllerScreen() {
                             if (BuildConfig.DEBUG) item { LinkMeasurePanel(active) }
                             item {
                                 SciFiPanel("EXPORT") {
-                                    Text("Writes a diagnostic bundle you can share.", color = LtColors.Ivory, fontSize = 11.sp)
+                                    Text("Writes a diagnostic bundle you can share.", color = LtColors.Ivory, fontSize = 12.sp)
                                     SciFiPrimary("EXPORT DIAGNOSTICS", enabled = true, large = true) {
                                         val file = Exporter.writeBundle(context)
                                         if (file != null) {
@@ -586,33 +587,35 @@ private fun ControllerScreen() {
                                 }
                             }
                             item {
-                                Text("DETECTION EVENTS  //  ${events.size}", color = LtColors.ConsoleEdge,
-                                    fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 2.sp, style = glowText())
-                            }
-                            item {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("TEXT SIZE  %.1fx".format(fontScale), color = LtColors.Grey, fontSize = 11.sp, letterSpacing = 1.sp)
-                                    SciFiOutline("A-", enabled = textMult > PanelTextScale.MIN_MULT + 0.01f) {
-                                        textMult = (textMult - 0.1f).coerceAtLeast(PanelTextScale.MIN_MULT); PanelTextScale.write(context, textMult)
+                                // DETECTION EVENTS sits in the same blue HUD panel as every other
+                                // section (build 69; field-test feedback said it stood out bare).
+                                // One item, not lazy rows: the list mirrors the Hunter's bounded
+                                // event log, so a plain Column stays small.
+                                SciFiPanel("DETECTION EVENTS", statusColor = LtColors.Amber, statusCount = events.size) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("TEXT SIZE  %.1fx".format(fontScale), color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp)
+                                        SciFiOutline("A-", enabled = textMult > PanelTextScale.MIN_MULT + 0.01f) {
+                                            textMult = (textMult - 0.1f).coerceAtLeast(PanelTextScale.MIN_MULT); PanelTextScale.write(context, textMult)
+                                        }
+                                        SciFiOutline("A+", enabled = textMult < PanelTextScale.MAX_MULT - 0.01f) {
+                                            textMult = (textMult + 0.1f).coerceAtMost(PanelTextScale.MAX_MULT); PanelTextScale.write(context, textMult)
+                                        }
                                     }
-                                    SciFiOutline("A+", enabled = textMult < PanelTextScale.MAX_MULT - 0.01f) {
-                                        textMult = (textMult + 0.1f).coerceAtMost(PanelTextScale.MAX_MULT); PanelTextScale.write(context, textMult)
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("FONT", color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp)
+                                        SciFiOutline(ConsoleFonts.current.name, enabled = true) {
+                                            ConsoleFonts.next(); PanelTextScale.writeFont(context, ConsoleFonts.index)
+                                        }
+                                    }
+                                    if (events.isEmpty()) {
+                                        Text(emptyEventsMessage(active, status), color = LtColors.Grey, fontSize = 14.sp)
+                                    }
+                                    events.forEach { e ->
+                                        key(e.eventId) {
+                                            EventRowCard(e) { selectedEvent = e; detailFrom = "main"; page = "detail" }
+                                        }
                                     }
                                 }
-                            }
-                            item {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("FONT", color = LtColors.Grey, fontSize = 11.sp, letterSpacing = 1.sp)
-                                    SciFiOutline(ConsoleFonts.current.name, enabled = true) {
-                                        ConsoleFonts.next(); PanelTextScale.writeFont(context, ConsoleFonts.index)
-                                    }
-                                }
-                            }
-                            if (events.isEmpty()) {
-                                item { Text(emptyEventsMessage(active, status), color = LtColors.Grey, fontSize = 12.sp) }
-                            }
-                            items(events, key = { it.eventId }) { e ->
-                                EventRowCard(e) { selectedEvent = e; detailFrom = "main"; page = "detail" }
                             }
                             item {
                                 SciFiOutline(if (showLog) "HIDE LOG  //  ${log.size}" else "SHOW LOG  //  ${log.size}", enabled = true) {
@@ -622,7 +625,7 @@ private fun ControllerScreen() {
                             if (showLog) {
                                 items(log.asReversed().take(200)) { l ->
                                     Text("${logFmt.format(Date(l.epochMillis))} [${l.category}] ${l.message}",
-                                        color = LtColors.Grey, fontSize = 10.sp, fontFamily = ConsoleFonts.mono)
+                                        color = LtColors.Grey, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                                 }
                             }
                         }
@@ -755,9 +758,9 @@ private data class FaceInputs(
     val sunTag: String?, val linkStale: Boolean, val reconnecting: Boolean,
 )
 
-/** Empty-list text that matches the real state instead of always saying "connect a wand". */
+/** Empty-list text that matches the real state instead of always saying "connect a Hunter". */
 internal fun emptyEventsMessage(connected: Boolean, status: com.projectrevivesolutions.layertime.controller.link.StatusSnapshot?): String = when {
-    !connected -> "No detections yet. Connect a wand and start detection."
+    !connected -> "No detections yet. Connect a Hunter and start detection."
     status?.monitoring == true -> "No detections yet. Detection is running."
     else -> "No detections yet. Tap START to begin detection."
 }
@@ -776,11 +779,11 @@ private fun LinkMeasurePanel(connected: Boolean) {
     val client = LinkForegroundService.active
     SciFiPanel("LINK MEASURE  //  TEST") {
         Text("Link 0.2 Phase 0. Run in order: PING, BULK at 20 bytes, MTU 247, then BULK at 244 bytes. " +
-            "BULK needs the LayerWand measurement firmware. The larger MTU lasts until this connection drops.",
-            color = LtColors.Ivory, fontSize = 11.sp)
+            "BULK needs the Hunter measurement firmware. The larger MTU lasts until this connection drops.",
+            color = LtColors.Ivory, fontSize = 12.sp)
         HudReadout("MTU", "${st.mtu}", if (st.mtu > 23) LtColors.Green else LtColors.Cyan)
-        if (!connected) Text("Connect to a LayerWand first.", color = LtColors.Grey, fontSize = 11.sp)
-        st.running?.let { Text(it, color = LtColors.Green, fontSize = 11.sp, fontFamily = ConsoleFonts.mono) }
+        if (!connected) Text("Connect to a Hunter first.", color = LtColors.Grey, fontSize = 12.sp)
+        st.running?.let { Text(it, color = LtColors.Green, fontSize = 12.sp, fontFamily = ConsoleFonts.mono) }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             SciFiOutline("PING x100", enabled = idle) { client?.measurePingBurst(100) }
             SciFiOutline("BULK 200 x 20", enabled = idle) { client?.measureBulk(200, 20) }
@@ -788,7 +791,7 @@ private fun LinkMeasurePanel(connected: Boolean) {
             SciFiOutline("BULK 200 x 244", enabled = idle) { client?.measureBulk(200, 244) }
             SciFiOutline("CLEAR", enabled = st.lines.isNotEmpty() && st.running == null) { LinkMeasure.clear() }
         }
-        st.lines.forEach { Text(it, color = LtColors.Ivory, fontSize = 10.sp, fontFamily = ConsoleFonts.mono) }
+        st.lines.forEach { Text(it, color = LtColors.Ivory, fontSize = 12.sp, fontFamily = ConsoleFonts.mono) }
     }
 }
 
@@ -834,10 +837,10 @@ private fun HudHeader(title: String, statusColor: Color?, statusCount: Int?) {
         ) {
             HudLed(statusColor ?: LtColors.Amber, if (statusColor != null) 11.dp else 8.dp)
             if (statusCount != null && statusColor != null) {
-                Text("$statusCount", color = statusColor, fontWeight = FontWeight.Bold, fontSize = 14.sp, fontFamily = ConsoleFonts.mono,
+                Text("$statusCount", color = statusColor, fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFamily = ConsoleFonts.mono,
                     style = TextStyle(shadow = Shadow(statusColor, Offset.Zero, 10f)))
             }
-            Text(title, color = edge, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.sp, style = glowText(),
+            Text(title, color = edge, fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 2.sp, style = glowText(),
                 modifier = Modifier.weight(1f))
             SlashAccent(edge)
         }
@@ -903,12 +906,12 @@ private fun HudStatusStrip(active: Boolean, connecting: Boolean, events: Int, st
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("LT ◆ CONSOLE", color = edge, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 2.sp,
+        Text("LT ◆ CONSOLE", color = edge, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.sp,
             style = glowText(), modifier = Modifier.weight(1f))
         HudLed(linkColor, 8.dp)
-        Text(linkText, color = linkColor, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp,
+        Text(linkText, color = linkColor, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp,
             fontFamily = ConsoleFonts.heading, style = TextStyle(shadow = Shadow(linkColor, Offset.Zero, 10f)))
-        Text("EVT $events", color = LtColors.Amber, fontWeight = FontWeight.Bold, fontSize = 11.sp, fontFamily = ConsoleFonts.mono)
+        Text("EVT $events", color = LtColors.Amber, fontWeight = FontWeight.Bold, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
     }
 }
 
@@ -916,9 +919,9 @@ private fun HudStatusStrip(active: Boolean, connecting: Boolean, events: Int, st
 @Composable
 private fun HudReadout(label: String, value: String, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-        Text(label, color = LtColors.Grey, fontSize = 10.sp, letterSpacing = 1.5.sp, fontFamily = ConsoleFonts.heading)
+        Text(label, color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.5.sp, fontFamily = ConsoleFonts.heading)
         Box(Modifier.readoutWell(color).padding(horizontal = 10.dp, vertical = 1.dp)) {
-            Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 15.sp, fontFamily = ConsoleFonts.mono,
+            Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFamily = ConsoleFonts.mono,
                 style = TextStyle(shadow = Shadow(color, Offset.Zero, 12f)))
         }
     }
@@ -992,14 +995,14 @@ private fun EventRowCard(e: EventRow, onOpen: () -> Unit) {
             Box(Modifier.width(3.dp).fillMaxHeight().background(LtColors.Amber))
             Column(Modifier.padding(19.dp)) {
                 Text("#${e.eventId}  ${e.detectorName}", color = LtColors.Amber,
-                    fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp)
+                    fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp)
                 Text("${LinkConstants.SourceKind.name(e.sourceKind)} · ${LinkConstants.Band.name(e.band)} · " +
                     "ch ${e.channel} · ${e.rssi} dBm · x${e.count} · ${e.ageSeconds}s · " +
-                    LinkConstants.Confidence.name(e.confidence), color = LtColors.Ivory, fontSize = 11.sp,
+                    LinkConstants.Confidence.name(e.confidence), color = LtColors.Ivory, fontSize = 12.sp,
                     fontFamily = ConsoleFonts.mono)
-                e.sourceId?.let { Text("id: $it", color = LtColors.Grey, fontSize = 11.sp, fontFamily = ConsoleFonts.mono) }
-                e.detail?.let { Text("detail: $it", color = LtColors.Grey, fontSize = 11.sp, fontFamily = ConsoleFonts.mono) }
-                Text("TAP FOR DETAIL", color = LtColors.Cyan, fontSize = 10.sp, letterSpacing = 1.sp)
+                e.sourceId?.let { Text("id: $it", color = LtColors.Grey, fontSize = 12.sp, fontFamily = ConsoleFonts.mono) }
+                e.detail?.let { Text("detail: $it", color = LtColors.Grey, fontSize = 12.sp, fontFamily = ConsoleFonts.mono) }
+                Text("TAP FOR DETAIL", color = LtColors.Cyan, fontSize = 12.sp, letterSpacing = 1.sp)
             }
         }
     }
@@ -1027,14 +1030,14 @@ private fun PositionPanel(
         }
         HudReadout("SOURCE", source, when { posLat == null -> LtColors.Red; useManual -> LtColors.Amber; else -> LtColors.Green })
         if (posLat != null && posLon != null) {
-            Text(GridPosition.toMgrs(posLat, posLon), color = LtColors.Ivory, fontSize = 13.sp, fontFamily = ConsoleFonts.mono,
+            Text(GridPosition.toMgrs(posLat, posLon), color = LtColors.Ivory, fontSize = 14.sp, fontFamily = ConsoleFonts.mono,
                 letterSpacing = 1.sp)
         }
         // Entry box: the HUD keypad below types into it. The system keyboard is not used, because
         // the LOKMAT watch's keyboard would not accept the digits after "18S UJ".
         Box(Modifier.fillMaxWidth().readoutWell().padding(horizontal = 10.dp, vertical = 6.dp)) {
-            if (text.isEmpty()) Text("18S UJ 23478 06483", color = LtColors.Grey, fontFamily = ConsoleFonts.mono, fontSize = 15.sp)
-            else Text(text + "_", color = LtColors.Ivory, fontFamily = ConsoleFonts.mono, fontSize = 15.sp, letterSpacing = 1.sp)
+            if (text.isEmpty()) Text("18S UJ 23478 06483", color = LtColors.Grey, fontFamily = ConsoleFonts.mono, fontSize = 16.sp)
+            else Text(text + "_", color = LtColors.Ivory, fontFamily = ConsoleFonts.mono, fontSize = 16.sp, letterSpacing = 1.sp)
         }
         GridKeypad { key ->
             message = null
@@ -1046,8 +1049,8 @@ private fun PositionPanel(
             }
         }
         Text("Enter MGRS, UTM, or latitude and longitude with the keypad. The GPS takes over again with its next fix.",
-            color = LtColors.Grey, fontSize = 10.sp)
-        message?.let { (m, err) -> Text(m, color = if (err) LtColors.Red else LtColors.Green, fontSize = 11.sp) }
+            color = LtColors.Grey, fontSize = 12.sp)
+        message?.let { (m, err) -> Text(m, color = if (err) LtColors.Red else LtColors.Green, fontSize = 12.sp) }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             SciFiPrimary("SET POSITION", enabled = text.isNotBlank()) {
                 when (val r = GridPosition.parse(text)) {
@@ -1098,7 +1101,7 @@ private fun HudKey(label: String, edge: Color, wide: Boolean = false, onClick: (
             .clickable { flash.fire(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = edge, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = ConsoleFonts.heading,
+        Text(label, color = edge, fontWeight = FontWeight.Bold, fontSize = 14.sp, fontFamily = ConsoleFonts.heading,
             style = TextStyle(shadow = Shadow(edge, Offset.Zero, 8f)))
     }
 }
@@ -1112,12 +1115,12 @@ private fun HudKey(label: String, edge: Color, wide: Boolean = false, onClick: (
 private fun LayerTimeButtonPanel(nowMs: Long) {
     val context = LocalContext.current
     val on = remember(nowMs / 3_000L) { com.projectrevivesolutions.layertime.controller.service.LayerTimeKeyService.isEnabled(context) }
-    SciFiPanel("LAYERTIME BUTTON", statusColor = if (on) LtColors.Green else LtColors.Amber) {
+    SciFiPanel("LAYERSCOPE BUTTON", statusColor = if (on) LtColors.Green else LtColors.Amber) {
         HudReadout("GREEN BUTTON", if (on) "ACTIVE" else "OFF", if (on) LtColors.Green else LtColors.Amber)
         Text(
-            if (on) "A short press opens LayerTime from anywhere. Hold it for Back in other apps. In LayerTime it slides the face in or out."
-            else "Turn on LayerTime button in Accessibility settings so the green side button opens LayerTime from anywhere.",
-            color = LtColors.Ivory, fontSize = 11.sp)
+            if (on) "A short press opens LayerScope from anywhere. Hold it for Back in other apps. In LayerScope it slides the face in or out."
+            else "Turn on LayerScope button in Accessibility settings so the green side button opens LayerScope from anywhere.",
+            color = LtColors.Ivory, fontSize = 12.sp)
         if (!on) SciFiOutline("OPEN ACCESSIBILITY SETTINGS", enabled = true) {
             runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
         }

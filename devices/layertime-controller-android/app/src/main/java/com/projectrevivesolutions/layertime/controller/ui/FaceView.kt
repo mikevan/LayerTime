@@ -70,7 +70,9 @@ fun FaceView(
     /** False when the caller draws FaceLightLayer over the face itself (the rolling face: the light must not turn). */
     drawLighting: Boolean = true,
 ) {
-    val owl = ImageBitmap.imageResource(R.drawable.layertime_owl)
+    // The LayerScope aperture replaced the owl in build 69: the owl is the Layers and
+    // PRS logo, and LayerScope carries its own mark (rendered from the launcher vector).
+    val owl = ImageBitmap.imageResource(R.drawable.layerscope_aperture)
     BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val side = maxWidth.coerceAtMost(maxHeight)
         Canvas(
@@ -101,7 +103,7 @@ fun FaceView(
             drawBattery(g, batteryPct)
             drawTitle(g)
 
-            // Owl 96..186 on the Garmin, grown to 100 as asked; ear icons beside its head.
+            // The mark sits where the Garmin owl sat (96..186, grown to 100); status icons beside it.
             val owlSize = k(100f)
             drawImage(owl, dstOffset = IntOffset((cx - owlSize / 2f).toInt(), (g.y(141f) - owlSize / 2f).toInt()),
                 dstSize = IntSize(owlSize.toInt(), owlSize.toInt()))
@@ -513,9 +515,9 @@ private fun DrawScope.drawRingTag(x: Float, y: Float, text: String, color: Color
     ink(text, x, y + cap / 2f, cap, color)
 }
 
-/** LAYERTIME with capitals on rows 68..86 and the amber dashes either side. */
+/** LAYERSCOPE (the app's name since build 68) with capitals on rows 68..86 and the amber dashes either side. */
 private fun DrawScope.drawTitle(g: FaceGeom) {
-    val tw = ink("LAYERTIME", g.cx, g.y(86f), g.k(19f), LtColors.Ivory)
+    val tw = ink("LAYERSCOPE", g.cx, g.y(86f), g.k(19f), LtColors.Ivory)
     val y = g.y(78f)
     val rnd = Lcg(13)
     val pen = g.k(2f * PEN)
@@ -625,7 +627,7 @@ private fun DrawScope.drawRecon(g: FaceGeom, conn: ConnState, status: StatusSnap
             mode = "RECONNECTING"
             count = ReconText.countText(status?.eventCount ?: 0)
         } else {
-            mode = "NO LAYERWAND"
+            mode = "NO HUNTER"
             count = if (conn == ConnState.FAILED) "LINK FAILED" else "SEARCHING"
         }
         color = LtColors.Grey

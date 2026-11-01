@@ -17,12 +17,12 @@ object ConnNotice {
     fun of(state: ConnState, detail: String?, reconnecting: Boolean): Notice? = when (state) {
         ConnState.IDLE, ConnState.CONNECTED -> null
         ConnState.SCANNING -> Notice(
-            if (reconnecting) "The link dropped. Searching for the LayerWand again." else "Searching for a LayerWand.",
+            if (reconnecting) "The link dropped. Searching for the Hunter again." else "Searching for a Hunter.",
             Tone.INFO)
-        ConnState.CONNECTING -> Notice("Found a LayerWand. Connecting.", Tone.INFO)
+        ConnState.CONNECTING -> Notice("Found a Hunter. Connecting.", Tone.INFO)
         ConnState.DISCOVERING, ConnState.HANDSHAKING -> Notice("Connected. Setting up the link.", Tone.INFO)
         ConnState.DISCONNECTED -> Notice(
-            "The link to the LayerWand dropped" + reason(detail) + "." +
+            "The link to the Hunter dropped" + reason(detail) + "." +
                 (if (reconnecting) " Reconnecting." else " Tap SCAN & CONNECT to connect again."),
             Tone.PROBLEM)
         ConnState.FAILED -> Notice(failed(detail), Tone.PROBLEM)
@@ -31,8 +31,8 @@ object ConnNotice {
     private fun failed(detail: String?): String = when {
         detail == BLUETOOTH_OFF -> "Bluetooth is off. Turn it on, then tap SCAN & CONNECT."
         detail == LinkClient.LOCATION_OFF_MESSAGE -> detail
-        detail != null && detail.startsWith("no LayerWand found") ->
-            "No LayerWand found in 20 seconds. Check that it is on and close by, then tap SCAN & CONNECT."
+        detail != null && detail.startsWith("no Hunter found") ->
+            "No Hunter found in 20 seconds. Check that it is on and close by, then tap SCAN & CONNECT."
         detail != null && detail.startsWith("scan failed code=") ->
             "Android could not start the Bluetooth scan (code ${detail.removePrefix("scan failed code=")}). " +
                 "Tap SCAN & CONNECT to try again."

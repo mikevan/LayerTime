@@ -55,7 +55,7 @@ object DeviceReportBuilder {
             leExtendedAdvertising = leExt,
             multipleAdvertisement = multiAdv,
             maxConnectedAudioNote = "Android exposes no direct max-GATT-client count; " +
-                "simultaneous-wand capacity is proven empirically, not queried.",
+                "simultaneous-Hunter capacity is proven empirically, not queried.",
             appVersionName = vName,
             appVersionCode = vCode,
         )

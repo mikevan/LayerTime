@@ -58,17 +58,20 @@
             </intent-filter>
         </activity>
 
-        <!-- Explicitly diagnostic: a separate, labeled launcher that decodes a
+        <!-- Explicitly diagnostic: a separate screen that decodes a
              fixed 802.11 fixture on-device with libwireshark/epan. Isolated from
              the main controller UI; not wired to live traffic. -->
         <activity
             android:name=".wireshark.WiresharkDiagActivity"
             android:exported="true"
-            android:label="LayerTime WS Diag"
+            android:label="LayerScope WS Diag"
             android:theme="@style/Theme.LayerTimeController">
+            <!-- No LAUNCHER category since build 68: it put a second, identical-looking
+                 icon in the app drawer (the labels truncate to the same owl). The screen
+                 stays for development and opens with
+                 adb shell am start -n com.projectrevivesolutions.layerscope.diag/com.projectrevivesolutions.layertime.controller.wireshark.WiresharkDiagActivity -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 

@@ -72,6 +72,23 @@ import com.projectrevivesolutions.layertime.controller.hunt.Trend
 import com.projectrevivesolutions.layertime.controller.ui.theme.ConsoleFonts
 import com.projectrevivesolutions.layertime.controller.ui.theme.LtColors
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.core.content.res.ResourcesCompat
+import android.graphics.Typeface
+import com.projectrevivesolutions.layertime.controller.R
+import com.projectrevivesolutions.layertime.controller.ui.theme.hudPanel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -108,23 +125,70 @@ fun HuntScreen(onStop: () -> Unit, onAgain: () -> Unit) {
     HuntTone(context)
 
     BoxWithConstraints(Modifier.fillMaxSize().background(LtColors.Bg)) {
-        val wide = maxWidth > maxHeight * 1.1f
-        val radarSide = maxHeight - 12.dp // read here: maxHeight is not reachable inside Row's scope
-        if (wide) {
-            Row(Modifier.fillMaxSize().padding(6.dp)) {
-                Radar(view, Modifier.fillMaxHeight().width(radarSide))
-                Spacer(Modifier.width(6.dp))
-                SidePanel(view, problem, onStop, onAgain, Modifier.fillMaxHeight().weight(1f))
-            }
-        } else {
-            Column(Modifier.fillMaxSize().padding(6.dp)) {
-                Radar(view, Modifier.fillMaxWidth().weight(1f))
-                SidePanel(view, problem, onStop, onAgain, Modifier.fillMaxWidth())
-            }
-        }
-        StatusDot(view, Modifier.align(Alignment.TopEnd).padding(8.dp))
+        // Build 69 (Michael, 2026-11-01): a fighter-jet radar scope bolted onto the same salvaged
+        // ship console as the main screen. Nothing rolls here; mockup: hunt_screen_mockup.png.
+        if (maxWidth > maxHeight * 1.1f) HuntWide(view, problem, onStop, maxWidth, maxHeight)
+        else HuntTall(view, problem, onStop, maxWidth, maxHeight)
         if (view.phase == HuntPhase.FOUND) FoundFlash(onStop, onAgain)
     }
+}
+
+/** Width of the console's raised frame band; the main screen's CONSOLE_BAND. */
+private val HUNT_BAND = 24.dp
+
+/**
+ * Landscape (the LOKMAT): the scope on the left, overlapping the console's frame by 18 dp and
+ * casting its shadow onto it; the console on the right with the readings. The hull and the
+ * scope art are drawn once per screen size off the main thread, like the main screen's hull.
+ */
+@Composable
+private fun HuntWide(v: HuntView, problem: String?, onStop: () -> Unit, w: Dp, h: Dp) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val consoleL = w * 0.53f
+    val plate = minOf(h * 0.66f, consoleL - 4.dp)
+    val plateX = consoleL + 18.dp - plate
+    val plateY = (h - plate) / 2f
+    val geom = with(density) {
+        ScopeGeom(w.roundToPx(), h.roundToPx(), density.density, plateX.toPx(), plateY.toPx(), plate.toPx())
+    }
+    val hullSpec = with(density) {
+        HullSpec(
+            w = geom.w, h = geom.h, dp = density.density,
+            consoleL = consoleL.toPx(), consoleT = 8.dp.toPx(), consoleR = w.toPx() - 8.dp.toPx(), consoleB = h.toPx() - 8.dp.toPx(),
+            band = HUNT_BAND.toPx(), faceR = geom.s / 2f, homeCx = 0f, travel = 0f, faceTrack = false,
+        )
+    }
+    val font = remember { runCatching { ResourcesCompat.getFont(context, R.font.lt_rajdhani_bold) }.getOrNull() }
+    val hull by produceState<HullImages?>(null, hullSpec) { value = withContext(Dispatchers.Default) { HullRelief.render(hullSpec) } }
+    val art by produceState<ScopeImages?>(null, geom) { value = withContext(Dispatchers.Default) { JetScopeArt.render(geom, font) } }
+
+    Canvas(Modifier.fillMaxSize()) { hull?.let { drawImage(it.hull) } ?: drawRect(LtColors.Bg) }
+    HuntConsole(v, problem, onStop,
+        Modifier.fillMaxSize().padding(start = consoleL + HUNT_BAND, top = 8.dp + HUNT_BAND, end = 8.dp + HUNT_BAND, bottom = 8.dp + HUNT_BAND))
+    Canvas(Modifier.fillMaxSize()) { hull?.let { drawImage(it.overlay) } }
+    Canvas(Modifier.fillMaxSize()) { art?.let { drawImage(it.decor) } }
+    ScopeLive(v, geom, font)
+    Canvas(Modifier.fillMaxSize()) { art?.let { drawImage(it.glass) } }
+}
+
+/** Portrait (a phone held upright): the scope on top, the console underneath, no hull. */
+@Composable
+private fun HuntTall(v: HuntView, problem: String?, onStop: () -> Unit, w: Dp, h: Dp) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val plate = minOf(w * 0.8f, h * 0.48f)
+    val plateX = (w - plate) / 2f
+    val plateY = plate * 0.2f
+    val geom = with(density) {
+        ScopeGeom(w.roundToPx(), h.roundToPx(), density.density, plateX.toPx(), plateY.toPx(), plate.toPx())
+    }
+    val font = remember { runCatching { ResourcesCompat.getFont(context, R.font.lt_rajdhani_bold) }.getOrNull() }
+    val art by produceState<ScopeImages?>(null, geom) { value = withContext(Dispatchers.Default) { JetScopeArt.render(geom, font) } }
+    HuntConsole(v, problem, onStop, Modifier.fillMaxSize().padding(start = 8.dp, end = 8.dp, bottom = 8.dp, top = plateY + plate + plate * 0.2f))
+    Canvas(Modifier.fillMaxSize()) { art?.let { drawImage(it.decor) } }
+    ScopeLive(v, geom, font)
+    Canvas(Modifier.fillMaxSize()) { art?.let { drawImage(it.glass) } }
 }
 
 private fun bandColor(b: SignalBand): Color = when (b) {
@@ -145,32 +209,28 @@ private fun phaseLine(v: HuntView): String = when (v.phase) {
     HuntPhase.FOUND -> "FOUND"
 }
 
+/**
+ * The live part of the scope, drawn inside the phosphor tube: ten rings, the sweep, the step
+ * trail, and you. The ring the signal puts you on is lit in the signal's color; the rings outside
+ * it (already closed through) glow dimmer; the rings inside it (still to go) stay dark. Closer to
+ * the Vixen, the lit ring moves inward; ring 1, the center ring, is FOUND strength.
+ * The ring count is stenciled on the plate under the tube.
+ */
 @Composable
-private fun StatusDot(v: HuntView, modifier: Modifier) {
-    val c = bandColor(v.band)
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Canvas(Modifier.size(30.dp)) {
-            drawCircle(c.copy(alpha = 0.30f), radius = size.minDimension / 2f)
-            drawCircle(c, radius = size.minDimension / 2.8f)
-        }
-        Text(v.smoothedDbm?.let { "$it dBm" } ?: "--", color = c, fontSize = 11.sp, fontFamily = ConsoleFonts.mono)
-    }
-}
-
-@Composable
-private fun Radar(v: HuntView, modifier: Modifier) {
+private fun ScopeLive(v: HuntView, g: ScopeGeom, font: Typeface?) {
     val sweep by rememberInfiniteTransition(label = "sweep").animateFloat(
         0f, 360f, infiniteRepeatable(tween(3000, easing = LinearEasing)), label = "sweepAngle")
+    val label = remember(font, g) {
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = font; isFakeBoldText = font == null; textAlign = android.graphics.Paint.Align.CENTER
+            color = 0xE6EBE6D2.toInt(); textSize = 15f * g.u
+        }
+    }
     val ring = Color(0xFF1E7A3A)
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val c = Offset(size.width / 2f, size.height / 2f)
-            val r = size.minDimension / 2f - 2.dp.toPx()
-            drawCircle(Color(0xFF031208), radius = r, center = c)
-            // Ten rings. The ring the signal puts you on is lit bright in the signal's color,
-            // the rings outside it (already closed through) glow dimmer, and the rings inside
-            // it (still to go) stay dark. Closer to the Vixen, the lit ring moves inward;
-            // ring 1, the center ring, is FOUND strength.
+    Canvas(Modifier.fillMaxSize()) {
+        val c = Offset(g.cx, g.cy)
+        val r = g.rIn
+        clipPath(Path().apply { addOval(Rect(c, r)) }) {
             val rings = HuntEngine.RINGS
             val now = v.ring
             val lit = bandColor(v.band)
@@ -179,10 +239,10 @@ private fun Radar(v: HuntView, modifier: Modifier) {
                 when {
                     now == null || k < now -> drawCircle(ring, radius = rr, center = c, style = Stroke(1.dp.toPx()))
                     k == now -> {
-                        drawCircle(lit.copy(alpha = 0.25f), radius = rr, center = c, style = Stroke(8.dp.toPx()))
-                        drawCircle(lit, radius = rr, center = c, style = Stroke(3.dp.toPx()))
+                        drawCircle(lit.copy(alpha = 0.25f), radius = rr, center = c, style = Stroke(7.dp.toPx()))
+                        drawCircle(lit, radius = rr, center = c, style = Stroke(2.5.dp.toPx()))
                     }
-                    else -> drawCircle(lit.copy(alpha = 0.45f), radius = rr, center = c, style = Stroke(1.5.dp.toPx()))
+                    else -> drawCircle(lit.copy(alpha = 0.40f), radius = rr, center = c, style = Stroke(1.2.dp.toPx()))
                 }
             }
             drawLine(ring, Offset(c.x - r, c.y), Offset(c.x + r, c.y), 1.dp.toPx())
@@ -190,7 +250,7 @@ private fun Radar(v: HuntView, modifier: Modifier) {
             // The sweep: a faint line with a fading wake behind it, for the radar look only.
             for (i in 0 until 24) {
                 val a = Math.toRadians((sweep - i * 2.5f).toDouble())
-                drawLine(LtColors.Green.copy(alpha = 0.30f * (1f - i / 24f)), c,
+                drawLine(LtColors.Green.copy(alpha = 0.32f * (1f - i / 24f)), c,
                     Offset(c.x + (r * cos(a)).toFloat(), c.y + (r * sin(a)).toFloat()), 2.dp.toPx())
             }
             // The step trail: newest at the center, older steps curling outward along a spiral
@@ -206,45 +266,71 @@ private fun Radar(v: HuntView, modifier: Modifier) {
                 val p = Offset(c.x + (rr * cos(th)).toFloat(), c.y + (rr * sin(th)).toFloat())
                 val alpha = 1f - 0.6f * age / VISIBLE_STEPS
                 prev?.let { drawLine(bandColor(band).copy(alpha = alpha * 0.6f), it, p, 2.dp.toPx()) }
-                drawCircle(bandColor(band).copy(alpha = alpha), radius = 3.dp.toPx(), center = p)
+                drawCircle(bandColor(band).copy(alpha = alpha), radius = 2.6.dp.toPx(), center = p)
                 prev = p
             }
             // You.
-            drawCircle(LtColors.Ivory, radius = 5.dp.toPx(), center = c)
-            drawCircle(bandColor(v.band), radius = 9.dp.toPx(), center = c, style = Stroke(2.dp.toPx()))
+            drawCircle(LtColors.Ivory, radius = 4.5.dp.toPx(), center = c)
+            drawCircle(bandColor(v.band), radius = 8.dp.toPx(), center = c, style = Stroke(2.dp.toPx()))
         }
-        Column(Modifier.align(Alignment.TopCenter).padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(phaseLine(v), color = if (v.phase == HuntPhase.TRACKING) bandColor(v.band) else LtColors.Ivory,
-                fontSize = 15.sp, fontWeight = FontWeight.Bold, fontFamily = ConsoleFonts.heading)
+        val text = v.ring?.let { "RING $it OF ${HuntEngine.RINGS}" } ?: "STEP TRAIL, IN ORDER"
+        drawContext.canvas.nativeCanvas.drawText(text, g.cx, g.py + g.s - 22f * g.u, label)
+    }
+}
+
+/**
+ * The readings, in the ship console's HUD panel (build 69: field testers could not read the
+ * old 12 sp side column). Labels 16 sp, values 22 sp, both scaled by the TEXT SIZE setting;
+ * the list scrolls if a large setting overflows it, and STOP HUNT stays at the bottom.
+ */
+@Composable
+private fun HuntConsole(v: HuntView, problem: String?, onStop: () -> Unit, modifier: Modifier) {
+    val context = LocalContext.current
+    val mult = remember { PanelTextScale.read(context) }
+    val base = LocalDensity.current
+    CompositionLocalProvider(LocalDensity provides Density(base.density, mult)) {
+        Column(modifier.hudPanel().padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                val c = bandColor(v.band)
+                Canvas(Modifier.size(26.dp)) {
+                    drawCircle(c.copy(alpha = 0.30f), radius = size.minDimension / 2f)
+                    drawCircle(c, radius = size.minDimension / 3.2f)
+                }
+                Text(phaseLine(v), color = if (v.phase == HuntPhase.TRACKING) c else LtColors.Ivory,
+                    fontSize = 18.sp, lineHeight = 21.sp, fontWeight = FontWeight.Bold, fontFamily = ConsoleFonts.heading)
+            }
+            Canvas(Modifier.fillMaxWidth().height(6.dp)) {
+                val edge = LtColors.ConsoleEdge
+                drawLine(edge, Offset(0f, 1f), Offset(size.width, 1f), 1.dp.toPx())
+                var x = 0f
+                while (x <= size.width) { drawLine(edge, Offset(x, 1f), Offset(x, size.height), 1.dp.toPx()); x += 10.dp.toPx() }
+            }
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                BigMetric("SIGNAL", v.latestDbm?.let { "$it dBm" } ?: "--")
+                BigMetric("2 S AVG", v.smoothedDbm?.let { "$it dBm" } ?: "--")
+                BigMetric("BEST", v.strongestDbm?.let { "$it dBm" } ?: "--")
+                BigMetric("TREND", when (v.trend) { Trend.CLOSING -> "CLOSING"; Trend.OPENING -> "OPENING"; Trend.STEADY -> "STEADY"; Trend.NONE -> "--" },
+                    when (v.trend) { Trend.CLOSING -> LtColors.Green; Trend.OPENING -> LtColors.Red; else -> LtColors.Ivory })
+                BigMetric("HEARD", v.secondsSinceHeard?.let { if (it == 0) "NOW" else "$it S AGO" } ?: "NOT YET")
+                BigMetric("STEPS", "${v.steps}")
+                BigMetric("TIME", "%d:%02d".format(v.huntSeconds / 60, v.huntSeconds % 60))
+                problem?.let { Text(it, color = LtColors.Amber, fontSize = 14.sp) }
+            }
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                SciFiOutline("STOP HUNT", enabled = true) { onStop() }
+            }
         }
-        Text(v.ring?.let { "RING $it OF ${HuntEngine.RINGS}" } ?: "STEP TRAIL, IN ORDER", color = LtColors.Grey, fontSize = 8.sp,
-            fontFamily = ConsoleFonts.mono,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp))
     }
 }
 
 @Composable
-private fun SidePanel(v: HuntView, problem: String?, onStop: () -> Unit, onAgain: () -> Unit, modifier: Modifier) {
-    Column(modifier.padding(top = 46.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Metric("SIGNAL", v.latestDbm?.let { "$it dBm" } ?: "--")
-        Metric("2 S AVG", v.smoothedDbm?.let { "$it dBm" } ?: "--")
-        Metric("BEST", v.strongestDbm?.let { "$it dBm" } ?: "--")
-        Metric("TREND", when (v.trend) { Trend.CLOSING -> "CLOSING"; Trend.OPENING -> "OPENING"; Trend.STEADY -> "STEADY"; Trend.NONE -> "--" },
-            when (v.trend) { Trend.CLOSING -> LtColors.Green; Trend.OPENING -> LtColors.Red; else -> LtColors.Ivory })
-        Metric("HEARD", v.secondsSinceHeard?.let { if (it == 0) "NOW" else "$it S AGO" } ?: "NOT YET")
-        Metric("STEPS", "${v.steps}")
-        Metric("TIME", "%d:%02d".format(v.huntSeconds / 60, v.huntSeconds % 60))
-        problem?.let { Text(it, color = LtColors.Amber, fontSize = 10.sp) }
-        Spacer(Modifier.weight(1f))
-        SciFiOutline("STOP HUNT", enabled = true) { onStop() }
-    }
-}
-
-@Composable
-private fun Metric(label: String, value: String, color: Color = LtColors.Ivory) {
-    Row(Modifier.fillMaxWidth()) {
-        Text(label, color = LtColors.ConsoleEdge, fontSize = 10.sp, fontFamily = ConsoleFonts.mono, modifier = Modifier.weight(1f))
-        Text(value, color = color, fontSize = 11.sp, fontFamily = ConsoleFonts.mono, textAlign = TextAlign.End)
+private fun BigMetric(label: String, value: String, color: Color = LtColors.Ivory) {
+    Column {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(label, color = LtColors.ConsoleEdge, fontSize = 16.sp, fontFamily = ConsoleFonts.mono, modifier = Modifier.weight(1f))
+            Text(value, color = color, fontSize = 22.sp, fontFamily = ConsoleFonts.mono, textAlign = TextAlign.End, maxLines = 1)
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(LtColors.ConsoleEdge.copy(alpha = 0.15f)))
     }
 }
 
@@ -255,7 +341,7 @@ private fun FoundFlash(onStop: () -> Unit, onAgain: () -> Unit) {
     Box(Modifier.fillMaxSize().background(LtColors.Green.copy(alpha = pulse)), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("FOUND!", color = LtColors.Bg, fontSize = 44.sp, fontWeight = FontWeight.Bold, fontFamily = ConsoleFonts.heading)
-            Text("You found the LayerVixen.", color = LtColors.Bg, fontSize = 13.sp)
+            Text("You found the Vixen.", color = LtColors.Bg, fontSize = 14.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SciFiPrimary("HUNT AGAIN", enabled = true) { onAgain() }
                 SciFiOutline("STOP HUNT", enabled = true) { onStop() }

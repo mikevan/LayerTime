@@ -98,7 +98,7 @@ fun EventDetailScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SciFiOutline("‹ BACK", enabled = true) { onBack() }
                 Text("ATTACK DETAIL  //  #${e.eventId}  ${e.detectorName}", color = LtColors.ConsoleEdge,
-                    fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, style = glowText())
+                    fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp, style = glowText())
             }
         }
 
@@ -106,19 +106,19 @@ fun EventDetailScreen(
 
         item {
             Section("1 - DETECTION SUMMARY") {
-                Field("Classification", e.detectorName, Prov.INFERRED, "The wand's on-board classifier concluded this; it is not a decoded frame-type field.")
-                Field("Observed behavior", e.detail, Prov.DECODED, "Short text the wand observed over the air; untrusted.")
+                Field("Classification", e.detectorName, Prov.INFERRED, "The Hunter's on-board classifier concluded this; it is not a decoded frame-type field.")
+                Field("Observed behavior", e.detail, Prov.DECODED, "Short text the Hunter observed over the air; untrusted.")
                 Field("Confidence", LinkConstants.Confidence.name(e.confidence), Prov.INFERRED)
                 Field("Confidence basis", null, Prov.UNAVAIL, "Not transported by Link 0.1.")
-                Field("First observed (phone)", tsFmt.format(Date(e.firstSeenMillis)), Prov.CALC, "Phone receive time, not the wand's capture time.")
+                Field("First observed (phone)", tsFmt.format(Date(e.firstSeenMillis)), Prov.CALC, "Phone receive time, not the Hunter's capture time.")
                 Field("Last observed (phone)", tsFmt.format(Date(e.lastUpdatedMillis)), Prov.CALC, "Phone receive time.")
                 Field("Observation window", "${(e.lastUpdatedMillis - e.firstSeenMillis) / 1000}s", Prov.CALC, "Across phone receive times.")
                 Field("Repeated sightings", "${e.count}", Prov.CALC, "EVENT_SUMMARY count, saturating at 65535.")
                 Field("Age at last report", "${e.ageSeconds}s", Prov.CALC)
                 Field("Captured frame count", null, Prov.UNAVAIL, "Link 0.1 reports a sighting count, not a captured-frame count.")
                 Field("Measured frame rate", null, Prov.UNAVAIL, "No per-frame timing crosses the link.")
-                Field("Originating wand", wandLabel.ifBlank { "unknown" }, Prov.METADATA)
-                Field("Wand connection", conn.name, Prov.METADATA)
+                Field("Originating Hunter", wandLabel.ifBlank { "unknown" }, Prov.METADATA)
+                Field("Hunter connection", conn.name, Prov.METADATA)
                 Note("Repeated sightings and aggregated events are the same EVENT_SUMMARY count here. They are not captured frames, which Link 0.1 does not carry.")
             }
         }
@@ -126,7 +126,7 @@ fun EventDetailScreen(
         item {
             Section("2 - ADDRESSES AND TARGETS") {
                 Field("Transmitter address", e.sourceId?.ifBlank { null }, Prov.DECODED,
-                    "The address the wand's classifier matched: the sender of the Wi-Fi frame, or the Bluetooth advertiser. Untrusted; addresses can be spoofed.")
+                    "The address the Hunter's classifier matched: the sender of the Wi-Fi frame, or the Bluetooth advertiser. Untrusted; addresses can be spoofed.")
                 Field("Receiver (RA)", null, Prov.UNAVAIL, noFrames)
                 Field("Source (SA)", null, Prov.UNAVAIL, noFrames)
                 Field("Destination (DA)", null, Prov.UNAVAIL, noFrames)
@@ -153,24 +153,24 @@ fun EventDetailScreen(
 
         item {
             Section("4 - RADIO AND CAPTURE METADATA") {
-                Field("Channel", "${e.channel}", Prov.METADATA, "From the wand receiver (rx_ctrl.channel), 0 when unknown or BLE.")
+                Field("Channel", "${e.channel}", Prov.METADATA, "From the Hunter receiver (rx_ctrl.channel), 0 when unknown or BLE.")
                 Field("Band", LinkConstants.Band.name(e.band), Prov.METADATA)
                 Field("RSSI (last seen)", "${e.rssi} dBm", Prov.METADATA, "Single last-seen value, not a series.")
                 Field("Noise / rate / PHY / antenna", null, Prov.UNAVAIL, "The ESP32 receiver does not supply these over Link 0.1; no Radiotap is fabricated.")
                 Field("Per-frame timestamp", null, Prov.UNAVAIL, "Only ages in seconds cross the link; timestamps do not.")
-                Field("Capture source", "Wand promiscuous Wi-Fi monitor", Prov.METADATA)
+                Field("Capture source", "Hunter promiscuous Wi-Fi monitor", Prov.METADATA)
                 Field("Captured vs original length", null, Prov.UNAVAIL, noFrames)
                 Field("Dropped-frame count", null, Prov.UNAVAIL, "Not transported by Link 0.1.")
             }
         }
 
         item {
-            Section("5 - TIMELINE AND MULTI-WAND") {
+            Section("5 - TIMELINE AND MULTI-HUNTER") {
                 Field("Frame-rate plot", null, Prov.UNAVAIL, "No per-frame series is available; only a sighting count and a last-seen RSSI.")
                 Field("RSSI plot", null, Prov.UNAVAIL, "Only one last-seen RSSI value is available.")
                 Field("Burst timing / retries", null, Prov.UNAVAIL, noFrames)
-                Field("Wands observing", "1", Prov.METADATA, "Single wand this build; multi-wand correlation lands with the multi-wand work.")
-                Field("Clock sync quality", null, Prov.UNAVAIL, "No cross-wand clock synchronization yet; timestamps are not compared.")
+                Field("Hunters observing", "1", Prov.METADATA, "Single Hunter this build; multi-Hunter correlation lands with the multi-Hunter work.")
+                Field("Clock sync quality", null, Prov.UNAVAIL, "No cross-Hunter clock synchronization yet; timestamps are not compared.")
                 Note("Distance, bearing, location, and verified attacker identity are not derived from MAC or RSSI alone.")
             }
         }
@@ -257,7 +257,7 @@ private fun QuickLook(e: EventRow) {
             Field("Signal", "${trend.latest} dBm, strongest ${trend.strongest} dBm", Prov.METADATA)
             Field("Trend", trend.state.label, Prov.CALC,
                 if (trend.state == SignalAnalysis.TrendState.TOO_FEW)
-                    "Needs three readings within a minute. Readings arrive as the wand updates this detection."
+                    "Needs three readings within a minute. Readings arrive as the Hunter updates this detection."
                 else "%+d dB over %d readings in the last minute. Walk and watch it: stronger means closer. A few dB either way is just body position.".format(trend.changeDb, trend.readings))
         }
 
@@ -304,7 +304,7 @@ fun LazyListScope.captureImportItems(ui: CaptureImportUi, title: String, eventId
         Section(title) {
             Text("Decode a .pcap or .pcapng file with Wireshark on this device. " +
                 (if (eventId != null) "It is not linked to event #$eventId." else "It is not linked to any detection."),
-                color = LtColors.Grey, fontSize = 11.sp)
+                color = LtColors.Grey, fontSize = 12.sp)
             when (val st = ui.state) {
                 is PcapImport.State.Idle -> {
                     SciFiOutline("IMPORT CAPTURE FILE", enabled = true, large = true) { ui.pick() }
@@ -317,13 +317,13 @@ fun LazyListScope.captureImportItems(ui: CaptureImportUi, title: String, eventId
                             "%,d frames%s, %.0f frames per second, %.0f s elapsed."
                                 .format(st.frames, st.percent?.let { " ($it% of the file)" } ?: "", st.ratePerSecond, st.elapsedSeconds)
                     }
-                    Text(what, color = LtColors.Green, fontSize = 11.sp, fontFamily = ConsoleFonts.mono)
+                    Text(what, color = LtColors.Green, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                     if (st.slowing) Text("Decoding has slowed to less than half its starting rate. It is still running.",
-                        color = LtColors.Amber, fontSize = 11.sp)
+                        color = LtColors.Amber, fontSize = 12.sp)
                     SciFiOutline("CANCEL IMPORT", enabled = true, large = true) { PcapImport.cancel() }
                 }
                 is PcapImport.State.Failed -> {
-                    Text("${st.fileName}: ${st.message}", color = LtColors.Red, fontSize = 11.sp)
+                    Text("${st.fileName}: ${st.message}", color = LtColors.Red, fontSize = 12.sp)
                     SciFiOutline("IMPORT CAPTURE FILE", enabled = true, large = true) { ui.pick() }
                 }
                 is PcapImport.State.Done -> {
@@ -337,7 +337,7 @@ fun LazyListScope.captureImportItems(ui: CaptureImportUi, title: String, eventId
                         if (r.totalFrames > r.kept.size) "Only the first ${r.keepLimit} frames keep their full protocol tree." else null)
                     Field("Malformed frames", "%,d".format(r.malformedFrames), Prov.DECODED, "Frames Wireshark marked as malformed or truncated.")
                     Field("Decode time", "%.1f s".format(r.elapsedSeconds), Prov.CALC)
-                    r.readError?.let { Text("Wireshark stopped reading the file: $it", color = LtColors.Red, fontSize = 11.sp) }
+                    r.readError?.let { Text("Wireshark stopped reading the file: $it", color = LtColors.Red, fontSize = 12.sp) }
                     Note("Each frame is decoded on its own; no reassembly across frames.")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SciFiOutline("IMPORT ANOTHER FILE", enabled = true, large = true) { ui.pick() }
@@ -370,7 +370,7 @@ fun CaptureOnlyScreen(onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SciFiOutline("‹ BACK", enabled = true) { onBack() }
                 Text("CAPTURE DECODE  //  NO DETECTION SELECTED", color = LtColors.ConsoleEdge,
-                    fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp, style = glowText())
+                    fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp, style = glowText())
             }
         }
         captureImportItems(capture, "IMPORTED CAPTURE (WIRESHARK)", null)
@@ -387,31 +387,31 @@ private fun FrameCard(f: WiresharkDecoder.PcapFrame, open: Boolean, onToggle: ()
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text((if (open) "▾ " else "▸ ") + "#${f.number}", color = LtColors.Cyan, fontSize = 11.sp,
+                Text((if (open) "▾ " else "▸ ") + "#${f.number}", color = LtColors.Cyan, fontSize = 12.sp,
                     fontFamily = ConsoleFonts.mono, fontWeight = FontWeight.Bold)
-                Text(f.title, color = LtColors.Ivory, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(f.title, color = LtColors.Ivory, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 ProvTag(Prov.DECODED)
-                if (f.malformed) Text("MALFORMED", color = LtColors.Red, fontSize = 9.sp, letterSpacing = 1.sp)
+                if (f.malformed) Text("MALFORMED", color = LtColors.Red, fontSize = 12.sp, letterSpacing = 1.sp)
             }
             val sub = listOf(f.addresses, "${f.capturedLength} bytes",
                 if (f.hasTimestamp) tsFmt.format(Date(f.epochSeconds * 1000 + f.nanos / 1_000_000)) + " (capture time)" else "")
                 .filter { it.isNotBlank() }.joinToString("   ")
-            Text(sub, color = LtColors.Grey, fontSize = 10.sp, fontFamily = ConsoleFonts.mono)
+            Text(sub, color = LtColors.Grey, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
             if (open) {
-                Text("Wireshark fields (name, value, byte offset, length):", color = LtColors.Cyan, fontSize = 10.sp)
+                Text("Wireshark fields (name, value, byte offset, length):", color = LtColors.Cyan, fontSize = 12.sp)
                 f.fields.forEach { fd ->
                     Row(Modifier.fillMaxWidth().padding(start = (fd.depth * 8).dp)) {
                         Text(
                             "${fd.name.ifBlank { "(text)" }}  ${fd.shown}" +
                                 (if (fd.start >= 0 && fd.length > 0) "  @${fd.start}+${fd.length}" else ""),
                             color = if (fd.name.startsWith("_ws.malformed")) LtColors.Red else LtColors.Ivory,
-                            fontSize = 10.sp, fontFamily = ConsoleFonts.mono)
+                            fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                     }
                 }
                 if (f.hex.isNotEmpty()) {
-                    Text("Frame bytes (offset, hex):", color = LtColors.Cyan, fontSize = 10.sp)
+                    Text("Frame bytes (offset, hex):", color = LtColors.Cyan, fontSize = 12.sp)
                     WiresharkDecoder.hexDump(f.hex).forEach {
-                        Text(it, color = LtColors.Ivory, fontSize = 10.sp, fontFamily = ConsoleFonts.mono)
+                        Text(it, color = LtColors.Ivory, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                     }
                 }
             }
@@ -424,7 +424,7 @@ private fun ProvTag(prov: Prov) {
     Box(Modifier.background(prov.color.copy(alpha = 0.18f), sectionShape)
         .border(1.dp, prov.color.copy(alpha = 0.6f), sectionShape)
         .padding(horizontal = 5.dp)) {
-        Text(prov.label, color = prov.color, fontSize = 8.sp, letterSpacing = 1.sp)
+        Text(prov.label, color = prov.color, fontSize = 12.sp, letterSpacing = 1.sp)
     }
 }
 
@@ -434,7 +434,7 @@ private fun Section(title: String, content: @Composable () -> Unit) {
         Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 3.dp).hudPanel().padding(21.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(title, color = LtColors.ConsoleEdge, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.sp, style = glowText())
+            Text(title, color = LtColors.ConsoleEdge, fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 2.sp, style = glowText())
             Box(Modifier.fillMaxWidth().height(3.dp).background(railBrush(LtColors.ConsoleEdge)))
             content()
         }
@@ -444,25 +444,25 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun Field(label: String, value: String?, prov: Prov, reason: String? = null) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, color = LtColors.Grey, fontSize = 11.sp, modifier = Modifier.width(150.dp),
+        Text(label, color = LtColors.Grey, fontSize = 12.sp, modifier = Modifier.width(150.dp),
             fontFamily = ConsoleFonts.mono)
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(value ?: "UNAVAILABLE",
                     color = if (value != null) LtColors.Ivory else LtColors.Grey,
-                    fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = ConsoleFonts.mono)
+                    fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = ConsoleFonts.mono)
                 Box(Modifier.background(prov.color.copy(alpha = 0.18f), sectionShape)
                     .border(1.dp, prov.color.copy(alpha = 0.6f), sectionShape)
                     .padding(horizontal = 5.dp)) {
-                    Text(prov.label, color = prov.color, fontSize = 8.sp, letterSpacing = 1.sp)
+                    Text(prov.label, color = prov.color, fontSize = 12.sp, letterSpacing = 1.sp)
                 }
             }
-            if (reason != null) Text(reason, color = LtColors.Grey, fontSize = 10.sp)
+            if (reason != null) Text(reason, color = LtColors.Grey, fontSize = 12.sp)
         }
     }
 }
 
 @Composable
 private fun Note(text: String) {
-    Text(text, color = LtColors.Amber, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+    Text(text, color = LtColors.Amber, fontSize = 12.sp, fontWeight = FontWeight.Medium)
 }

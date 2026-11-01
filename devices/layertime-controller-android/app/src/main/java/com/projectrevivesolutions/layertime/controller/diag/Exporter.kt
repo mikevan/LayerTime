@@ -43,7 +43,7 @@ object Exporter {
         return Intent(Intent.ACTION_SEND).apply {
             type = "application/json"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "LayerTime controller diagnostics")
+            putExtra(Intent.EXTRA_SUBJECT, "LayerScope diagnostics")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }
@@ -145,7 +145,7 @@ object Exporter {
         val repo = ControllerRepository
         val d = repo.deviceReport
         val sb = StringBuilder()
-        sb.appendLine("LayerTime Controller — diagnostic export")
+        sb.appendLine("LayerScope — diagnostic export")
         sb.appendLine("Generated: ${ts(System.currentTimeMillis())}")
         sb.appendLine("Link contract: 0.1")
         sb.appendLine()

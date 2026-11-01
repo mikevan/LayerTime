@@ -38,12 +38,12 @@ class DetectionAlerts(private val ctx: Context) {
     init {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(NotificationChannel(CHANNEL_ID, "Detection alerts", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "A new detection reported by the LayerWand."
+                description = "A new detection reported by the Hunter."
                 enableVibration(true)
                 vibrationPattern = VIBRATION
             })
             nm.createNotificationChannel(NotificationChannel(CHANNEL_QUIET, "Detection alerts in sleep mode", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "New detections while the LayerWand is in sleep mode; no sound or vibration."
+                description = "New detections while the Hunter is in sleep mode; no sound or vibration."
                 enableVibration(false)
             })
         }

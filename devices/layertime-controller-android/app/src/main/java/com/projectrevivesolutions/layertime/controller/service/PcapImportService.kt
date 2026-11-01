@@ -83,7 +83,7 @@ class PcapImportService : LifecycleService() {
         )
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             Notification.Builder(this, CHANNEL_ID) else @Suppress("DEPRECATION") Notification.Builder(this)
-        builder.setContentTitle("LayerTime capture import")
+        builder.setContentTitle("LayerScope capture import")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)

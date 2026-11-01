@@ -27,8 +27,8 @@ class ConnNoticeTest {
     }
 
     @Test fun scanTimeoutSaysNoneFound() {
-        assertTrue(ConnNotice.of(ConnState.FAILED, "no LayerWand found in 20s", true)!!.text
-            .startsWith("No LayerWand found in 20 seconds."))
+        assertTrue(ConnNotice.of(ConnState.FAILED, "no Hunter found in 20s", true)!!.text
+            .startsWith("No Hunter found in 20 seconds."))
     }
 
     @Test fun scanErrorCarriesTheCode() {
@@ -42,9 +42,9 @@ class ConnNoticeTest {
     }
 
     @Test fun dropDependsOnReconnecting() {
-        assertEquals("The link to the LayerWand dropped (gattStatus=8). Reconnecting.",
+        assertEquals("The link to the Hunter dropped (gattStatus=8). Reconnecting.",
             ConnNotice.of(ConnState.DISCONNECTED, "gattStatus=8", true)!!.text)
-        assertEquals("The link to the LayerWand dropped. Tap SCAN & CONNECT to connect again.",
+        assertEquals("The link to the Hunter dropped. Tap SCAN & CONNECT to connect again.",
             ConnNotice.of(ConnState.DISCONNECTED, null, false)!!.text)
     }
 
@@ -55,7 +55,7 @@ class ConnNoticeTest {
     }
 
     @Test fun everyNoticeIsACompleteSentence() {
-        val details = listOf(null, ConnNotice.BLUETOOTH_OFF, "no LayerWand found in 20s", "scan failed code=1", "x")
+        val details = listOf(null, ConnNotice.BLUETOOTH_OFF, "no Hunter found in 20s", "scan failed code=1", "x")
         for (s in ConnState.values()) for (d in details) for (r in listOf(false, true)) {
             ConnNotice.of(s, d, r)?.let { assertTrue("$s/$d/$r: ${it.text}", it.text.endsWith(".")) }
         }
