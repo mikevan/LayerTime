@@ -22,6 +22,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
 import androidx.core.content.ContextCompat
+import com.projectrevivesolutions.layertime.controller.hunt.HuntSession
 import com.projectrevivesolutions.layertime.controller.model.ConnState
 import com.projectrevivesolutions.layertime.controller.model.LogEntry
 import com.projectrevivesolutions.layertime.controller.state.ControllerRepository
@@ -97,6 +98,8 @@ class LinkClient(private val appContext: Context) {
     companion object {
         const val SCAN_TIMEOUT_MS = 20_000L
         const val REQUEST_TIMEOUT_MS = 5_000L
+        /** HUNT v1: GET_HUNT four to five times a second (contracts/link_0_2.md). */
+        const val HUNT_POLL_MS = 220L
         const val RECONNECT_BASE_MS = 1_500L
         const val RECONNECT_MAX_MS = 15_000L
 
@@ -162,6 +165,7 @@ class LinkClient(private val appContext: Context) {
         wantConnected = false
         reconnectPending?.let { handler.removeCallbacks(it) }; reconnectPending = null
         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
+        huntWanted = false; huntPollOutstanding = false; handler.removeCallbacks(huntPoll)
         stopScan()
         gatt?.let { g -> g.disconnect(); g.close() }
         gatt = null; control = null; statusCh = null; dataCh = null
@@ -273,6 +277,8 @@ class LinkClient(private val appContext: Context) {
                         bulkRun?.let { reportBulk(it, null, "the link dropped.") }
                         LinkMeasure.setMtu(23)
                         handshakeDone = false; linkBusy = false; gattBusy = false
+                        huntPollOutstanding = false
+                        if (huntWanted) HuntSession.setProblem("The link to the LayerWand dropped. Reconnecting.")
                         linkQueue.clear(); gattOps.clear()
                         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
                         repo.noteBackgroundDisconnect()
@@ -417,6 +423,7 @@ class LinkClient(private val appContext: Context) {
                 finishLink()
                 if (kind == LinkConstants.Op.PING && pingBurstLeft > 0) onBurstPing(null)
                 if (kind == LinkMeasure.OP_BULK) bulkRun?.let { reportBulk(it, null, "timed out") }
+                if (kind == LinkHunt.OP_GET_HUNT) huntPollOutstanding = false
             }
         }.also { handler.postDelayed(it, REQUEST_TIMEOUT_MS) }
     }
@@ -482,6 +489,7 @@ class LinkClient(private val appContext: Context) {
 
     private fun onDataFrame(value: ByteArray) {
         if (LinkMeasure.isBulk(value) && bulkRun != null) { onBulkFrame(value); return }
+        if (LinkHunt.isReading(value)) { onHuntReading(value); return }
         when (val f = LinkCodec.decodeFrame(value)) {
             is Frame.HelloAck -> {
                 repo.onServerInfo(f)
@@ -494,6 +502,8 @@ class LinkClient(private val appContext: Context) {
                     reconnectAttempts = 0 // link restored; reset backoff
                     repo.setConn(ConnState.CONNECTED, "link up, server ${f.serverMajor}.${f.serverMinor}")
                     autoStartTarget?.let { reconStart(it) }
+                    // A hunt that was running when the link dropped picks up again.
+                    if (huntWanted) sendHuntStart()
                     getChanged() // pull whatever the Node already holds
                 }
                 finishLink()
@@ -507,8 +517,12 @@ class LinkClient(private val appContext: Context) {
                 }
             }
             is Frame.Result -> {
-                repo.log(LogEntry.Category.COMMAND,
-                    "RESULT cmd=${f.commandType} => ${LinkConstants.CommandResult.name(f.commandResult)}")
+                if (f.commandType == LinkHunt.OP_HUNT_START || f.commandType == LinkHunt.OP_HUNT_STOP) {
+                    onHuntResult(f.commandType, f.commandResult)
+                } else {
+                    repo.log(LogEntry.Category.COMMAND,
+                        "RESULT cmd=${f.commandType} => ${LinkConstants.CommandResult.name(f.commandResult)}")
+                }
                 finishLink()
             }
             is Frame.EventSummary -> {
@@ -533,6 +547,12 @@ class LinkClient(private val appContext: Context) {
             is Frame.Error -> {
                 repo.log(LogEntry.Category.ERROR, "ERROR linkStatus=${LinkConstants.LinkStatus.name(f.linkStatus)} reqId=${f.reqId}")
                 val wasBulk = pending?.kind == LinkMeasure.OP_BULK
+                val huntOp = pending?.kind?.takeIf { LinkHunt.isHuntOp(it) }
+                if (huntOp == LinkHunt.OP_GET_HUNT) huntPollOutstanding = false
+                if (huntOp != null && huntWanted) HuntSession.setProblem(
+                    if (f.linkStatus == LinkConstants.LinkStatus.UNKNOWN_OP)
+                        "This LayerWand cannot hunt yet. Flash it with the hunt firmware."
+                    else "The LayerWand refused the hunt request (${LinkConstants.LinkStatus.name(f.linkStatus)}).")
                 finishLink()
                 if (wasBulk) bulkRun?.let {
                     reportBulk(it, null, "the LayerWand answered ${LinkConstants.LinkStatus.name(f.linkStatus)}. " +
@@ -641,6 +661,76 @@ class LinkClient(private val appContext: Context) {
         }
         LinkMeasure.addLine(line)
         repo.log(LogEntry.Category.LINK, "MEASURE $line")
+    }
+
+    // ---- HUNT v1 (claude/hunt_v1_layervixen_plan.md) ----
+
+    private var huntWanted = false
+    private var huntPollOutstanding = false
+    private var huntReadings = 0L
+
+    /** GET_HUNT every HUNT_POLL_MS, one request at a time; skipped while one is outstanding. */
+    private val huntPoll = object : Runnable {
+        override fun run() {
+            if (!huntWanted) return
+            if (handshakeDone && !huntPollOutstanding) {
+                huntPollOutstanding = true
+                submit(LinkHunt.OP_GET_HUNT, LinkHunt.getHunt(nextReqId()))
+            }
+            handler.postDelayed(this, HUNT_POLL_MS)
+        }
+    }
+
+    private fun sendHuntStart() {
+        val id = nextReqId()
+        submit(LinkHunt.OP_HUNT_START, LinkHunt.huntStart(id))
+        repo.log(LogEntry.Category.COMMAND, "HUNT_START (any LayerVixen) #$id")
+    }
+
+    /** Starts (or restarts) a hunt for any LayerVixen and keeps polling until huntStop(). */
+    fun huntStart() = handler.post {
+        huntWanted = true
+        huntReadings = 0
+        if (handshakeDone) sendHuntStart()
+        else HuntSession.setProblem("The LayerWand is not connected. Reconnecting.")
+        handler.removeCallbacks(huntPoll)
+        handler.post(huntPoll)
+    }
+
+    fun huntStop() = handler.post {
+        if (!huntWanted) return@post
+        huntWanted = false
+        handler.removeCallbacks(huntPoll)
+        if (handshakeDone) {
+            val id = nextReqId()
+            submit(LinkHunt.OP_HUNT_STOP, LinkHunt.huntStop(id))
+            repo.log(LogEntry.Category.COMMAND, "HUNT_STOP #$id after $huntReadings readings")
+        }
+    }
+
+    private fun onHuntResult(op: Int, result: Int) {
+        if (op == LinkHunt.OP_HUNT_START) {
+            repo.log(LogEntry.Category.COMMAND, "RESULT HUNT_START => " +
+                if (result == LinkHunt.STARTED) "started" else "target not supported ($result)")
+            if (result != LinkHunt.STARTED && huntWanted) HuntSession.setProblem("This LayerWand cannot hunt a LayerVixen.")
+        } else {
+            repo.log(LogEntry.Category.COMMAND, "RESULT HUNT_STOP => stopped; Recon resumes on the LayerWand")
+        }
+    }
+
+    private fun onHuntReading(value: ByteArray) {
+        if (pending?.kind == LinkHunt.OP_GET_HUNT) finishLink()
+        huntPollOutstanding = false
+        val r = LinkHunt.decodeReading(value) ?: run {
+            repo.log(LogEntry.Category.ERROR, "bad HUNT_READING: ${LinkCodec.toHex(value)}"); return
+        }
+        huntReadings++
+        HuntSession.onReading(r.readings, r.mean, r.latest, r.strongest, r.hunting, r.lost,
+            android.os.SystemClock.elapsedRealtime())
+        // One log line every 5 s or so, not one per poll.
+        if (huntReadings % 23 == 1L) repo.log(LogEntry.Category.LINK,
+            "HUNT reading: ${r.readings} sightings, mean ${r.mean ?: "-"} dBm, strongest ${r.strongest ?: "-"}, " +
+                "heard ${r.msSinceHeard?.let { "$it ms ago" } ?: "never"}, flags 0x%02X".format(r.flags))
     }
 
     // Deferred GET_TEXT so it does not reenter while a GET_CHANGED run is open.

@@ -172,6 +172,19 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_mea
 ./tests_link_measure
 ```
 
+### HUNT v1
+
+`test_link_hunt` covers `src/core/link/LinkHunt`: the HUNT_START, HUNT_STOP and
+GET_HUNT codec, the HUNT_READING frame, HuntTracker's readings (one window per
+poll, the rounded mean, lost after 5 s, saturation), and the answers the
+LayerWand gives. It also proves the Node dispatcher without HUNT answers the
+HUNT ops with ERROR UnknownOp. See `claude/hunt_v1_layervixen_plan.md` in the project.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_hunt test_link_hunt/test_link_hunt.cpp ../src/core/link/LinkHunt.cpp ../src/core/link/LinkCodec.cpp
+./tests_link_hunt
+```
+
 ## Core and platform boundary
 
 Checks the source tree itself. Every `#include` under `src/` and under the

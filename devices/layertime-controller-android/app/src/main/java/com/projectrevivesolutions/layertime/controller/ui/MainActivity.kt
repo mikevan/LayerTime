@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.projectrevivesolutions.layertime.controller.diag.DeviceReportBuilder
 import com.projectrevivesolutions.layertime.controller.diag.Exporter
+import com.projectrevivesolutions.layertime.controller.hunt.HuntSession
 import com.projectrevivesolutions.layertime.controller.link.LinkClient
 import com.projectrevivesolutions.layertime.controller.link.LinkConstants
 import com.projectrevivesolutions.layertime.controller.link.LinkMeasure
@@ -246,6 +247,7 @@ private fun ControllerScreen() {
     val linkStale by repo.linkStale.collectAsState()
     val reconnecting by repo.reconnecting.collectAsState()
     val connDetail by repo.connDetail.collectAsState()
+    val huntOpen by HuntSession.open.collectAsState()
 
     var target by remember { mutableIntStateOf(MissionPrefs.readTarget(context)) }
     LaunchedEffect(target) { MissionPrefs.writeTarget(context, target) }
@@ -536,6 +538,11 @@ private fun ControllerScreen() {
                                         SciFiOutline("STOP", enabled = active) { LinkForegroundService.active?.reconStop() }
                                         SciFiOutline("CLEAR", enabled = active) { LinkForegroundService.active?.clearEvents() }
                                     }
+                                    // HUNT v1: the fox hunt. The whole screen becomes the hunt screen.
+                                    SciFiPrimary("HUNT LAYERVIXEN", enabled = active, large = true) {
+                                        HuntSession.begin(android.os.SystemClock.elapsedRealtime())
+                                        LinkForegroundService.active?.huntStart()
+                                    }
                                 }
                             }
                             item {
@@ -628,6 +635,17 @@ private fun ControllerScreen() {
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (huntOpen) {
+            // HUNT v1 takes the whole screen until STOP HUNT.
+            HuntScreen(
+                onStop = { LinkForegroundService.active?.huntStop(); HuntSession.end() },
+                onAgain = {
+                    HuntSession.begin(android.os.SystemClock.elapsedRealtime())
+                    LinkForegroundService.active?.huntStart()
+                },
+            )
+            return@BoxWithConstraints
+        }
         // The watch layout of the design standard (claude/android_watch_design_standard.md).
         val sliding = WatchFormFactor.matches(maxWidth.value, maxHeight.value)
         if (sliding) {

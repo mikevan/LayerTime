@@ -51,6 +51,7 @@
 
 #include "BringUpLogic.h"
 
+#include "core/link/LinkHunt.h"
 #include "core/logic/ReconCandidate.h"
 #include "core/logic/ReconScheduler.h"
 #include "core/logic/ReconClassification.h"
@@ -130,6 +131,40 @@ public:
     const Counters &counters() const { return _counters; }
     void clearCounters() { _counters = Counters{}; }
 
+    // HUNT v1 (claude/hunt_v1_layervixen_plan.md). The loop owns the order:
+    // answerHunt() starts or stops the tracker; when it starts, the loop
+    // stops Recon and calls startHuntScan(); when it stops, stopHuntScan()
+    // and then Recon resumes. While the hunt scan runs, every advertisement
+    // carrying the LayerVixen service is a sighting, and nothing is
+    // classified. Safe from any task.
+    size_t answerHunt(const uint8_t *request, size_t len, uint32_t nowMs, uint8_t *reply);
+    bool hunting() const;
+    // One short passive Bluetooth scan (kHuntScanMs) with the controller's
+    // duplicate filter on; the loop starts the next as soon as one ends. A
+    // fresh scan resets the filter, so each device, the LayerVixen included,
+    // is reported about once per scan (twice a second), not on every
+    // advertisement. Duplicate filtering off flooded the host (every
+    // advertisement of every device in the house) and the watch's replies
+    // stopped getting through (2026-10-31, the first hunt: the watch stayed
+    // on STARTING and the link dropped).
+    void startHuntScan();
+    static constexpr uint32_t kHuntScanMs = 500;
+    void stopHuntScan();
+    bool huntScanRunning() const { return _huntScan.load(); }
+    // Sightings since the hunt started, for the serial log.
+    uint32_t huntSightings() const;
+    // Ends the hunt without a request (the watch stopped polling).
+    void endHunt();
+    // The Wi-Fi driver off for a hunt, and back as begin() left it after.
+    // With the driver merely idle, Wi-Fi and Bluetooth still share the
+    // radio and the driver keeps its internal RAM: on 2026-10-31 the hunt
+    // ran with 15.6 KB of internal heap free, the controller failed to
+    // allocate ("malloc addr node failed"), NimBLE refused the watch's
+    // replies, and the watch's requests stopped (its write responses never
+    // came). Off, Bluetooth has the radio and the RAM to itself.
+    void suspendWifiForHunt();
+    void resumeWifiAfterHunt();
+
 #if defined(LAYERTIME_MEASURE)
     // Link 0.2 Phase 0 measurement build only (claude/link_0_2_phase0_plan.md).
     // Written by the Wi-Fi task (M1, M2) and the NimBLE host task (M4); read
@@ -185,6 +220,7 @@ private:
     // Set by resetDetectorState(), taken by the Wi-Fi task (onPromiscuousPacket).
     std::atomic<bool> _resetRequested{false};
     bool _bleInitialized = false;
+    bool _dualBand = false; // as begin() was called, for resumeWifiAfterHunt()
     ReconTarget _currentBleScanDetector = ReconTarget::None;
     recon::CandidateSink _candidateSink = nullptr;
     void *_candidateSinkContext = nullptr;
@@ -194,6 +230,8 @@ private:
     bool _firstAdvertInScan = false;
     Counters _counters;
     PeerSightings _peers; // guarded in C5ReconRadio.cpp
+    link::hunt::HuntTracker _hunt; // guarded in C5ReconRadio.cpp (gHuntLock)
+    std::atomic<bool> _huntScan{false};
     static C5ReconRadio *_activeInstance;
 #if defined(LAYERTIME_MEASURE)
     void measureWifi(const uint8_t *frame, uint16_t len);

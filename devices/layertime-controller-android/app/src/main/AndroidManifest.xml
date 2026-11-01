@@ -22,6 +22,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <!-- The short buzz when a button press registers (ui/PressFeedback.kt). Normal permission, granted at install. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- HUNT v1: the step detector for the hunt screen's step trail (Android 10 and later). -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"
         tools:targetApi="34" />
     <!-- Foreground service that keeps a capture import decoding while the app is off screen. -->

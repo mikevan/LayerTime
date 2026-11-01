@@ -92,6 +92,9 @@ C5BleScanCallbacks gBleScanCallbacks;
 // Guards the peer sightings: written on the NimBLE host task, read on the
 // loop task.
 portMUX_TYPE gPeerLock = portMUX_INITIALIZER_UNLOCKED;
+// Guards the hunt tracker: sightings on the NimBLE host task, polls on the
+// loop task.
+portMUX_TYPE gHuntLock = portMUX_INITIALIZER_UNLOCKED;
 
 bool channelAccepted(uint8_t channel, void *)
 {
@@ -113,6 +116,7 @@ Band bandOfChannel(uint8_t channel)
 
 void C5ReconRadio::begin(bool dualBand)
 {
+    _dualBand = dualBand;
     WiFi.mode(WIFI_STA);
     WiFi.disconnect(false, false);
 #if SOC_WIFI_SUPPORT_5G
@@ -338,6 +342,8 @@ bool C5ReconRadio::bleScanning() const
 void C5ReconRadio::handleBleScanEnd()
 {
     ++_counters.bleScanEnds;
+    // A hunt ends a short scan twice a second; not one stage record each.
+    if (_huntScan.load()) return;
     if (_stage) _stage->record(recon::Stage::BleScanEnd, static_cast<uint8_t>(_currentBleScanDetector), 0, _counters.adverts);
 }
 
@@ -384,6 +390,19 @@ void C5ReconRadio::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
 #if defined(LAYERTIME_MEASURE)
     measureBle(device);
 #endif
+    if (_huntScan.load()) {
+        // HUNT v1: only the LayerVixen counts, and nothing is classified
+        // (Recon is stopped for the hunt).
+        static const NimBLEUUID kVixenService(link::hunt::kVixenServiceUuid);
+        if (device->isAdvertisingService(kVixenService)) {
+            const int rssi = device->getRSSI();
+            const uint32_t now = millis();
+            portENTER_CRITICAL(&gHuntLock);
+            _hunt.sighting(rssi, now);
+            portEXIT_CRITICAL(&gHuntLock);
+        }
+        return;
+    }
     if (_firstAdvertInScan) {
         _firstAdvertInScan = false;
         if (_stage) _stage->record(recon::Stage::BleAdvert, static_cast<uint8_t>(_currentBleScanDetector), 0, _counters.adverts);
@@ -417,6 +436,85 @@ void C5ReconRadio::handleBleAdvertisement(const NimBLEAdvertisedDevice *device)
     advert.context = device;
 
     recon::classifyBleAdvert(advert, _currentBleScanDetector, bleCandidateThunk, this);
+}
+
+size_t C5ReconRadio::answerHunt(const uint8_t *request, size_t len, uint32_t nowMs, uint8_t *reply)
+{
+    portENTER_CRITICAL(&gHuntLock);
+    const size_t n = link::hunt::answer(_hunt, request, len, nowMs, reply);
+    portEXIT_CRITICAL(&gHuntLock);
+    return n;
+}
+
+bool C5ReconRadio::hunting() const
+{
+    portENTER_CRITICAL(&gHuntLock);
+    const bool active = _hunt.active();
+    portEXIT_CRITICAL(&gHuntLock);
+    return active;
+}
+
+uint32_t C5ReconRadio::huntSightings() const
+{
+    portENTER_CRITICAL(&gHuntLock);
+    const uint32_t n = _hunt.totalSightings();
+    portEXIT_CRITICAL(&gHuntLock);
+    return n;
+}
+
+void C5ReconRadio::endHunt()
+{
+    portENTER_CRITICAL(&gHuntLock);
+    _hunt.stop();
+    portEXIT_CRITICAL(&gHuntLock);
+}
+
+void C5ReconRadio::suspendWifiForHunt()
+{
+    WiFi.mode(WIFI_OFF);
+}
+
+void C5ReconRadio::resumeWifiAfterHunt()
+{
+    begin(_dualBand);
+}
+
+void C5ReconRadio::startHuntScan()
+{
+    // Wi-Fi is already off: the loop stopped the scheduler before the first
+    // hunt scan. Not stopped again here, twice a second.
+    if (!_bleInitialized) {
+        if (!NimBLEDevice::isInitialized()) NimBLEDevice::init("LayerTime");
+        _bleInitialized = true;
+    }
+    NimBLEScan *scan = NimBLEDevice::getScan();
+    scan->stop();
+    scan->clearResults();
+    // false: the controller filters duplicates within one scan (see
+    // kHuntScanMs in the header for why).
+    scan->setScanCallbacks(&gBleScanCallbacks, false);
+    scan->setActiveScan(false);
+    // Listen 60 ms of every 100 ms: the watch's connection keeps airtime.
+    scan->setInterval(100);
+    scan->setWindow(60);
+    scan->setMaxResults(0);
+    gBleActiveInstance = this;
+    _huntScan.store(true);
+    ++_counters.bleScanStarts;
+    scan->start(kHuntScanMs, false);
+}
+
+void C5ReconRadio::stopHuntScan()
+{
+    _huntScan.store(false);
+    if (_bleInitialized && NimBLEDevice::isInitialized()) {
+        NimBLEScan *scan = NimBLEDevice::getScan();
+        scan->stop();
+        // Recon's scans set their own callbacks, with duplicate filtering
+        // back on (startBleScan).
+        scan->setScanCallbacks(&gBleScanCallbacks);
+        scan->clearResults();
+    }
 }
 
 uint8_t C5ReconRadio::peerCount(uint32_t nowMs) const

@@ -20,8 +20,10 @@
 // every environment compiled all of src/, and is kept as a safety net. The tdongle_c5_recon environment
 // (LAYERTIME_RECON_BASELINE) builds C5ReconBaseline.cpp's setup() and loop()
 // instead of these, and the tdongle_c5_wand environment (LAYERTIME_WAND_APP)
-// builds C5App.cpp's.
-#if defined(LAYERTIME_TARGET_TDONGLE_C5) && !defined(LAYERTIME_RECON_BASELINE) && !defined(LAYERTIME_WAND_APP)
+// builds C5App.cpp's, and the tdongle_c5_vixen environment (LAYERTIME_VIXEN_APP)
+// builds C5VixenApp.cpp's.
+#if defined(LAYERTIME_TARGET_TDONGLE_C5) && !defined(LAYERTIME_RECON_BASELINE) && !defined(LAYERTIME_WAND_APP) && \
+    !defined(LAYERTIME_VIXEN_APP)
 
 // Slice 1, Increments 0 and 1: T-Dongle-C5 bring-up and the LayerTime Link
 // transport proof.

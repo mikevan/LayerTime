@@ -82,6 +82,7 @@
 #include "TDongleC5Pins.h"
 
 #include "core/app/LayerTimeCore.h"
+#include "core/link/LinkHunt.h"
 #include "core/link/LinkServer.h"
 #include "core/logic/ReconSelection.h"
 #include "core/logic/ReconStageLog.h"
@@ -96,6 +97,7 @@
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -275,6 +277,22 @@ uint32_t gLastPassEndMs = 0;
 uint8_t gPlan[recon::ReconScheduler::kMaxPlanChannels];
 uint8_t gPlanCount = 0;
 
+// HUNT v1 (claude/hunt_v1_layervixen_plan.md). Recon pauses for a hunt and
+// comes back as it was: manual monitoring of the same selection, or early
+// warning (re-armed by stopManual when enabled).
+// A hunt nobody polls for this long ends by itself, so a watch that went
+// away does not leave the LayerWand deaf to Recon.
+constexpr uint32_t kHuntIdleStopMs = 30000;
+// The hunt scans in short scans (C5ReconRadio::kHuntScanMs); the next starts
+// once one ends, but never sooner than this after the last start.
+constexpr uint32_t kHuntScanRetryMs = 50;
+bool gHuntPrevMonitoring = false;
+ReconTarget gHuntPrevTarget = ReconTarget::None;
+uint32_t gHuntStartMs = 0;
+uint32_t gLastHuntPollMs = 0;
+uint32_t gLastHuntScanTryMs = 0;
+uint32_t gHuntScanRestarts = 0;
+
 uint32_t hardwareRandom()
 {
     return esp_random();
@@ -322,16 +340,36 @@ void applyEarlyWarningIfChanged()
     Serial.printf("early warning %s at %lu ms\n", wanted ? "on" : "off", static_cast<unsigned long>(millis()));
 }
 
+// The 10 s report stops at its first print that cannot get through (2026-10-31). With the
+// cable in and nobody reading, one print waits at most about 40 ms (kSerialTxTimeoutMs per
+// chunk) and comes back short; the rest of that report is dropped instead of each line
+// waiting in turn, which held the loop about 1 s on the first report after the logger closed.
+// Connect, disconnect, detection, boot, and dump lines do not go through here.
+bool gReportCut = false;     // the report in progress has been cut short
+uint32_t gReportsCut = 0;    // reports cut short, for the notice when a reader returns
+void reportf(const char *fmt, ...)
+{
+    if (gReportCut) return;
+    char line[512];
+    va_list ap;
+    va_start(ap, fmt);
+    const int n = vsnprintf(line, sizeof(line), fmt, ap);
+    va_end(ap);
+    if (n <= 0) return;
+    const size_t len = static_cast<size_t>(n) < sizeof(line) ? static_cast<size_t>(n) : sizeof(line) - 1;
+    if (Serial.write(reinterpret_cast<const uint8_t *>(line), len) < len) gReportCut = true;
+}
+
 void printHistogram(const char *name, const recon::IntervalHistogram &h)
 {
-    Serial.printf("%s n=%lu min=%lu max=%lu mean=%lu buckets(<=5,10,20,50,100,250,1000,more)=",
+    reportf("%s n=%lu min=%lu max=%lu mean=%lu buckets(<=5,10,20,50,100,250,1000,more)=",
                   name, static_cast<unsigned long>(h.count()), static_cast<unsigned long>(h.minMs()),
                   static_cast<unsigned long>(h.maxMs()),
                   static_cast<unsigned long>(h.count() ? h.sumMs() / h.count() : 0));
     for (uint8_t i = 0; i < recon::IntervalHistogram::kBuckets; ++i) {
-        Serial.printf("%s%lu", i ? "," : "", static_cast<unsigned long>(h.bucket(i)));
+        reportf("%s%lu", i ? "," : "", static_cast<unsigned long>(h.bucket(i)));
     }
-    Serial.println();
+    reportf("\n");
 }
 
 #if defined(LAYERTIME_MEASURE)
@@ -343,7 +381,7 @@ uint32_t meanOf(uint32_t sum, uint32_t n) { return n ? sum / n : 0; }
 void printMeasure(const char *when)
 {
     const C5ReconRadio::Measure &m = gRadio.measure();
-    Serial.printf("[%s] M1 wifi frames %lu fcs match %lu mismatch %lu short %lu max len %lu "
+    reportf("[%s] M1 wifi frames %lu fcs match %lu mismatch %lu short %lu max len %lu "
                   "len<=64,128,256,512,1024,1600,more %lu,%lu,%lu,%lu,%lu,%lu,%lu\n", when,
                   static_cast<unsigned long>(m.wifiFrames), static_cast<unsigned long>(m.fcsMatch),
                   static_cast<unsigned long>(m.fcsMismatch), static_cast<unsigned long>(m.tooShort),
@@ -351,7 +389,7 @@ void printMeasure(const char *when)
                   static_cast<unsigned long>(m.lenBuckets[1]), static_cast<unsigned long>(m.lenBuckets[2]),
                   static_cast<unsigned long>(m.lenBuckets[3]), static_cast<unsigned long>(m.lenBuckets[4]),
                   static_cast<unsigned long>(m.lenBuckets[5]), static_cast<unsigned long>(m.lenBuckets[6]));
-    Serial.printf("[%s] M2 us crc mean %lu max %lu | classify mean %lu max %lu | copy psram mean %lu max %lu n %lu | "
+    reportf("[%s] M2 us crc mean %lu max %lu | classify mean %lu max %lu | copy psram mean %lu max %lu n %lu | "
                   "rings %s | peak/s mgmt %lu deauth %lu\n", when,
                   static_cast<unsigned long>(meanOf(m.crcUsSum, m.fcsMatch + m.fcsMismatch)),
                   static_cast<unsigned long>(m.crcUsMax),
@@ -361,19 +399,19 @@ void printMeasure(const char *when)
                   static_cast<unsigned long>(m.copyPsramUsMax), static_cast<unsigned long>(m.copyPsram),
                   m.ringsOk ? "ok" : "NOT ALLOCATED", static_cast<unsigned long>(m.mgmtPerSecPeak),
                   static_cast<unsigned long>(m.deauthPerSecPeak));
-    Serial.printf("[%s] M3 free internal %lu largest %lu | free psram %lu largest %lu\n", when,
+    reportf("[%s] M3 free internal %lu largest %lu | free psram %lu largest %lu\n", when,
                   static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                   static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                   static_cast<unsigned long>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
                   static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)));
-    Serial.printf("[%s] M4 adverts %lu extended %lu max len %lu len<=31,62,255,more %lu,%lu,%lu,%lu | "
+    reportf("[%s] M4 adverts %lu extended %lu max len %lu len<=31,62,255,more %lu,%lu,%lu,%lu | "
                   "peak/s %lu | addresses this min %lu peak/min %lu\n", when,
                   static_cast<unsigned long>(m.adverts), static_cast<unsigned long>(m.advExtended),
                   static_cast<unsigned long>(m.advMaxLen), static_cast<unsigned long>(m.advLenBuckets[0]),
                   static_cast<unsigned long>(m.advLenBuckets[1]), static_cast<unsigned long>(m.advLenBuckets[2]),
                   static_cast<unsigned long>(m.advLenBuckets[3]), static_cast<unsigned long>(m.advertsPerSecPeak),
                   static_cast<unsigned long>(m.addressesThisMin), static_cast<unsigned long>(m.addressesPerMinPeak));
-    Serial.printf("[%s] M5 mtu %u bulk runs %lu\n", when, static_cast<unsigned>(gLink.mtu()),
+    reportf("[%s] M5 mtu %u bulk runs %lu\n", when, static_cast<unsigned>(gLink.mtu()),
                   static_cast<unsigned long>(gLink.bulkRuns()));
 }
 
@@ -410,6 +448,7 @@ void touchBootState()
 
 void printCounters(const char *when)
 {
+    gReportCut = false;
     const C5ReconRadio::Counters &c = gRadio.counters();
     lockEvents(nullptr);
     const ReconState r = gCore.reconState();
@@ -418,10 +457,16 @@ void printCounters(const char *when)
     touchBootState();
     char boot[120];
     gBoot.format(boot, sizeof(boot));
-    Serial.printf("[%s] %s\n", when, boot);
+    reportf("[%s] %s\n", when, boot);
+    if (gRadio.hunting()) {
+        reportf("[%s] hunt on for %lu s | sightings %lu | scan cycles %lu | adverts %lu | heap %lu\n", when,
+                static_cast<unsigned long>((millis() - gHuntStartMs) / 1000),
+                static_cast<unsigned long>(gRadio.huntSightings()), static_cast<unsigned long>(gHuntScanRestarts),
+                static_cast<unsigned long>(c.adverts), static_cast<unsigned long>(ESP.getFreeHeap()));
+    }
     const uint32_t runS = (millis() - gRunStartMs) / 1000;
     // The Increment 2A [periodic] line, field for field.
-    Serial.printf("[%s] mode %s run %lu s uptime %lu s sel %s act %s mon %d ew %d rest %d ch %u | "
+    reportf("[%s] mode %s run %lu s uptime %lu s sel %s act %s mon %d ew %d rest %d ch %u | "
                   "wifi starts %lu stops %lu hops %lu | ble scans %lu ends %lu | frames %lu adverts %lu | "
                   "candidates %lu events %u lastId %lu sinkMax %lu us | stage %lu/%lu lost %lu | "
                   "heap %lu largest %lu psram %lu %s\n",
@@ -440,7 +485,7 @@ void printCounters(const char *when)
                   static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                   static_cast<unsigned long>(ESP.getFreePsram()), gHeapOk ? "intact" : "CORRUPT");
     const link::LinkServer::Counters &s = gServer.counters();
-    Serial.printf("[%s] link %s peer %s session %04X changeSeq %lu heartbeat %u | connects %lu disconnects %lu | "
+    reportf("[%s] link %s peer %s session %04X changeSeq %lu heartbeat %u | connects %lu disconnects %lu | "
                   "pings %lu requests %lu commands %lu getChanged %lu getText %lu summaries %lu gaps %lu | "
                   "frames sent %lu refused %lu dropped %lu busy %lu | status change notifies %lu\n",
                   when, gLink.connected() ? "connected" : "advertising", gLink.connected() ? gLink.peerAddress() : "-",
@@ -454,12 +499,12 @@ void printCounters(const char *when)
                   static_cast<unsigned long>(gLink.framesDropped()), static_cast<unsigned long>(gLink.busyReplies()),
                   static_cast<unsigned long>(gLink.changeNotifies()));
     const BandTotals &t = gTally.totals();
-    Serial.printf("[%s] screen totals 5GHz %lu 2.4GHz %lu BLE %lu other %lu | nodes %u\n", when,
+    reportf("[%s] screen totals 5GHz %lu 2.4GHz %lu BLE %lu other %lu | nodes %u\n", when,
                   static_cast<unsigned long>(t.wifi5GHz), static_cast<unsigned long>(t.wifi2_4GHz),
                   static_cast<unsigned long>(t.ble), static_cast<unsigned long>(t.other),
                   static_cast<unsigned>(gRadio.peerCount(millis())));
     const C5SdLog::Counters &sd = gSdLog.counters();
-    Serial.printf("[%s] sd ring %s queued %u dropped %lu discarded %lu | card %s file %s | mounts %lu failures %lu "
+    reportf("[%s] sd ring %s queued %u dropped %lu discarded %lu | card %s file %s | mounts %lu failures %lu "
                   "files %lu lines %lu writes %lu errors %lu unformatted %lu | heap at mount %lu to %lu\n",
                   when, sd.ringOk ? "ok" : "FAILED", static_cast<unsigned>(gSdLog.queued()),
                   static_cast<unsigned long>(gSdLog.dropped()), static_cast<unsigned long>(sd.discarded),
@@ -469,16 +514,16 @@ void printCounters(const char *when)
                   static_cast<unsigned long>(sd.writeErrors), static_cast<unsigned long>(sd.unformatted),
                   static_cast<unsigned long>(sd.heapBeforeMount), static_cast<unsigned long>(sd.heapAfterMount));
     const recon::ReconScheduler &sched = gMonitor.scheduler();
-    Serial.printf("[%s] plan %u channels | passes %lu last %lu ms | rest jitter %lu ms | channel refusals %lu\n", when,
+    reportf("[%s] plan %u channels | passes %lu last %lu ms | rest jitter %lu ms | channel refusals %lu\n", when,
                   static_cast<unsigned>(sched.planCount()), static_cast<unsigned long>(sched.passes()),
                   static_cast<unsigned long>(sched.lastPassMs()), static_cast<unsigned long>(sched.restJitterMs()),
                   static_cast<unsigned long>(c.channelRefusals));
-    Serial.print("frames by channel:");
+    reportf("frames by channel:");
     for (uint8_t i = 0; i < sched.planCount(); ++i) {
         const uint8_t ch = sched.planChannel(i);
-        Serial.printf(" %u=%lu", ch, static_cast<unsigned long>(c.framesByChannel[ch]));
+        reportf(" %u=%lu", ch, static_cast<unsigned long>(c.framesByChannel[ch]));
     }
-    Serial.println();
+    reportf("\n");
     printHistogram("loop period ms", gLoopPeriod);
     printHistogram("hop interval ms", gHopInterval);
     printHistogram("pass ms", gPassTime);
@@ -486,6 +531,7 @@ void printCounters(const char *when)
 #if defined(LAYERTIME_MEASURE)
     printMeasure(when);
 #endif
+    if (gReportCut) ++gReportsCut;
 }
 
 // Copies the events out under the lock and prints them after it.
@@ -574,7 +620,10 @@ void showStatus()
     gDisplay.setLine(2, line);
     snprintf(line, sizeof(line), "BLE EV: %lu", static_cast<unsigned long>(t.ble));
     gDisplay.setLine(3, line);
-    snprintf(line, sizeof(line), "NODES: %u", static_cast<unsigned>(gRadio.peerCount(millis())));
+    // During a hunt the last line counts the LayerVixen's sightings, so a
+    // BOOT press on the Wand shows whether it hears the Vixen at all.
+    if (gRadio.hunting()) snprintf(line, sizeof(line), "HUNT: %lu", static_cast<unsigned long>(gRadio.huntSightings()));
+    else snprintf(line, sizeof(line), "NODES: %u", static_cast<unsigned>(gRadio.peerCount(millis())));
     gDisplay.setLine(4, line);
     // The eye: the watch link. The lens: the mesh role, not connected until
     // the mesh exists.
@@ -616,6 +665,73 @@ void sleepScreen()
     gScreenAwake = false;
     applyLed();
     Serial.println("Screen dark");
+}
+
+// HUNT v1: Recon stops (Wi-Fi off, early warning paused) and the
+// continuous Bluetooth scan for the LayerVixen starts.
+void beginHunt(uint32_t now)
+{
+    const AcquisitionStatus a = gMonitor.acquisition();
+    gHuntPrevMonitoring = a.monitoring;
+    gHuntPrevTarget = a.selected;
+    gMonitor.stop();
+    gRadio.suspendWifiForHunt();
+    delay(120); // the radio settles after Wi-Fi stops, as before every Recon BLE scan
+    gRadio.startHuntScan();
+    gLink.setHunting(true);
+    gHuntStartMs = now;
+    gLastHuntScanTryMs = now;
+    gHuntScanRestarts = 0;
+    Serial.printf("hunt started (any LayerVixen) at %lu ms; Recon paused, was %s\n", static_cast<unsigned long>(now),
+                  a.monitoring ? recon::detectorName(a.selected) : (a.earlyWarningEnabled ? "early warning" : "stopped"));
+}
+
+// HUNT v1: the scan stops and Recon resumes as it was before the hunt.
+void finishHunt(uint32_t now, const char *why, uint32_t sightings)
+{
+    gRadio.stopHuntScan();
+    gRadio.resumeWifiAfterHunt();
+    if (gHuntPrevMonitoring) gMonitor.start(gHuntPrevTarget);
+    else gMonitor.stopManual();
+    gLink.setHunting(false);
+    Serial.printf("hunt stopped (%s) at %lu ms after %lu s, %lu sightings, %lu scan cycles; Recon resumed\n", why,
+                  static_cast<unsigned long>(now), static_cast<unsigned long>((now - gHuntStartMs) / 1000),
+                  static_cast<unsigned long>(sightings), static_cast<unsigned long>(gHuntScanRestarts));
+}
+
+// C5Link hands HUNT_START, HUNT_STOP and GET_HUNT here, on the loop task.
+size_t answerHuntRequest(const uint8_t *request, size_t len, uint32_t nowMs, uint8_t *reply, void *)
+{
+    const bool before = gRadio.hunting();
+    const uint32_t sightings = gRadio.huntSightings();
+    const size_t n = gRadio.answerHunt(request, len, nowMs, reply);
+    const bool after = gRadio.hunting();
+    gLastHuntPollMs = nowMs;
+    if (!before && after) beginHunt(nowMs);
+    else if (before && !after) finishHunt(nowMs, "the watch stopped it", sightings);
+    else if (before && after && request[0] == link::hunt::kOpHuntStart) {
+        Serial.printf("hunt restarted by the watch at %lu ms\n", static_cast<unsigned long>(nowMs));
+    }
+    return n;
+}
+
+// HUNT v1, once per loop pass: ends a hunt nobody polls, and restarts the
+// scan if it ever stopped.
+void serviceHunt(uint32_t now)
+{
+    if (!gRadio.hunting()) return;
+    if (now - gLastHuntPollMs >= kHuntIdleStopMs) {
+        const uint32_t sightings = gRadio.huntSightings();
+        gRadio.endHunt();
+        finishHunt(now, "no poll from the watch for 30 s", sightings);
+        return;
+    }
+    if (!gRadio.bleScanning() && now - gLastHuntScanTryMs >= kHuntScanRetryMs) {
+        // The last short scan ended (normal, twice a second): start the next.
+        gLastHuntScanTryMs = now;
+        ++gHuntScanRestarts;
+        gRadio.startHuntScan();
+    }
 }
 
 } // namespace
@@ -710,8 +826,9 @@ void setup()
     // NimBLE comes up here, for the Link; C5ReconRadio's BLE scans find it
     // initialised and use the same host.
     gLink.attachServer(&gServer);
+    gLink.attachHunt(answerHuntRequest, nullptr);
     gBleOk = gLink.begin(link::kCapLocalWifiMonitor | link::kCapLocalBleMonitor | link::kCapDisplay |
-                         link::kCapLed | link::kCapButton);
+                         link::kCapLed | link::kCapButton | link::hunt::kCapHunt);
     const bool heapAfterBle = heapIntact();
     gHeapOk = gHeapOk && heapAfterBle;
     Serial.printf("Link %s, advertising as %s, session %04X\n", gBleOk ? "up" : "FAILED", gLink.advertisedName(),
@@ -771,7 +888,8 @@ void loop()
     lockEvents(nullptr);
     gCore.raiseAlerts(now);
     unlockEvents(nullptr);
-    gCore.pollMonitor();
+    // A hunt owns the radios: the Recon schedule does not run under it.
+    if (!gRadio.hunting()) gCore.pollMonitor();
 
     // The Link: answer the waiting request (a command may change the Recon
     // mode or the early-warning setting), apply the setting, then refresh
@@ -803,7 +921,9 @@ void loop()
                       static_cast<unsigned>(b.mtu), static_cast<unsigned long>(b.refused));
     }
 #endif
-    applyEarlyWarningIfChanged();
+    serviceHunt(now);
+    // A change to early warning during a hunt is applied when the hunt ends.
+    if (!gRadio.hunting()) applyEarlyWarningIfChanged();
     gServer.refresh();
     gLink.updateStatus();
     gLink.service(now);
@@ -879,10 +999,11 @@ void loop()
         gHeapOk = gHeapOk && heapIntact();
         recordHeap();
         if (Serial.availableForWrite() >= kSerialDrainedBytes) {
-            if (gReportsSkipped > 0) {
-                Serial.printf("serial: %lu reports skipped while nothing read the port\n",
-                              static_cast<unsigned long>(gReportsSkipped));
+            if (gReportsSkipped > 0 || gReportsCut > 0) {
+                Serial.printf("serial: %lu reports skipped and %lu cut short while nothing read the port\n",
+                              static_cast<unsigned long>(gReportsSkipped), static_cast<unsigned long>(gReportsCut));
                 gReportsSkipped = 0;
+                gReportsCut = 0;
             }
             printCounters("periodic");
         } else {

@@ -35,6 +35,7 @@
 #include <string.h>
 
 #include "core/link/LinkCodec.h"
+#include "core/link/LinkHunt.h"
 
 namespace layertime {
 namespace tdongle_c5 {
@@ -176,6 +177,7 @@ void C5Link::updateStatus()
     if (_server == nullptr) return;
     link::StatusSnapshot next;
     _server->fillStatus(next);
+    next.flags |= _extraFlags;
     lockIo();
     const bool changed = next.changeSeq != _status.changeSeq || next.flags != _status.flags ||
                          next.selected != _status.selected || next.active != _status.active ||
@@ -223,9 +225,17 @@ void C5Link::serviceRequests(uint32_t nowMs)
             return;
         }
 #endif
-        // The server takes the event-log lock where it needs it; the io lock
-        // is not held here, and pushFrame takes it per frame.
-        _server->handle(_identity, heartbeat, request, n, nowMs, pushFrame, this);
+        if (_hunt != nullptr && link::hunt::isHuntOp(request[0])) {
+            // HUNT v1: one reply frame, queued like any other, and sent below
+            // in this same pass.
+            uint8_t reply[link::kMaxFrame];
+            const size_t len = _hunt(request, n, nowMs, reply, _huntContext);
+            if (len > 0) pushFrame(reply, len, this);
+        } else {
+            // The server takes the event-log lock where it needs it; the io
+            // lock is not held here, and pushFrame takes it per frame.
+            _server->handle(_identity, heartbeat, request, n, nowMs, pushFrame, this);
+        }
         lockIo();
         _pipe.finish();
         unlockIo();
@@ -298,7 +308,8 @@ void C5Link::onControlWritten(const uint8_t *data, size_t len)
         const uint8_t op = data[0];
         const bool deferred = op == static_cast<uint8_t>(link::Op::Command) ||
                               op == static_cast<uint8_t>(link::Op::GetChanged) ||
-                              op == static_cast<uint8_t>(link::Op::GetText)
+                              op == static_cast<uint8_t>(link::Op::GetText) ||
+                              (_hunt != nullptr && link::hunt::isHuntOp(op))
 #if defined(LAYERTIME_MEASURE)
                               || op == link::measure::kOpBulk
 #endif

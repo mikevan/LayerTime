@@ -12,8 +12,8 @@ android {
         applicationId = "com.projectrevivesolutions.layertime.controller"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
         targetSdk = 34
-        versionCode = 63
-        versionName = "0.1.62" // build 63: watch face reverted to build 58 exactly (no cable, no tab); hull, rack (teeth 20% taller), and scratches kept
+        versionCode = 67
+        versionName = "0.1.66" // build 67: HUNT step trail counts steps from the accelerometer (the step sensor never reported)
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

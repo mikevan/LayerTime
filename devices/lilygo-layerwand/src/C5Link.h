@@ -36,6 +36,7 @@
 #include <stdint.h>
 
 #include "core/link/LinkCodec.h"
+#include "core/link/LinkHunt.h"
 #include "core/link/LinkPipe.h"
 #include "core/link/LinkServer.h"
 #if defined(LAYERTIME_MEASURE)
@@ -57,6 +58,21 @@ public:
 
     // Recon Node only. Call before begin().
     void attachServer(link::LinkServer *server) { _server = server; }
+
+    // HUNT v1 (claude/hunt_v1_layervixen_plan.md). A Node that hunts attaches
+    // a handler before begin(): HUNT_START, HUNT_STOP and GET_HUNT then wait
+    // for the loop like COMMAND, and serviceRequests() hands each one to the
+    // handler, which writes exactly one reply frame and returns its length.
+    // Without a handler the HUNT ops get ERROR UnknownOp, as before.
+    using RequestHandler = size_t (*)(const uint8_t *request, size_t len, uint32_t nowMs, uint8_t *reply,
+                                      void *context);
+    void attachHunt(RequestHandler handler, void *context)
+    {
+        _hunt = handler;
+        _huntContext = context;
+    }
+    // Sets or clears Status flag bit 6, hunting. Notified by service().
+    void setHunting(bool hunting) { _extraFlags = hunting ? link::hunt::kFlagHunting : 0; }
     // Recon Node only, from loop(): answers the waiting request, if any, and
     // hands up to kFramesPerService queued reply frames to NimBLE.
     void serviceRequests(uint32_t nowMs);
@@ -128,6 +144,9 @@ private:
     link::NodeIdentity _identity;
     link::StatusSnapshot _status;
     link::LinkServer *_server = nullptr;
+    RequestHandler _hunt = nullptr;
+    void *_huntContext = nullptr;
+    uint8_t _extraFlags = 0; // ORed into Status.flags (setHunting)
     // Guards _status and _pipe, which the BLE task and the loop share.
     void *_io = nullptr;
     link::LinkPipe _pipe;
