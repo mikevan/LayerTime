@@ -112,18 +112,18 @@ void formatAdvertisedName(const uint8_t mac[6], char out[kAdvertisedNameSize]);
 // Whole mebibytes, rounded down, for the serial and LCD report.
 uint32_t wholeMiB(uint32_t bytes);
 
-// --- LayerWand screen: owl indicators --------------------------------------
+// --- Hunter screen: eye and cheek indicators ---------------------------------
 //
-// The owl's green eye shows the watch link: red with no LayerTime watch
-// connected, green with one. The green lens below it is reserved for the
-// LayerWand mesh role over 802.15.4: red not connected, blue node, green
-// master (Michael, 2026-10-02). The mesh is designed later, so the lens
-// shows NotConnected until then.
+// On the Hunter cat (Michael, 2026-11-01; the owl's eye and lens before it):
+// a green eye means a LayerTime or LayerScope is connected, and a green cheek
+// means the Hunter is on the mesh (802.15.4, designed later). Either one is
+// red when that is not true. Node and master both count as on the mesh; the
+// old blue for a node is retired. Until the mesh exists the cheek stays red.
 //
 // An indicator recolours only the green pixels inside its box and keeps
 // their shading: each pixel's green level, measured against kOwlGreenPeak,
 // scales the target colour. Green leaves the pixels as drawn. Red is pure
-// red, not the owl's orange-red, so a red indicator stands out from the owl.
+// red, so a red indicator stands out from the amber head.
 enum class LinkIndicator : uint8_t { NoWatch, Connected };
 enum class MeshIndicator : uint8_t { NotConnected, Node, Master };
 enum class IndicatorColor : uint8_t { Green, Red, Blue };
@@ -150,7 +150,7 @@ bool isGreenPixel(uint16_t rgb565);
 uint16_t recolorGreenPixel(uint16_t rgb565, IndicatorColor color);
 // pixels: RGB565, little-endian (LVGL's native order), width pixels a row.
 // The box must lie inside the image.
-void recolorOwlIndicator(uint8_t *pixels, uint16_t width, const PixelBox &box, IndicatorColor color);
+void recolorIndicator(uint8_t *pixels, uint16_t width, const PixelBox &box, IndicatorColor color);
 
 // --- LayerWand screen: events by band ---------------------------------------
 //

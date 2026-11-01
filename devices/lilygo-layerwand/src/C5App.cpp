@@ -608,7 +608,7 @@ void startRun(RunMode mode, uint32_t now)
 
 void showStatus()
 {
-    // The LayerWand screen (Michael, 2026-10-02). Line 0, "LayerWand", is set
+    // The Hunter screen (Michael, 2026-10-02; renamed 2026-11-01). Line 0, "Hunter", is set
     // once when the screen starts. Each line must fit the 96 px status
     // column (about 14 characters). The 5 GHz total counts only if the
     // channel plan holds 5 GHz channels (the boot line "Channel plan").
@@ -620,13 +620,13 @@ void showStatus()
     gDisplay.setLine(2, line);
     snprintf(line, sizeof(line), "BLE EV: %lu", static_cast<unsigned long>(t.ble));
     gDisplay.setLine(3, line);
-    // During a hunt the last line counts the LayerVixen's sightings, so a
-    // BOOT press on the Wand shows whether it hears the Vixen at all.
+    // During a hunt the last line counts the Vixen's sightings, so a BOOT
+    // press on the Hunter shows whether it hears the Vixen at all.
     if (gRadio.hunting()) snprintf(line, sizeof(line), "HUNT: %lu", static_cast<unsigned long>(gRadio.huntSightings()));
     else snprintf(line, sizeof(line), "NODES: %u", static_cast<unsigned>(gRadio.peerCount(millis())));
     gDisplay.setLine(4, line);
-    // The eye: the watch link. The lens: the mesh role, not connected until
-    // the mesh exists.
+    // The eye: green with a LayerTime or LayerScope connected, red without.
+    // The cheek: the mesh, red until the mesh exists.
     gDisplay.setIndicators(gLink.connected() ? LinkIndicator::Connected : LinkIndicator::NoWatch,
                            MeshIndicator::NotConnected);
 }
@@ -638,7 +638,7 @@ void wakeScreen(uint32_t now)
     if (!gDisplayStarted) {
         gDisplayStarted = true;
         gDisplayOk = gDisplay.begin();
-        gDisplay.setLine(0, "LayerWand");
+        gDisplay.setLine(0, "Hunter");
         Serial.printf("Display %s\n", gDisplayOk ? "started" : "FAILED");
     } else {
         gDisplay.setBacklight(true);
@@ -757,7 +757,7 @@ void setup()
     esp_chip_info_t chip;
     esp_chip_info(&chip);
     Serial.println();
-    Serial.println("LayerWand (T-Dongle-C5): Recon and LayerTime Link 0.1 (Slice 1, Increment 2B, architecture A)");
+    Serial.println("Hunter (T-Dongle-C5): Recon and LayerTime Link 0.1 (Slice 1, Increment 2B, architecture A)");
     Serial.printf("Arduino core %s, ESP-IDF %s\n", ESP_ARDUINO_VERSION_STR, esp_get_idf_version());
     Serial.printf("Chip model %d, revision v%d.%d, %d core(s)\n", static_cast<int>(chip.model),
                   chip.revision / 100, chip.revision % 100, chip.cores);

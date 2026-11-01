@@ -100,7 +100,7 @@ bool startBeacon()
 void showStatus(uint32_t now)
 {
     char line[32];
-    gDisplay.setLine(0, "LayerVixen");
+    gDisplay.setLine(0, "Vixen");
     gDisplay.setLine(1, gName + 3); // "VIXEN-xxxx"
     snprintf(line, sizeof(line), "%s", gAdvertising ? "BEACON ON" : "BEACON OFF");
     gDisplay.setLine(2, line);

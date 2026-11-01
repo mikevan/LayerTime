@@ -325,13 +325,13 @@ void setup()
     pinMode(pins::kBootButton, INPUT); // external 10 k pull-up (R16)
 
     const bool displayOk = gDisplay.begin();
-    // The C5 is LayerWand; LayerTime is the watch (Michael, 2026-09-30).
-    gDisplay.setLine(0, "LayerWand");
+    // The C5 is the Hunter (LayerWand until 2026-11-01); LayerTime is the watch.
+    gDisplay.setLine(0, "Hunter");
 
     esp_chip_info_t chip;
     esp_chip_info(&chip);
     Serial.println();
-    Serial.println("LayerWand (T-Dongle-C5): Recon no-link baseline (Slice 1, Increment 2A)");
+    Serial.println("Hunter (T-Dongle-C5): Recon no-link baseline (Slice 1, Increment 2A)");
     Serial.printf("Arduino core %s, ESP-IDF %s\n", ESP_ARDUINO_VERSION_STR, esp_get_idf_version());
     Serial.printf("Chip model %d, revision v%d.%d, %d core(s)\n", static_cast<int>(chip.model),
                   chip.revision / 100, chip.revision % 100, chip.cores);

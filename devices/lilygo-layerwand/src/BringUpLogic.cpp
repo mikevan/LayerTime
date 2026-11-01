@@ -136,7 +136,7 @@ IndicatorColor linkIndicatorColor(LinkIndicator link)
 IndicatorColor meshIndicatorColor(MeshIndicator mesh)
 {
     switch (mesh) {
-    case MeshIndicator::Node: return IndicatorColor::Blue;
+    case MeshIndicator::Node:
     case MeshIndicator::Master: return IndicatorColor::Green;
     default: return IndicatorColor::Red;
     }
@@ -160,7 +160,7 @@ uint16_t recolorGreenPixel(uint16_t rgb565, IndicatorColor color)
                    t.blue * level / kOwlGreenPeak);
 }
 
-void recolorOwlIndicator(uint8_t *pixels, uint16_t width, const PixelBox &box, IndicatorColor color)
+void recolorIndicator(uint8_t *pixels, uint16_t width, const PixelBox &box, IndicatorColor color)
 {
     if (color == IndicatorColor::Green) return;
     for (uint32_t y = box.top; y <= box.bottom; ++y) {

@@ -1,7 +1,7 @@
 // Host tests for the hardware-free logic behind the T-Dongle-C5 bring-up
 // firmware (Slice 1, Increment 0): the APA102 frame, the button debouncer,
 // the LayerWand button gestures (Increment 2B), the advertised test name, the
-// MiB report, and the LayerWand screen: the owl's eye and lens indicators, the
+// MiB report, and the Hunter screen: the eye and cheek indicators, the
 // event totals by band, and the count of other LayerWands nearby.
 //
 // Build command: see devices/lilygo-layerwand/README.md, "Host tests".
@@ -219,12 +219,12 @@ uint32_t red8(uint16_t p) { return ((p >> 11) & 0x1F) * 255u / 31u; }
 uint32_t green8(uint16_t p) { return ((p >> 5) & 0x3F) * 255u / 63u; }
 uint32_t blue8(uint16_t p) { return (p & 0x1F) * 255u / 31u; }
 
-void the_eye_follows_the_link_and_the_lens_the_mesh_role()
+void the_eye_follows_the_link_and_the_cheek_the_mesh()
 {
     CHECK_TRUE(linkIndicatorColor(LinkIndicator::NoWatch) == IndicatorColor::Red);
     CHECK_TRUE(linkIndicatorColor(LinkIndicator::Connected) == IndicatorColor::Green);
     CHECK_TRUE(meshIndicatorColor(MeshIndicator::NotConnected) == IndicatorColor::Red);
-    CHECK_TRUE(meshIndicatorColor(MeshIndicator::Node) == IndicatorColor::Blue);
+    CHECK_TRUE(meshIndicatorColor(MeshIndicator::Node) == IndicatorColor::Green); // 2026-11-01: on the mesh is green, node or master
     CHECK_TRUE(meshIndicatorColor(MeshIndicator::Master) == IndicatorColor::Green);
 }
 
@@ -281,7 +281,7 @@ void only_green_pixels_inside_the_box_change()
         img[i * 2] = static_cast<uint8_t>(p & 0xFF); // little-endian, as LVGL stores it
         img[i * 2 + 1] = static_cast<uint8_t>(p >> 8);
     }
-    recolorOwlIndicator(img, 4, PixelBox{1, 2, 1, 2}, IndicatorColor::Red);
+    recolorIndicator(img, 4, PixelBox{1, 2, 1, 2}, IndicatorColor::Red);
     const uint16_t redEye = recolorGreenPixel(green, IndicatorColor::Red);
     for (int y = 0; y < 3; ++y) {
         for (int x = 0; x < 4; ++x) {
@@ -295,13 +295,13 @@ void only_green_pixels_inside_the_box_change()
     }
 }
 
-void the_eye_and_lens_boxes_do_not_overlap()
+void the_eye_and_cheek_boxes_do_not_overlap()
 {
-    // Values from C5OwlImage.h, which needs LVGL and is not built here.
-    const PixelBox eye{12, 22, 32, 46};
-    const PixelBox lens{23, 30, 30, 46};
-    CHECK_TRUE(eye.bottom < lens.top);
-    CHECK_TRUE(lens.bottom < 56 && eye.right < 56 && lens.right < 56);
+    // Values from C5LogoImages.h, which needs LVGL and is not built here.
+    const PixelBox eye{23, 28, 34, 47};
+    const PixelBox cheek{29, 39, 33, 43};
+    CHECK_TRUE(eye.bottom < cheek.top);
+    CHECK_TRUE(cheek.bottom < 56 && eye.right < 56 && cheek.right < 56);
 }
 
 // --- LayerWand screen: events by band -------------------------------------------
@@ -642,13 +642,13 @@ int main(int argc, char **argv)
     CASE(the_test_name_uses_the_last_two_mac_bytes_in_upper_case_hex);
     CASE(the_test_name_keeps_leading_zeros);
     CASE(whole_mib_rounds_down);
-    CASE(the_eye_follows_the_link_and_the_lens_the_mesh_role);
+    CASE(the_eye_follows_the_link_and_the_cheek_the_mesh);
     CASE(only_the_owls_green_counts_as_green);
     CASE(a_red_eye_is_pure_red_and_keeps_its_shading);
     CASE(a_blue_lens_is_blue);
     CASE(green_and_non_green_pixels_are_left_alone);
     CASE(only_green_pixels_inside_the_box_change);
-    CASE(the_eye_and_lens_boxes_do_not_overlap);
+    CASE(the_eye_and_cheek_boxes_do_not_overlap);
     CASE(events_count_toward_their_band);
     CASE(band_totals_add_up);
     CASE(a_peer_heard_again_counts_once);

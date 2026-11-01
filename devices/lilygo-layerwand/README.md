@@ -68,8 +68,15 @@ g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../../../senso
 The LayerWand's scheduler is core's (`src/core/logic/ReconScheduler`); its
 suite, `test_recon_scheduler`, stays with the root suites in `test/`.
 
-## Regenerating the owl
+## Regenerating the screen heads
 
-`tools/c5_owl_image.py` renders the owl from `assets/LayerTime-owl.svg` at
-the repository root into `src/C5OwlImage.cpp`. If the
-owl changes, recheck the eye and lens boxes in `src/C5OwlImage.h`.
+Since 2026-11-01 the screen shows the Hunter cat on a Hunter and the Vixen
+fox on a Vixen; the owl is the Layers and PRS logo. `tools/c5_logo_images.py`
+crops both heads from `assets/hunter-logo.png` and `assets/vixen-logo.png`
+into `src/C5LogoImages.cpp`. If a logo changes, rerun it and recheck the eye
+and cheek boxes in `src/C5LogoImages.h`; the script prints where the Hunter's
+green pixels fall. A green eye means a LayerTime or LayerScope is connected,
+and a green cheek means the Hunter is on the mesh; each is red otherwise.
+
+The old owl files (`tools/c5_owl_image.py`, `src/C5OwlImage.*`) are no longer
+referenced by any build.

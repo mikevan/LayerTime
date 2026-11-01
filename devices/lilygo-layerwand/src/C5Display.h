@@ -19,7 +19,7 @@
 
 // The T-Dongle-C5 status LCD: ST7735, 80 x 160, used in landscape (160 x 80).
 // Driven by LVGL's own ST7735 driver; this class supplies the SPI transport,
-// the backlight, the LayerTime owl on the left, and five lines of status
+// the backlight, the Hunter or Vixen head on the left, and five lines of status
 // text on the right. The LCD is a status display, not a menu.
 
 #include <stdint.h>
@@ -46,8 +46,8 @@ public:
 
     void setBacklight(bool on);
 
-    // The owl's eye and lens indicators (BringUpLogic.h). The owl is drawn
-    // as generated until the first call. A change only marks the owl for
+    // The Hunter's eye and cheek indicators (BringUpLogic.h). The head is
+    // drawn as generated until the first call. A change only marks it for
     // redrawing; nothing reaches the panel until the next service(), so a
     // dark screen stays dark. Before begin(), the state is kept and drawn
     // when the screen starts.

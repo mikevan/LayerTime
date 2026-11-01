@@ -21,7 +21,7 @@
 #if defined(LAYERTIME_TARGET_TDONGLE_C5)
 
 #include "C5Display.h"
-#include "C5OwlImage.h"
+#include "C5LogoImages.h"
 #include "TDongleC5Pins.h"
 
 #include <Arduino.h>
@@ -46,33 +46,39 @@ lv_obj_t *gLines[C5Display::kLineCount] = {};
 // Every LCD transfer; the LED shares this bus and is scrambled by each one.
 uint32_t gTransfers = 0;
 
-// The owl the screen shows: a RAM copy of the generated image, with the
+// The head the screen shows (the Hunter cat, or the Vixen fox on a Vixen
+// build): a RAM copy of the generated image, with the
 // indicators drawn into it (setIndicators).
-uint8_t gOwlPixels[kOwlImageSize * kOwlImageSize * 2];
+uint8_t gOwlPixels[kLogoImageSize * kLogoImageSize * 2];
 lv_image_dsc_t gOwlDsc;
 lv_obj_t *gOwl = nullptr;
+#if defined(LAYERTIME_VIXEN_APP)
+const lv_image_dsc_t &kLogo = kVixenImage;
+#else
+const lv_image_dsc_t &kLogo = kHunterImage;
+#endif
 bool gIndicatorsSet = false;
 LinkIndicator gLinkIndicator = LinkIndicator::NoWatch;
 MeshIndicator gMeshIndicator = MeshIndicator::NotConnected;
 
 void drawIndicators()
 {
-    memcpy(gOwlPixels, kOwlImage.data, sizeof(gOwlPixels));
+    memcpy(gOwlPixels, kLogo.data, sizeof(gOwlPixels));
     if (gIndicatorsSet) {
-        recolorOwlIndicator(gOwlPixels, kOwlImageSize, kOwlEyeBox, linkIndicatorColor(gLinkIndicator));
-        recolorOwlIndicator(gOwlPixels, kOwlImageSize, kOwlLensBox, meshIndicatorColor(gMeshIndicator));
+        recolorIndicator(gOwlPixels, kLogoImageSize, kHunterEyeBox, linkIndicatorColor(gLinkIndicator));
+        recolorIndicator(gOwlPixels, kLogoImageSize, kHunterCheekBox, meshIndicatorColor(gMeshIndicator));
     }
     if (gOwl != nullptr) {
         lv_obj_invalidate(gOwl);
     }
 }
 
-// Layout, landscape 160 x 80: the owl on the left, status text on the right.
-// The owl is 56 x 56, centred vertically; the text column starts at x = 62
+// Layout, landscape 160 x 80: the head on the left, status text on the right.
+// The head is 56 x 56, centred vertically; the text column starts at x = 62
 // and runs to the right edge, 96 px, which fits 14 to 15 characters of
 // Montserrat 12 per line at a 16 px pitch.
 constexpr int32_t kOwlX = 2;
-constexpr int32_t kOwlY = (pins::kLcdNativeWidth - kOwlImageSize) / 2; // 12
+constexpr int32_t kOwlY = (pins::kLcdNativeWidth - kLogoImageSize) / 2; // 12
 constexpr int32_t kTextX = 62;
 constexpr int32_t kTextWidth = pins::kLcdNativeHeight - kTextX - 2;      // 96
 constexpr int32_t kLinePitch = 16;
@@ -150,14 +156,14 @@ bool C5Display::begin()
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
     lv_obj_t *owl = lv_image_create(screen);
-    if (kOwlImage.data_size == sizeof(gOwlPixels)) {
-        gOwlDsc = kOwlImage;
+    if (kLogo.data_size == sizeof(gOwlPixels)) {
+        gOwlDsc = kLogo;
         gOwlDsc.data = gOwlPixels;
         drawIndicators();
         lv_image_set_src(owl, &gOwlDsc);
         gOwl = owl;
     } else {
-        lv_image_set_src(owl, &kOwlImage); // no indicators
+        lv_image_set_src(owl, &kLogo); // no indicators
     }
     lv_obj_set_pos(owl, kOwlX, kOwlY);
 
