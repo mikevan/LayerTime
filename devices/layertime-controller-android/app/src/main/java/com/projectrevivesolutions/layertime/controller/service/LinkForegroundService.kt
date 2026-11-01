@@ -3,6 +3,8 @@ package com.projectrevivesolutions.layertime.controller.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.graphics.drawable.Icon
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -17,6 +19,7 @@ import com.projectrevivesolutions.layertime.controller.link.LinkClient
 import com.projectrevivesolutions.layertime.controller.link.LinkConstants
 import com.projectrevivesolutions.layertime.controller.model.ConnState
 import com.projectrevivesolutions.layertime.controller.state.ControllerRepository
+import com.projectrevivesolutions.layertime.controller.ui.MainActivity
 import kotlinx.coroutines.launch
 
 /**
@@ -55,6 +58,19 @@ class LinkForegroundService : LifecycleService() {
     override fun onDestroy() {
         if (active === client) active = null
         super.onDestroy()
+    }
+
+    /**
+     * The app was swiped away from recent apps. Always-on keeps the link by default (Michael,
+     * 2026-10-29); with SWIPE AWAY DISCONNECTS turned on (build 71), a swipe is an explicit off.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        if (swipeDisconnects(applicationContext)) {
+            client.stop()
+            stopForegroundCompat()
+            stopSelf()
+        }
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onBind(intent: Intent): IBinder {
@@ -105,11 +121,22 @@ class LinkForegroundService : LifecycleService() {
         }
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             Notification.Builder(this, CHANNEL_ID) else @Suppress("DEPRECATION") Notification.Builder(this)
+        // Build 71: the notification is the off switch reachable from anywhere. Closing the app
+        // does not stop this service (that is always-on), so DISCONNECT here stops the link the
+        // same way the in-app button does. Tapping the notification opens LayerScope.
+        val stop = PendingIntent.getService(this, 1,
+            Intent(this, LinkForegroundService::class.java).setAction(ACTION_STOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val open = PendingIntent.getActivity(this, 2,
+            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return builder
             .setContentTitle("LayerScope")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
+            .setContentIntent(open)
+            .addAction(Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_launcher_foreground), "DISCONNECT", stop).build())
             .build()
     }
 
@@ -131,6 +158,16 @@ class LinkForegroundService : LifecycleService() {
     companion object {
         /** The live client while the service runs, for the UI to issue commands. */
         @Volatile var active: LinkClient? = null
+
+        private const val PREFS = "layertime_ui"
+        private const val KEY_SWIPE = "swipe_disconnects"
+
+        /** SWIPE AWAY DISCONNECTS: off by default, so a stray swipe never drops the link. */
+        fun swipeDisconnects(ctx: Context): Boolean =
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SWIPE, false)
+        fun setSwipeDisconnects(ctx: Context, on: Boolean) {
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SWIPE, on).apply()
+        }
 
         const val CHANNEL_ID = "layertime_link"
         const val NOTIF_ID = 1001

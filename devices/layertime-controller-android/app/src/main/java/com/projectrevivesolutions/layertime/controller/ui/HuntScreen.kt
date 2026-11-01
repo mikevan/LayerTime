@@ -176,7 +176,10 @@ private fun HuntWide(v: HuntView, problem: String?, onStop: () -> Unit, w: Dp, h
     Canvas(Modifier.fillMaxSize()) { art?.let { drawImage(it.glass) } }
 }
 
-/** Portrait (a phone held upright): the scope on top, the console underneath, no hull. */
+/**
+ * Portrait (a phone held upright): the scope on top, the console underneath. Since build 71 the
+ * same salvaged hull sits behind both, as in landscape, instead of plain black.
+ */
 @Composable
 private fun HuntTall(v: HuntView, problem: String?, onStop: () -> Unit, w: Dp, h: Dp) {
     val context = LocalContext.current
@@ -184,12 +187,25 @@ private fun HuntTall(v: HuntView, problem: String?, onStop: () -> Unit, w: Dp, h
     val plate = minOf(w * 0.8f, h * 0.48f)
     val plateX = (w - plate) / 2f
     val plateY = plate * 0.2f
+    val consoleTop = plateY + plate + plate * 0.2f
     val geom = with(density) {
         ScopeGeom(w.roundToPx(), h.roundToPx(), density.density, plateX.toPx(), plateY.toPx(), plate.toPx())
     }
+    val hullSpec = with(density) {
+        HullSpec(
+            w = geom.w, h = geom.h, dp = density.density,
+            consoleL = 8.dp.toPx(), consoleT = consoleTop.toPx(), consoleR = w.toPx() - 8.dp.toPx(), consoleB = h.toPx() - 8.dp.toPx(),
+            band = HUNT_BAND.toPx(), faceR = geom.s / 2f, homeCx = 0f, travel = 0f, faceTrack = false,
+        )
+    }
     val font = remember { runCatching { ResourcesCompat.getFont(context, R.font.lt_rajdhani_bold) }.getOrNull() }
+    val hull by produceState<HullImages?>(null, hullSpec) { value = withContext(Dispatchers.Default) { HullRelief.render(hullSpec) } }
     val art by produceState<ScopeImages?>(null, geom) { value = withContext(Dispatchers.Default) { JetScopeArt.render(geom, font) } }
-    HuntConsole(v, problem, onStop, Modifier.fillMaxSize().padding(start = 8.dp, end = 8.dp, bottom = 8.dp, top = plateY + plate + plate * 0.2f))
+    Canvas(Modifier.fillMaxSize()) { hull?.let { drawImage(it.hull) } ?: drawRect(LtColors.Bg) }
+    HuntConsole(v, problem, onStop,
+        Modifier.fillMaxSize().padding(start = 8.dp + HUNT_BAND, end = 8.dp + HUNT_BAND, bottom = 8.dp + HUNT_BAND, top = consoleTop + HUNT_BAND))
+    // No hull overlay here: its straps are placed for the landscape console's frame, and on this
+    // layout they landed across the start of 2 S AVG, HEARD, and TIME. The panel's own frame stays.
     Canvas(Modifier.fillMaxSize()) { art?.let { drawImage(it.decor) } }
     ScopeLive(v, geom, font)
     Canvas(Modifier.fillMaxSize()) { art?.let { drawImage(it.glass) } }

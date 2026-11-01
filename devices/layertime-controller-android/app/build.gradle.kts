@@ -12,8 +12,8 @@ android {
         applicationId = "com.projectrevivesolutions.layerscope"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
         targetSdk = 34
-        versionCode = 70
-        versionName = "0.1.69" // build 70: buttons and detail tags never get crushed on narrow panels; two-column hunt readings on a sideways phone
+        versionCode = 71
+        versionName = "0.1.70" // build 71: DISCONNECT on the notification, optional swipe-away disconnect, DISCONNECT live after a failure, hull behind the upright hunt screen, phone text starts at 0.85x
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

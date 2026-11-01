@@ -210,7 +210,19 @@ object PanelTextScale {
     /** The smaller of a height-based and a width-based scale, so a tall narrow phone panel stays at 1.0. */
     fun auto(panelWidthDp: Float, panelHeightDp: Float): Float =
         minOf(panelHeightDp / 340f, panelWidthDp / 420f).coerceIn(1.0f, 1.8f)
-    fun read(ctx: Context): Float = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY, 1.0f).coerceIn(MIN_MULT, MAX_MULT)
+    fun read(ctx: Context): Float = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY, defaultMult(ctx)).coerceIn(MIN_MULT, MAX_MULT)
+    /**
+     * Until the user presses A+ or A-, the text size depends on the device (build 71). The 12 sp
+     * minimum came from the watch field test and stays 1.0x there; a phone is held closer and is
+     * sharper, so the same sizes looked oversized and it starts at 0.85x. The watch test is the
+     * watch layout's (WatchFormFactor), checked orientation-free on the screen's long and short sides.
+     */
+    fun defaultMult(ctx: Context): Float {
+        val c = ctx.resources.configuration
+        val long = maxOf(c.screenWidthDp, c.screenHeightDp).toFloat()
+        val short = minOf(c.screenWidthDp, c.screenHeightDp).toFloat()
+        return if (WatchFormFactor.matches(long, short)) 1.0f else 0.85f
+    }
     fun write(ctx: Context, mult: Float) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putFloat(KEY, mult.coerceIn(MIN_MULT, MAX_MULT)).apply() }
     fun readFont(ctx: Context): Int = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("font_set", 1)
     fun writeFont(ctx: Context, i: Int) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("font_set", i).apply() }
@@ -524,9 +536,18 @@ private fun ControllerScreen() {
                                     // on a phone it was crushed to a sliver or broke as "DISCONNEC / T").
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                         SciFiPrimary("SCAN & CONNECT", enabled = !active && !connecting, large = true) { connect() }
-                                        SciFiOutline("DISCONNECT", enabled = active || connecting || conn == ConnState.DISCONNECTED, large = true) {
+                                        // Build 71: also live after a failure ("Link failed"), when the service is still running and retrying.
+                                        SciFiOutline("DISCONNECT", enabled = conn != ConnState.IDLE, large = true) {
                                             LinkForegroundService.stop(context)
                                         }
+                                    }
+                                    // Build 71: an explicit off for always-on. Off by default.
+                                    var swipeOff by remember { mutableStateOf(LinkForegroundService.swipeDisconnects(context)) }
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text("SWIPE AWAY DISCONNECTS", color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp,
+                                            modifier = Modifier.align(Alignment.CenterVertically))
+                                        val flip = { swipeOff = !swipeOff; LinkForegroundService.setSwipeDisconnects(context, swipeOff) }
+                                        if (swipeOff) SciFiPrimary("ON", enabled = true) { flip() } else SciFiOutline("OFF", enabled = true) { flip() }
                                     }
                                 }
                             }
