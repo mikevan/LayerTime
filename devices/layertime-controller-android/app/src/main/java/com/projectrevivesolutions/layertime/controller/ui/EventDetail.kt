@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CutCornerShape
@@ -424,7 +426,7 @@ private fun ProvTag(prov: Prov) {
     Box(Modifier.background(prov.color.copy(alpha = 0.18f), sectionShape)
         .border(1.dp, prov.color.copy(alpha = 0.6f), sectionShape)
         .padding(horizontal = 5.dp)) {
-        Text(prov.label, color = prov.color, fontSize = 12.sp, letterSpacing = 1.sp)
+        Text(prov.label, color = prov.color, fontSize = 12.sp, letterSpacing = 1.sp, maxLines = 1, softWrap = false)
     }
 }
 
@@ -441,21 +443,22 @@ private fun Section(title: String, content: @Composable () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Field(label: String, value: String?, prov: Prov, reason: String? = null) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, color = LtColors.Grey, fontSize = 12.sp, modifier = Modifier.width(150.dp),
             fontFamily = ConsoleFonts.mono)
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Build 70: the tag moves under the value when there is no room beside it. In a Row
+            // the value took the width and squeezed the tag to a sliver that wrapped one letter
+            // per line, which made each row tall and mostly empty on a sideways phone.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(value ?: "UNAVAILABLE",
                     color = if (value != null) LtColors.Ivory else LtColors.Grey,
-                    fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = ConsoleFonts.mono)
-                Box(Modifier.background(prov.color.copy(alpha = 0.18f), sectionShape)
-                    .border(1.dp, prov.color.copy(alpha = 0.6f), sectionShape)
-                    .padding(horizontal = 5.dp)) {
-                    Text(prov.label, color = prov.color, fontSize = 12.sp, letterSpacing = 1.sp)
-                }
+                    fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = ConsoleFonts.mono,
+                    modifier = Modifier.align(Alignment.CenterVertically))
+                ProvTag(prov)
             }
             if (reason != null) Text(reason, color = LtColors.Grey, fontSize = 12.sp)
         }

@@ -520,7 +520,9 @@ private fun ControllerScreen() {
                                         Text(it.text, color = if (it.tone == ConnNotice.Tone.PROBLEM) LtColors.Red else LtColors.Cyan,
                                             fontSize = 12.sp)
                                     }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    // Wraps DISCONNECT onto its own line when the panel is narrow (build 70:
+                                    // on a phone it was crushed to a sliver or broke as "DISCONNEC / T").
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                         SciFiPrimary("SCAN & CONNECT", enabled = !active && !connecting, large = true) { connect() }
                                         SciFiOutline("DISCONNECT", enabled = active || connecting || conn == ConnState.DISCONNECTED, large = true) {
                                             LinkForegroundService.stop(context)
@@ -956,7 +958,8 @@ fun SciFiPrimary(text: String, enabled: Boolean, large: Boolean = false, onClick
             containerColor = Color.Transparent, contentColor = LtColors.Bg,
             disabledContainerColor = Color.Transparent, disabledContentColor = LtColors.Grey,
         ),
-    ) { Text(text, fontWeight = FontWeight.Bold, fontSize = if (large) 13.sp else 11.sp, letterSpacing = 1.sp, fontFamily = ConsoleFonts.heading) }
+    ) { Text(text, fontWeight = FontWeight.Bold, fontSize = if (large) 13.sp else 11.sp, letterSpacing = 1.sp, fontFamily = ConsoleFonts.heading,
+        maxLines = 1, softWrap = false) }
 }
 
 /** Outlined cyan pill: lit glass with a tube rim and glowing text. Disabled, dim glass with a faint rim. */
@@ -975,7 +978,9 @@ fun SciFiOutline(text: String, enabled: Boolean, large: Boolean = false, onClick
         border = if (enabled) BorderStroke(2.5.dp, railBrush(e)) else BorderStroke(1.5.dp, e.copy(alpha = 0.28f)),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent, contentColor = e, disabledContentColor = LtColors.Grey),
     ) {
+        // A button label never wraps mid-word (build 70).
         Text(text, fontSize = if (large) 13.sp else 11.sp, letterSpacing = 1.sp, fontFamily = ConsoleFonts.heading,
+            maxLines = 1, softWrap = false,
             style = if (enabled) TextStyle(shadow = Shadow(e, Offset.Zero, 9f)) else TextStyle.Default)
     }
 }

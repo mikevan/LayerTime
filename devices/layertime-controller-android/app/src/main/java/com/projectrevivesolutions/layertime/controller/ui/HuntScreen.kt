@@ -145,7 +145,11 @@ private val HUNT_BAND = 24.dp
 private fun HuntWide(v: HuntView, problem: String?, onStop: () -> Unit, w: Dp, h: Dp) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val consoleL = w * 0.53f
+    // A sideways phone is far wider than tall (build 70: the Z Flip6 is about 880 x 360 dp), so
+    // the console moves left for more width and shows the readings in two columns; on the LOKMAT
+    // (640 x 480) nothing changes.
+    val veryWide = w > h * 2f
+    val consoleL = w * (if (veryWide) 0.42f else 0.53f)
     val plate = minOf(h * 0.66f, consoleL - 4.dp)
     val plateX = consoleL + 18.dp - plate
     val plateY = (h - plate) / 2f
@@ -164,8 +168,8 @@ private fun HuntWide(v: HuntView, problem: String?, onStop: () -> Unit, w: Dp, h
     val art by produceState<ScopeImages?>(null, geom) { value = withContext(Dispatchers.Default) { JetScopeArt.render(geom, font) } }
 
     Canvas(Modifier.fillMaxSize()) { hull?.let { drawImage(it.hull) } ?: drawRect(LtColors.Bg) }
-    HuntConsole(v, problem, onStop,
-        Modifier.fillMaxSize().padding(start = consoleL + HUNT_BAND, top = 8.dp + HUNT_BAND, end = 8.dp + HUNT_BAND, bottom = 8.dp + HUNT_BAND))
+    HuntConsole(v, problem, onStop, twoColumns = veryWide,
+        modifier = Modifier.fillMaxSize().padding(start = consoleL + HUNT_BAND, top = 8.dp + HUNT_BAND, end = 8.dp + HUNT_BAND, bottom = 8.dp + HUNT_BAND))
     Canvas(Modifier.fillMaxSize()) { hull?.let { drawImage(it.overlay) } }
     Canvas(Modifier.fillMaxSize()) { art?.let { drawImage(it.decor) } }
     ScopeLive(v, geom, font)
@@ -284,7 +288,7 @@ private fun ScopeLive(v: HuntView, g: ScopeGeom, font: Typeface?) {
  * the list scrolls if a large setting overflows it, and STOP HUNT stays at the bottom.
  */
 @Composable
-private fun HuntConsole(v: HuntView, problem: String?, onStop: () -> Unit, modifier: Modifier) {
+private fun HuntConsole(v: HuntView, problem: String?, onStop: () -> Unit, modifier: Modifier, twoColumns: Boolean = false) {
     val context = LocalContext.current
     val mult = remember { PanelTextScale.read(context) }
     val base = LocalDensity.current
@@ -306,14 +310,27 @@ private fun HuntConsole(v: HuntView, problem: String?, onStop: () -> Unit, modif
                 while (x <= size.width) { drawLine(edge, Offset(x, 1f), Offset(x, size.height), 1.dp.toPx()); x += 10.dp.toPx() }
             }
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                BigMetric("SIGNAL", v.latestDbm?.let { "$it dBm" } ?: "--")
-                BigMetric("2 S AVG", v.smoothedDbm?.let { "$it dBm" } ?: "--")
-                BigMetric("BEST", v.strongestDbm?.let { "$it dBm" } ?: "--")
-                BigMetric("TREND", when (v.trend) { Trend.CLOSING -> "CLOSING"; Trend.OPENING -> "OPENING"; Trend.STEADY -> "STEADY"; Trend.NONE -> "--" },
-                    when (v.trend) { Trend.CLOSING -> LtColors.Green; Trend.OPENING -> LtColors.Red; else -> LtColors.Ivory })
-                BigMetric("HEARD", v.secondsSinceHeard?.let { if (it == 0) "NOW" else "$it S AGO" } ?: "NOT YET")
-                BigMetric("STEPS", "${v.steps}")
-                BigMetric("TIME", "%d:%02d".format(v.huntSeconds / 60, v.huntSeconds % 60))
+                val trendText = when (v.trend) { Trend.CLOSING -> "CLOSING"; Trend.OPENING -> "OPENING"; Trend.STEADY -> "STEADY"; Trend.NONE -> "--" }
+                val trendColor = when (v.trend) { Trend.CLOSING -> LtColors.Green; Trend.OPENING -> LtColors.Red; else -> LtColors.Ivory }
+                val metrics = listOf(
+                    Triple("SIGNAL", v.latestDbm?.let { "$it dBm" } ?: "--", LtColors.Ivory),
+                    Triple("2 S AVG", v.smoothedDbm?.let { "$it dBm" } ?: "--", LtColors.Ivory),
+                    Triple("BEST", v.strongestDbm?.let { "$it dBm" } ?: "--", LtColors.Ivory),
+                    Triple("TREND", trendText, trendColor),
+                    Triple("HEARD", v.secondsSinceHeard?.let { if (it == 0) "NOW" else "$it S AGO" } ?: "NOT YET", LtColors.Ivory),
+                    Triple("STEPS", "${v.steps}", LtColors.Ivory),
+                    Triple("TIME", "%d:%02d".format(v.huntSeconds / 60, v.huntSeconds % 60), LtColors.Ivory),
+                )
+                if (twoColumns) {
+                    metrics.chunked(2).forEach { pair ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                            pair.forEach { (l, value, c) -> Box(Modifier.weight(1f)) { BigMetric(l, value, c) } }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                } else {
+                    metrics.forEach { (l, value, c) -> BigMetric(l, value, c) }
+                }
                 problem?.let { Text(it, color = LtColors.Amber, fontSize = 14.sp) }
             }
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {

@@ -12,8 +12,8 @@ android {
         applicationId = "com.projectrevivesolutions.layerscope"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
         targetSdk = 34
-        versionCode = 69
-        versionName = "0.1.68" // build 69: LayerWand is now the Hunter in every string, aperture on the face, DETECTION EVENTS in a HUD panel, 12 sp minimum text
+        versionCode = 70
+        versionName = "0.1.69" // build 70: buttons and detail tags never get crushed on narrow panels; two-column hunt readings on a sideways phone
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
