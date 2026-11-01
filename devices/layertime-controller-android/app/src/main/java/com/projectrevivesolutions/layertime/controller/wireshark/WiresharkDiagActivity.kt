@@ -30,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.zip.ZipFile
 import java.util.concurrent.atomic.AtomicInteger
 
 private const val TAG = "LTWS_DIAG"
@@ -198,9 +199,23 @@ private fun buildReport(info: ApplicationInfo, instance: Int, cfg: StabilityConf
 
     val apk = File(info.sourceDir).length()
     val libs = File(info.nativeLibraryDir).listFiles()?.filter { it.name.endsWith(".so") }?.sortedBy { it.name } ?: emptyList()
-    val libBytes = libs.sumOf { it.length() }
-    sb.append("APK on device: ").append(kb(apk)).append("; native libs ").append(libs.size)
-        .append(" files, ").append(kb(libBytes)).append("; installed total ").append(kb(apk + libBytes)).append("\n")
+    if (libs.isNotEmpty()) {
+        // Extracted (compressed-in-APK) packaging: the libraries are a second copy on disk.
+        val libBytes = libs.sumOf { it.length() }
+        sb.append("APK on device: ").append(kb(apk)).append("; native libs ").append(libs.size)
+            .append(" files, ").append(kb(libBytes)).append(" extracted; installed total ").append(kb(apk + libBytes)).append("\n")
+    } else {
+        // Uncompressed packaging (build 72+): Android maps the libraries straight from the APK, nothing is extracted.
+        val inApk = runCatching {
+            ZipFile(info.sourceDir).use { z ->
+                z.entries().asSequence().filter { it.name.startsWith("lib/") && it.name.endsWith(".so") }
+                    .map { it.size to (it.method == java.util.zip.ZipEntry.STORED) }.toList()
+            }
+        }.getOrDefault(emptyList())
+        sb.append("APK on device: ").append(kb(apk)).append("; native libs ").append(inApk.size)
+            .append(" files, ").append(kb(inApk.sumOf { it.first })).append(" inside the APK (")
+            .append(inApk.count { it.second }).append(" stored uncompressed, not extracted); installed total ").append(kb(apk)).append("\n")
+    }
     DiagProcess.baseline?.let { sb.append("baseline before libwireshark load: ").append(it.oneLine()).append('\n') }
 
     Heartbeat.phase("load")

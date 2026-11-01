@@ -7,13 +7,15 @@ plugins {
 android {
     namespace = "com.projectrevivesolutions.layertime.controller"
     compileSdk = 34
+    // NDK r28+ links 16 KB-aligned by default. https://developer.android.com/guide/practices/page-sizes
+    ndkVersion = "30.0.16248370"
 
     defaultConfig {
         applicationId = "com.projectrevivesolutions.layerscope"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
         targetSdk = 34
-        versionCode = 71
-        versionName = "0.1.70" // build 71: DISCONNECT on the notification, optional swipe-away disconnect, DISCONNECT live after a failure, hull behind the upright hunt screen, phone text starts at 0.85x
+        versionCode = 72
+        versionName = "0.1.71" // build 72: 16 KB page alignment for libltws and all 14 Wireshark libraries (clears the Android 15+ compatibility warning); NDK r30; native libs stored uncompressed
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -53,8 +55,10 @@ android {
     }
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        // Prebuilt GLib/Wireshark .so carry versioned sonames; keep them as-is.
-        jniLibs.useLegacyPackaging = true
+        // Store native libs uncompressed and 16 KB zip-aligned (AGP 8.5.1+), so Android maps them straight
+        // from the APK instead of unpacking a second copy. Google's preferred 16 KB setup:
+        // https://developer.android.com/guide/practices/page-sizes
+        jniLibs.useLegacyPackaging = false
     }
 }
 

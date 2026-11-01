@@ -2,6 +2,11 @@
 # Reproducible arm64-v8a build of Wireshark (libwireshark/epan) and its full
 # native dependency chain with the Android NDK, staged into the app.
 # This is the exact sequence that produced the working set on 2026-10-11.
+# 2026-11-01: every shared object is linked 16 KB-page aligned (Google's two
+# linker flags, needed on NDK r27c; r28 does it by default) and step 11 fails
+# the build if any staged library is not. Android 15+ devices with 16 KB pages
+# (Galaxy Z Flip6) ran the old 4 KB set only in compatibility mode.
+# https://developer.android.com/16kb-page-size
 # Wireshark is the decoder; no dissectors are pruned.
 #
 # Host: Linux x86_64 (Cowork device VM: Ubuntu 22.04, no root).
@@ -21,6 +26,7 @@ GCRYPT_VER=1.9.4         # Ubuntu pool .orig (ships ./configure)
 CARES_TAG=v1.34.4
 API=28                   # bionic provides iconv (GLib needs it) from API 28; TCL K24 is 34
 ABI=arm64-v8a; TRIPLE=aarch64-linux-android
+PG16="-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"   # 16 KB page alignment
 set -euo pipefail
 : "${NDK:?set NDK to the extracted Linux NDK root}"
 
@@ -33,11 +39,12 @@ TCF="$NDK/build/cmake/android.toolchain.cmake"
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig" PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" PKG_CONFIG_SYSROOT_DIR=""
 export PATH="$PREFIX/bin:$TOOLS/root/usr/bin:$HOME/.local/bin:$PATH"
 CMX=(-G Ninja -DCMAKE_TOOLCHAIN_FILE="$TCF" -DANDROID_ABI=$ABI -DANDROID_PLATFORM=android-$API
-     -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release)
+     -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release
+     -DCMAKE_SHARED_LINKER_FLAGS="$PG16" -DCMAKE_MODULE_LINKER_FLAGS="$PG16")
 tarball() { [ -d "$SRC/$2" ] || { curl -sSL -o "$SRC/$2.tar" "$1"; tar -C "$SRC" -xf "$SRC/$2.tar"; }; }
 
 echo "### 0 host build tools (no root): cmake/ninja/meson via pip; flex/bison/m4 via apt-get download"
-pip3 install --user --quiet cmake ninja meson
+pip3 install --user --quiet cmake ninja meson packaging   # packaging: GLib 2.80 meson.build needs it
 ( cd "$TOOLS/debs"; for p in flex bison m4 libfl2; do ls ${p}_*.deb >/dev/null 2>&1 || apt-get download "$p"; done )
 for d in "$TOOLS"/debs/*.deb; do dpkg -x "$d" "$TOOLS/root"; done
 
@@ -48,7 +55,7 @@ tarball https://github.com/madler/zlib/archive/refs/tags/$ZLIB_TAG.tar.gz zlib-$
 echo "### 2 libffi (release tarball has ./configure)"
 tarball https://github.com/libffi/libffi/releases/download/$LIBFFI_TAG/libffi-${LIBFFI_TAG#v}.tar.gz libffi-${LIBFFI_TAG#v}
 ( cd "$SRC/libffi-${LIBFFI_TAG#v}" && { [ -f Makefile ] || ./configure --host=$TRIPLE --prefix="$PREFIX" \
-    --enable-shared --disable-static CC="$CC" AR="$AR" RANLIB="$RANLIB"; } && make -j"$(nproc)" && make install )
+    --enable-shared --disable-static CC="$CC" AR="$AR" RANLIB="$RANLIB" LDFLAGS="$PG16"; } && make -j"$(nproc)" && make install )
 
 echo "### 3 PCRE2 (shared: GLib links it into a shared object)"
 tarball https://github.com/PCRE2Project/pcre2/archive/refs/tags/$PCRE2_TAG.tar.gz pcre2-$PCRE2_TAG
@@ -75,7 +82,8 @@ cpu = 'aarch64'
 endian = 'little'
 [built-in options]
 c_args = ['-I$PREFIX/include','-O2','-fPIC']
-c_link_args = ['-L$PREFIX/lib']
+c_link_args = ['-L$PREFIX/lib','-Wl,-z,max-page-size=16384','-Wl,-z,common-page-size=16384']
+cpp_link_args = ['-L$PREFIX/lib','-Wl,-z,max-page-size=16384','-Wl,-z,common-page-size=16384']
 INI
 # no gettext on Android: GLib builds its bundled proxy-libintl (libintl.so stub), which must be packaged
 ( cd "$G" && { [ -d b ] || meson setup b --cross-file "$ROOT/android-cross.ini" --prefix="$PREFIX" \
@@ -88,7 +96,7 @@ E="$SRC/libgpg-error-$GPGERR_VER"
 # bionic LP64 pthread_mutex_t: 40 bytes, zero-initialised == glibc x86_64 layout
 cp -n "$E/src/syscfg/lock-obj-pub.x86_64-unknown-linux-gnu.h" "$E/src/syscfg/lock-obj-pub.aarch64-unknown-linux-android.h"
 ( cd "$E" && { [ -f Makefile ] || ./configure --host=$TRIPLE --prefix="$PREFIX" --enable-shared --disable-static \
-    --disable-doc --disable-tests CC="$CC"; } && make -j"$(nproc)" && make install )
+    --disable-doc --disable-tests CC="$CC" LDFLAGS="$PG16"; } && make -j"$(nproc)" && make install )
 # libgcrypt 1.9 still calls the old gpg-error-config; 1.51 only installs gpgrt-config
 printf '#!/bin/sh\nexec "%s/bin/gpgrt-config" gpg-error "$@"\n' "$PREFIX" > "$PREFIX/bin/gpg-error-config"
 chmod +x "$PREFIX/bin/gpg-error-config"
@@ -97,7 +105,7 @@ echo "### 6 libgcrypt $GCRYPT_VER (lld rejects stale version-script names withou
 tarball http://archive.ubuntu.com/ubuntu/pool/main/libg/libgcrypt20/libgcrypt20_$GCRYPT_VER.orig.tar.bz2 libgcrypt-$GCRYPT_VER
 ( cd "$SRC/libgcrypt-$GCRYPT_VER" && { [ -f Makefile ] || ./configure --host=$TRIPLE --prefix="$PREFIX" \
     --enable-shared --disable-static --disable-doc --with-libgpg-error-prefix="$PREFIX" CC="$CC"; } \
-  && make LDFLAGS="-Wl,--undefined-version" -j"$(nproc)" && make install )
+  && make LDFLAGS="-Wl,--undefined-version $PG16" -j"$(nproc)" && make install )
 
 echo "### 7 c-ares (required by Wireshark 4.4)"
 tarball https://github.com/c-ares/c-ares/archive/refs/tags/$CARES_TAG.tar.gz c-ares-${CARES_TAG#v}
@@ -143,4 +151,13 @@ ls -l "$JNI"/lib*.so; du -ch "$JNI"/lib*.so | tail -1
 
 echo "### 10 native closure check (fails the build if anything would not load on API 34)"
 bash "$(dirname "$0")/check_native_closure.sh" "$JNI" "$NDK" 34
+
+echo "### 11 16 KB page alignment (fails the build if any staged library is not aligned)"
+"$TC/bin/llvm-readelf" --version >/dev/null
+bad=0
+for f in "$JNI"/lib*.so; do
+  a=$("$TC/bin/llvm-readelf" -lW "$f" | awk '$1=="LOAD"{print $NF}' | sort -u | head -1)
+  if [ "$a" = "0x4000" ] || [ "$a" = "0x10000" ]; then echo "ok    $a $(basename "$f")"; else echo "FAIL  $a $(basename "$f")"; bad=1; fi
+done
+[ $bad -eq 0 ] || { echo "16 KB alignment check FAILED"; exit 1; }
 echo "DONE"
