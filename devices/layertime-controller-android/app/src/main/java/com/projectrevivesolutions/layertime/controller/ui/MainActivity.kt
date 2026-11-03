@@ -12,6 +12,7 @@ import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -24,6 +25,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,6 +40,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -84,6 +88,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.projectrevivesolutions.layertime.controller.diag.DeviceReportBuilder
+import com.projectrevivesolutions.layertime.controller.diag.EventsExporter
 import com.projectrevivesolutions.layertime.controller.diag.Exporter
 import com.projectrevivesolutions.layertime.controller.hunt.HuntSession
 import com.projectrevivesolutions.layertime.controller.link.LinkClient
@@ -138,11 +143,14 @@ import java.util.Locale
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         ControllerRepository.deviceReport = DeviceReportBuilder.build(applicationContext)
         intent?.getStringExtra(EXTRA_PAGE)?.let { NavRequest.page.value = it }
         setContent {
             LayerTimeControllerTheme {
-                Surface(Modifier.fillMaxSize(), color = LtColors.Bg) { ControllerScreen() }
+                Surface(Modifier.fillMaxSize(), color = LtColors.Bg) {
+                    Box(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) { ControllerScreen() }
+                }
             }
         }
     }
@@ -506,11 +514,115 @@ private fun ControllerScreen() {
 
                     "capture" -> CaptureOnlyScreen { page = "attacks" }
 
+                    "wireshark" -> WiresharkScreen { page = "tools" }
+
+                    "timeline" -> AttackTimelineScreen { page = "tools" }
+
                     "detail" -> {
                         // The live row, so QUICK LOOK follows updates while it is open.
                         val ev = selectedEvent?.let { sel -> events.firstOrNull { it.eventId == sel.eventId && it.sessionId == sel.sessionId } ?: sel }
                         if (ev != null) EventDetailScreen(ev, deviceLabel, conn) { page = detailFrom }
                         else LazyColumn(Modifier.fillMaxSize()) { item { Text("No detection selected.", color = LtColors.Grey) } }
+                    }
+
+                    // TOOLS: the analytics home. Build 77 starts it with capture decode and the
+                    // measurement panel; the live Wireshark window and the rest arrive here next,
+                    // as windows, per claude/layerscope_analytics_design.md.
+                    "tools" -> {
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            item {
+                                SciFiPanel("ANALYTICS TOOLS") {
+                                    Text("Analysis you run in the field, in real time. Each tool opens as its own window.",
+                                        color = LtColors.Ivory, fontSize = 12.sp)
+                                    SciFiPrimary("OPEN WIRESHARK", enabled = true, large = true) { page = "wireshark" }
+                                    SciFiPrimary("ATTACK TIMELINE", enabled = true, large = true) { page = "timeline" }
+                                    Text("Wireshark decodes a capture; the timeline reads the same frames per transmitter. " +
+                                        "Both feed on live frames once Link 0.2 lands. A transmitter dossier comes next.",
+                                        color = LtColors.Amber, fontSize = 12.sp)
+                                }
+                            }
+                            if (BuildConfig.DEBUG) item { LinkMeasurePanel(active) }
+                        }
+                    }
+
+                    // SYSTEM: position, diagnostics, display, and the log. The panels that used
+                    // to sit at the bottom of OPS moved here in build 78.
+                    "system" -> {
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            item {
+                                PositionPanel(
+                                    gpsTime = location?.time, manual = manual, useManual = useManual,
+                                    posLat = posLat, posLon = posLon,
+                                    onSet = { lat, lon -> manual = RingData.saveManual(context, lat, lon) },
+                                    onClear = { RingData.clearManual(context); manual = null },
+                                )
+                            }
+                            item { LayerTimeButtonPanel(nowMs) }
+                            item {
+                                SciFiPanel("SCREEN-OFF RECEPTION TEST") {
+                                    Text("Start, turn the screen off for a while, turn it on, then stop.", color = LtColors.Ivory, fontSize = 12.sp)
+                                    background?.let { bt ->
+                                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            HudReadout("RECEIVED", "${bt.eventsReceivedDuring}", LtColors.Amber)
+                                            HudReadout("DISCONNECTS", "${bt.disconnectsDuring}", LtColors.Amber)
+                                            HudReadout("TEST", if (bt.running) "RUNNING" else "ENDED", if (bt.running) LtColors.Green else LtColors.Grey)
+                                        }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        SciFiPrimary("START TEST", enabled = active && background?.running != true, large = true) {
+                                            repo.startBackgroundTest("screen-off reception")
+                                        }
+                                        SciFiOutline("STOP TEST", enabled = background?.running == true, large = true) { repo.stopBackgroundTest() }
+                                    }
+                                }
+                            }
+                            item {
+                                SciFiPanel("DISPLAY") {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("TEXT SIZE  %.1fx".format(fontScale), color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp)
+                                        SciFiOutline("A-", enabled = textMult > PanelTextScale.MIN_MULT + 0.01f) {
+                                            textMult = (textMult - 0.1f).coerceAtLeast(PanelTextScale.MIN_MULT); PanelTextScale.write(context, textMult)
+                                        }
+                                        SciFiOutline("A+", enabled = textMult < PanelTextScale.MAX_MULT - 0.01f) {
+                                            textMult = (textMult + 0.1f).coerceAtMost(PanelTextScale.MAX_MULT); PanelTextScale.write(context, textMult)
+                                        }
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("FONT", color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp)
+                                        SciFiOutline(ConsoleFonts.current.name, enabled = true) {
+                                            ConsoleFonts.next(); PanelTextScale.writeFont(context, ConsoleFonts.index)
+                                        }
+                                    }
+                                }
+                            }
+                            item {
+                                SciFiPanel("EXPORT") {
+                                    Text("Writes a diagnostic bundle you can share.", color = LtColors.Ivory, fontSize = 12.sp)
+                                    SciFiPrimary("EXPORT DIAGNOSTICS", enabled = true, large = true) {
+                                        val file = Exporter.writeBundle(context)
+                                        if (file != null) {
+                                            context.startActivity(Intent.createChooser(Exporter.shareIntent(context, file), "Share diagnostics"))
+                                        }
+                                    }
+                                    Text("Writes the detections as CSV and JSON, filtered to cut the tracker-beacon flood. Saved to the app folder and offered to share.", color = LtColors.Ivory, fontSize = 12.sp)
+                                    SciFiPrimary("EXPORT EVENTS", enabled = true, large = true) {
+                                        val w = EventsExporter.writeSnapshot(context)
+                                        if (w != null) {
+                                            context.startActivity(Intent.createChooser(EventsExporter.shareIntent(context, w.shareCsv), "Share events"))
+                                        }
+                                    }
+                                }
+                            }
+                            item {
+                                SciFiOutline(if (showLog) "HIDE LOG  //  ${log.size}" else "SHOW LOG  //  ${log.size}", enabled = true) { showLog = !showLog }
+                            }
+                            if (showLog) {
+                                items(log.asReversed().take(200)) { l ->
+                                    Text("${logFmt.format(Date(l.epochMillis))} [${l.category}] ${l.message}",
+                                        color = LtColors.Grey, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
+                                }
+                            }
+                        }
                     }
 
                     else -> {
@@ -569,88 +681,6 @@ private fun ControllerScreen() {
                                     }
                                 }
                             }
-                            item {
-                                SciFiPanel("SCREEN-OFF RECEPTION TEST") {
-                                    Text("Start, turn the screen off for a while, turn it on, then stop.", color = LtColors.Ivory, fontSize = 12.sp)
-                                    background?.let { bt ->
-                                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            HudReadout("RECEIVED", "${bt.eventsReceivedDuring}", LtColors.Amber)
-                                            HudReadout("DISCONNECTS", "${bt.disconnectsDuring}", LtColors.Amber)
-                                            HudReadout("TEST", if (bt.running) "RUNNING" else "ENDED", if (bt.running) LtColors.Green else LtColors.Grey)
-                                        }
-                                    }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        SciFiPrimary("START TEST", enabled = active && background?.running != true, large = true) {
-                                            repo.startBackgroundTest("screen-off reception")
-                                        }
-                                        SciFiOutline("STOP TEST", enabled = background?.running == true, large = true) { repo.stopBackgroundTest() }
-                                    }
-                                }
-                            }
-                            item {
-                                PositionPanel(
-                                    gpsTime = location?.time, manual = manual, useManual = useManual,
-                                    posLat = posLat, posLon = posLon,
-                                    onSet = { lat, lon -> manual = RingData.saveManual(context, lat, lon) },
-                                    onClear = { RingData.clearManual(context); manual = null },
-                                )
-                            }
-                            item { LayerTimeButtonPanel(nowMs) }
-                            // Link 0.2 Phase 0 test panel; diagnostic (debug) builds only.
-                            if (BuildConfig.DEBUG) item { LinkMeasurePanel(active) }
-                            item {
-                                SciFiPanel("EXPORT") {
-                                    Text("Writes a diagnostic bundle you can share.", color = LtColors.Ivory, fontSize = 12.sp)
-                                    SciFiPrimary("EXPORT DIAGNOSTICS", enabled = true, large = true) {
-                                        val file = Exporter.writeBundle(context)
-                                        if (file != null) {
-                                            context.startActivity(Intent.createChooser(Exporter.shareIntent(context, file), "Share diagnostics"))
-                                        }
-                                    }
-                                }
-                            }
-                            item {
-                                // DETECTION EVENTS sits in the same blue HUD panel as every other
-                                // section (build 69; field-test feedback said it stood out bare).
-                                // One item, not lazy rows: the list mirrors the Hunter's bounded
-                                // event log, so a plain Column stays small.
-                                SciFiPanel("DETECTION EVENTS", statusColor = LtColors.Amber, statusCount = events.size) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text("TEXT SIZE  %.1fx".format(fontScale), color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp)
-                                        SciFiOutline("A-", enabled = textMult > PanelTextScale.MIN_MULT + 0.01f) {
-                                            textMult = (textMult - 0.1f).coerceAtLeast(PanelTextScale.MIN_MULT); PanelTextScale.write(context, textMult)
-                                        }
-                                        SciFiOutline("A+", enabled = textMult < PanelTextScale.MAX_MULT - 0.01f) {
-                                            textMult = (textMult + 0.1f).coerceAtMost(PanelTextScale.MAX_MULT); PanelTextScale.write(context, textMult)
-                                        }
-                                    }
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text("FONT", color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp)
-                                        SciFiOutline(ConsoleFonts.current.name, enabled = true) {
-                                            ConsoleFonts.next(); PanelTextScale.writeFont(context, ConsoleFonts.index)
-                                        }
-                                    }
-                                    if (events.isEmpty()) {
-                                        Text(emptyEventsMessage(active, status), color = LtColors.Grey, fontSize = 14.sp)
-                                    }
-                                    events.forEach { e ->
-                                        key(e.eventId) {
-                                            EventRowCard(e) { selectedEvent = e; detailFrom = "main"; page = "detail" }
-                                        }
-                                    }
-                                }
-                            }
-                            item {
-                                SciFiOutline(if (showLog) "HIDE LOG  //  ${log.size}" else "SHOW LOG  //  ${log.size}", enabled = true) {
-                                    showLog = !showLog
-                                }
-                            }
-                            if (showLog) {
-                                items(log.asReversed().take(200)) { l ->
-                                    Text("${logFmt.format(Date(l.epochMillis))} [${l.category}] ${l.message}",
-                                        color = LtColors.Grey, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
-                                }
-                            }
                         }
                     }
                 }
@@ -673,7 +703,8 @@ private fun ControllerScreen() {
             return@BoxWithConstraints
         }
         // The watch layout of the design standard (claude/android_watch_design_standard.md).
-        val sliding = WatchFormFactor.matches(maxWidth.value, maxHeight.value)
+        val mode = LayoutPlan.mode(maxWidth.value, maxHeight.value)
+        val sliding = mode == LayoutMode.WATCH
         if (sliding) {
             // Short, wide, near-square screens (the LOKMAT watch): the face is a full-height
             // square on the left, over the panel. It slides off to the left when the operator
@@ -749,17 +780,36 @@ private fun ControllerScreen() {
                 // The visible sliver at the left edge is the handle that rolls the face back.
                 Box(Modifier.fillMaxHeight().width(sliver).pointerInput(Unit) { detectTapGestures { unpark() } })
             }
-        } else if (maxWidth >= maxHeight) {
-            Row(Modifier.fillMaxSize()) {
-                face(Modifier.weight(0.42f).fillMaxHeight(), false)
-                Box(Modifier.width(1.dp).fillMaxHeight().background(LtColors.Dim))
-                dataPane(Modifier.weight(0.58f).fillMaxSize(), PaddingValues(10.dp), false)
-            }
         } else {
-            Column(Modifier.fillMaxSize()) {
-                face(Modifier.fillMaxWidth().weight(0.46f), false)
-                Box(Modifier.fillMaxWidth().height(1.dp).background(LtColors.Dim))
-                dataPane(Modifier.fillMaxWidth().weight(0.54f), PaddingValues(10.dp), false)
+            // Phone and tablet: the adaptive shell (LayoutPlan). A bottom bar on a compact
+            // phone, a left rail on a wide screen; the five destinations switch the console.
+            // The face shows on OPS and rolls up into a header strip on the other tabs. The
+            // watch keeps its own sliding layout above, untouched.
+            val dest = destForPage(page)
+            val rail = LayoutPlan.usesRail(mode)
+            val body: @Composable (Modifier) -> Unit = { m ->
+                Column(m) {
+                    if (dest == Destination.OPS) {
+                        Box(Modifier.fillMaxWidth().height(FACE_PHONE + 8.dp)) {
+                            face(Modifier.size(FACE_PHONE).align(Alignment.TopStart).offset(x = 12.dp, y = 8.dp), false)
+                        }
+                    } else {
+                        NavHeaderStrip(dest.label, active, events.size, linkStale)
+                    }
+                    dataPane(Modifier.fillMaxWidth().weight(1f),
+                        PaddingValues(start = 10.dp, top = 0.dp, end = if (rail) 10.dp else 24.dp, bottom = 10.dp), false)
+                }
+            }
+            if (rail) {
+                Row(Modifier.fillMaxSize()) {
+                    NeonNavRail(dest) { d -> page = pageFor(d) }
+                    body(Modifier.weight(1f).fillMaxHeight())
+                }
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    body(Modifier.fillMaxWidth().weight(1f))
+                    NeonNavBar(dest) { d -> page = pageFor(d) }
+                }
             }
         }
     }
@@ -767,6 +817,10 @@ private fun ControllerScreen() {
 
 /** The console's content inset; on the watch layout it is also the width of the hull's raised frame band. */
 private val CONSOLE_BAND = 24.dp
+
+/** Fixed face diameter on a phone (both orientations), sized to match the watch's compact face
+ *  instead of filling a large fraction of the screen. A phone gives the data console the rest. */
+private val FACE_PHONE = 190.dp
 
 /** Roll time in ms; matches the 1 s of real gravel in the roll sounds so the thud lands as the face stops. */
 private const val ROLL_MS = 980
@@ -904,6 +958,74 @@ private fun SlashAccent(edge: Color) {
  * The console's top strip: a dark well across the panel with a lit lower edge,
  * the console name, link state, and event count, and a scan glow sweeping across.
  */
+/** The console page that a destination opens. */
+private fun pageFor(d: Destination): String = when (d) {
+    Destination.OPS -> "main"
+    Destination.EVENTS -> "attacks"
+    Destination.TOOLS -> "tools"
+    Destination.MISSION -> "config"
+    Destination.SYSTEM -> "system"
+}
+
+/** Which destination a page belongs to, so the nav highlights the right tab (and sub-pages
+ *  like capture and detail stay under EVENTS). */
+private fun destForPage(page: String): Destination = when (page) {
+    "attacks", "capture", "detail" -> Destination.EVENTS
+    "tools", "wireshark", "timeline" -> Destination.TOOLS
+    "config" -> Destination.MISSION
+    "system" -> Destination.SYSTEM
+    else -> Destination.OPS
+}
+
+/** One navigation tab: a glass pill with a lit rim, cyan when selected (matches HudKey). */
+@Composable
+private fun NavTab(modifier: Modifier, label: String, selected: Boolean, onClick: () -> Unit) {
+    val edge = if (selected) LtColors.Cyan else LtColors.ConsoleEdge
+    val flash = rememberPressFlash()
+    Box(
+        modifier.padding(3.dp).height(38.dp)
+            .glassPill(edge, selected)
+            .border(if (selected) 2.dp else 1.dp, railBrush(edge), PillShape)
+            .pressFlash(flash, false, edge)
+            .clip(PillShape)
+            .clickable { flash.fire(); onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(label, color = edge, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp,
+            fontFamily = ConsoleFonts.heading)
+    }
+}
+
+/** The compact phone's bottom navigation bar: the five destinations, evenly across the width. */
+@Composable
+private fun NeonNavBar(current: Destination, onSelect: (Destination) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        for (d in Destination.values()) NavTab(Modifier.weight(1f), d.label, d == current) { onSelect(d) }
+    }
+}
+
+/** The wide screen's left navigation rail. */
+@Composable
+private fun NeonNavRail(current: Destination, onSelect: (Destination) -> Unit) {
+    Column(Modifier.fillMaxHeight().width(86.dp).padding(horizontal = 6.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (d in Destination.values()) NavTab(Modifier.fillMaxWidth(), d.label, d == current) { onSelect(d) }
+    }
+}
+
+/** The slim header on every tab but OPS: a link light, the tab name, and the event count. */
+@Composable
+private fun NavHeaderStrip(title: String, active: Boolean, events: Int, stale: Boolean) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        HudLed(if (active && !stale) LtColors.Green else LtColors.Red, 10.dp)
+        Text(title, color = LtColors.ConsoleEdge, fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 2.sp)
+        Spacer(Modifier.weight(1f))
+        Text("EVT $events", color = LtColors.Amber, fontWeight = FontWeight.Bold, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
+    }
+}
+
 @Composable
 private fun HudStatusStrip(active: Boolean, connecting: Boolean, events: Int, stale: Boolean = false) {
     val edge = LtColors.ConsoleEdge
@@ -1028,6 +1150,8 @@ private fun EventRowCard(e: EventRow, onOpen: () -> Unit) {
                     fontFamily = ConsoleFonts.mono)
                 e.sourceId?.let { Text("id: $it", color = LtColors.Grey, fontSize = 12.sp, fontFamily = ConsoleFonts.mono) }
                 e.detail?.let { Text("detail: $it", color = LtColors.Grey, fontSize = 12.sp, fontFamily = ConsoleFonts.mono) }
+                if (e.mergedEventIds.size > 1) Text("Seen as ${e.mergedEventIds.size} Hunter records.", color = LtColors.Grey,
+                    fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                 Text("TAP FOR DETAIL", color = LtColors.Cyan, fontSize = 12.sp, letterSpacing = 1.sp)
             }
         }

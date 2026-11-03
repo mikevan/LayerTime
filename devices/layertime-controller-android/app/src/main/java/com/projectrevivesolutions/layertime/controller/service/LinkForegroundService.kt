@@ -18,6 +18,7 @@ import com.projectrevivesolutions.layertime.controller.R
 import com.projectrevivesolutions.layertime.controller.link.LinkClient
 import com.projectrevivesolutions.layertime.controller.link.LinkConstants
 import com.projectrevivesolutions.layertime.controller.model.ConnState
+import com.projectrevivesolutions.layertime.controller.diag.EventsExporter
 import com.projectrevivesolutions.layertime.controller.state.ControllerRepository
 import com.projectrevivesolutions.layertime.controller.ui.MainActivity
 import kotlinx.coroutines.launch
@@ -51,6 +52,14 @@ class LinkForegroundService : LifecycleService() {
             ControllerRepository.events.collect { list ->
                 val sleep = (ControllerRepository.status.value?.flags ?: 0) and LinkConstants.StatusFlag.SLEEP_MODE != 0
                 alerts.onEvents(list, sleep)
+            }
+        }
+        // Stage 1 persistence: keep a rolling CSV/JSON of the current events in the
+        // app external files dir so the session survives the app being killed and can
+        // be pulled off the phone at any time. Best-effort; never blocks the link.
+        lifecycleScope.launch {
+            ControllerRepository.events.collect { list ->
+                EventsExporter.autosaveNow(applicationContext, list)
             }
         }
     }

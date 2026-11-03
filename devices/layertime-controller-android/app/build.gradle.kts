@@ -6,16 +6,23 @@ plugins {
 
 android {
     namespace = "com.projectrevivesolutions.layertime.controller"
-    compileSdk = 34
+    compileSdk = 36
     // NDK r28+ links 16 KB-aligned by default. https://developer.android.com/guide/practices/page-sizes
     ndkVersion = "30.0.16248370"
 
     defaultConfig {
         applicationId = "com.projectrevivesolutions.layerscope"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
-        targetSdk = 34
-        versionCode = 72
-        versionName = "0.1.71" // build 72: 16 KB page alignment for libltws and all 14 Wireshark libraries (clears the Android 15+ compatibility warning); NDK r30; native libs stored uncompressed
+        targetSdk = 36
+        versionCode = 81
+        versionName = "0.1.80" // build 81: events export (CSV + JSON) with triage filter (drop LOW noise, keep away-from-owner, flag tracker dwell) and external-dir autosave
+        // build 79: Wireshark window in TOOLS - import, display filter, packet list, protocol tree and hex
+        // build 78: OPS thinned to face + connection + detection; panels moved to SYSTEM, measure to TOOLS
+        // build 77: adaptive shell - five destinations, bottom bar (compact) / left rail (wide), face rolls to a header off OPS
+        // build 76: phone face 220->190, landscape console inset to clear the edge handle
+        // build 75: phone layout - fixed watch-size face pinned upper-left (portrait) / far-left (landscape), data console extended to fill the rest
+        // build 74: detections grouped one row per MAC address, one alert per MAC; LayerTime-Sensors 1.1.2 AirTag grading
+        // build 73: target API 36 (Play Store requirement, min 2026-08-31) on AGP 8.11 / Gradle 8.13; edge-to-edge handled with safeDrawing insets
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
