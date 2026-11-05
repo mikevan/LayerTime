@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Single source of truth shared between the foreground service (which owns the
@@ -39,6 +38,12 @@ object ControllerRepository {
 
     private val _server = MutableStateFlow<Frame.HelloAck?>(null)
     val server: StateFlow<Frame.HelloAck?> = _server.asStateFlow()
+
+    // The SetSensors mask the connected Hunter last answered Ok to; null until it has,
+    // and again whenever the link is not up. MISSION compares it with its own list.
+    private val _sensorsApplied = MutableStateFlow<Long?>(null)
+    val sensorsApplied: StateFlow<Long?> = _sensorsApplied.asStateFlow()
+    fun setSensorsApplied(mask: Long?) { _sensorsApplied.value = mask }
 
     private val _events = MutableStateFlow<List<EventRow>>(emptyList())
     val events: StateFlow<List<EventRow>> = _events.asStateFlow()
@@ -66,9 +71,10 @@ object ControllerRepository {
         }
     }
 
-    // Event mirror keyed by eventId for the current session.
+    // Event mirror for the current session: the Hunter's records, shown one row per MAC.
     private var currentSession: Int = -1
-    private val mirror = ConcurrentHashMap<Long, EventRow>()
+    private val mirror = EventGrouper()
+    private val mirrorLock = Any()
 
     private fun now() = System.currentTimeMillis()
 
@@ -77,6 +83,7 @@ object ControllerRepository {
     }
 
     fun setConn(state: ConnState, detail: String? = null) {
+        if (state != ConnState.CONNECTED) _sensorsApplied.value = null
         _connDetail.value = detail
         _conn.value = state
         log(LogEntry.Category.CONNECTION, "state=$state" + (detail?.let { " ($it)" } ?: ""))
@@ -93,7 +100,7 @@ object ControllerRepository {
             if (currentSession != -1) log(LogEntry.Category.LINK,
                 "new session ${ack.sessionId} from HELLO_ACK (was $currentSession): clearing event mirror")
             currentSession = ack.sessionId
-            mirror.clear()
+            synchronized(mirrorLock) { mirror.clear() }
             publishEvents()
         }
         val caps = LinkConstants.Capability.describe(ack.capabilities).joinToString(",")
@@ -110,9 +117,12 @@ object ControllerRepository {
             if (currentSession != -1) log(LogEntry.Category.LINK,
                 "new session ${s.sessionId} (was $currentSession): clearing event mirror")
             currentSession = s.sessionId
-            mirror.clear()
+            synchronized(mirrorLock) { mirror.clear() }
             publishEvents()
         }
+        // A record whose MAC never arrived is shown on its own after a few seconds; the
+        // Status heartbeat is what lets that happen when no other frame comes.
+        onMirrorChange(synchronized(mirrorLock) { mirror.flush(now()) })
         // Only log a status line when something meaningful changed (not heartbeat).
         if (prev == null || prev.changeSeq != s.changeSeq || prev.flags != s.flags ||
             prev.eventCount != s.eventCount || prev.active != s.active
@@ -123,66 +133,76 @@ object ControllerRepository {
         }
     }
 
-    /** Upsert an event from an EVENT_SUMMARY frame; returns true if newly created. */
+    /**
+     * Upsert a Hunter record from an EVENT_SUMMARY frame; returns true if the record is new
+     * (so its text fields still have to be fetched). The list shows one row per MAC.
+     *
+     * Logging, build 74: a repeat sighting no longer writes a line. A line is written when
+     * a row first appears and when a row's confidence goes up. The row's count and signal
+     * history keep the rest.
+     */
     fun onEventSummary(e: Frame.EventSummary): Boolean {
         val t = now()
-        val existing = mirror[e.eventId]
-        val row = EventRow(
-            sessionId = currentSession,
-            eventId = e.eventId,
-            detector = e.detector,
-            detectorName = LinkConstants.ReconTarget.name(e.detector),
-            confidence = e.confidence,
-            sourceKind = e.sourceKind,
-            band = e.band,
-            channel = e.channel,
-            rssi = e.rssi,
-            count = e.count,
-            ageSeconds = e.ageSeconds,
-            hasSourceId = e.hasSourceId,
-            hasDetail = e.hasDetail,
-            sourceId = existing?.sourceId,
-            detail = existing?.detail,
-            firstSeenMillis = existing?.firstSeenMillis ?: t,
-            lastUpdatedMillis = t,
-            rssiHistory = ((existing?.rssiHistory ?: emptyList()) + RssiSample(t, e.rssi)).takeLast(RssiSample.KEEP),
-        )
-        mirror[e.eventId] = row
-        publishEvents()
-        val new = existing == null
-        log(LogEntry.Category.EVENT,
-            (if (new) "NEW " else "upd ") +
-                "#${e.eventId} ${row.detectorName} ${LinkConstants.SourceKind.name(e.sourceKind)} " +
-                "${LinkConstants.Band.name(e.band)} ch${e.channel} ${e.rssi}dBm x${e.count} " +
-                "age${e.ageSeconds}s conf=${LinkConstants.Confidence.name(e.confidence)}")
+        val (new, change) = synchronized(mirrorLock) {
+            val existing = mirror.record(e.eventId)
+            val row = EventRow(
+                sessionId = currentSession,
+                eventId = e.eventId,
+                detector = e.detector,
+                detectorName = LinkConstants.ReconTarget.name(e.detector),
+                confidence = e.confidence,
+                sourceKind = e.sourceKind,
+                band = e.band,
+                channel = e.channel,
+                rssi = e.rssi,
+                count = e.count,
+                ageSeconds = e.ageSeconds,
+                hasSourceId = e.hasSourceId,
+                hasDetail = e.hasDetail,
+                sourceId = existing?.sourceId,
+                detail = existing?.detail,
+                firstSeenMillis = existing?.firstSeenMillis ?: t,
+                lastUpdatedMillis = t,
+                rssiHistory = ((existing?.rssiHistory ?: emptyList()) + RssiSample(t, e.rssi)).takeLast(RssiSample.KEEP),
+            )
+            (existing == null) to mirror.onRecord(row, t)
+        }
+        onMirrorChange(change)
         // Count toward an active background test.
         _background.update { bt -> if (bt?.running == true) bt.copy(eventsReceivedDuring = bt.eventsReceivedDuring + 1) else bt }
         return new
     }
 
     fun onEventText(eventId: Long, field: Int, text: String) {
-        val row = mirror[eventId] ?: return
-        mirror[eventId] = when (field) {
-            LinkConstants.TextField.SOURCE_ID -> row.copy(sourceId = text, lastUpdatedMillis = now())
-            LinkConstants.TextField.DETAIL -> row.copy(detail = text, lastUpdatedMillis = now())
-            else -> row
-        }
-        publishEvents()
-        log(LogEntry.Category.EVENT, "#$eventId text field=$field => \"$text\"")
+        onMirrorChange(synchronized(mirrorLock) { mirror.onText(eventId, field, text, now()) })
     }
+
+    private fun onMirrorChange(change: EventGrouper.Change) {
+        for (r in change.newRows) log(LogEntry.Category.EVENT, "NEW " + describeRow(r))
+        for ((was, r) in change.raised) log(LogEntry.Category.EVENT,
+            "RAISED ${LinkConstants.Confidence.name(was)} -> ${LinkConstants.Confidence.name(r.confidence)}: " + describeRow(r))
+        if (change.touched) publishEvents()
+    }
+
+    private fun describeRow(r: EventRow): String =
+        "#${r.eventId} ${r.detectorName} ${r.sourceId ?: "(no id)"} ${LinkConstants.SourceKind.name(r.sourceKind)} " +
+            "${LinkConstants.Band.name(r.band)} ch${r.channel} ${r.rssi}dBm x${r.count} " +
+            "conf=${LinkConstants.Confidence.name(r.confidence)}" + (r.detail?.let { " \"$it\"" } ?: "") +
+            (if (r.mergedEventIds.size > 1) " (${r.mergedEventIds.size} Hunter records)" else "")
 
     private fun publishEvents() {
-        _events.value = mirror.values.sortedByDescending { it.lastUpdatedMillis }
+        _events.value = synchronized(mirrorLock) { mirror.rows() }
     }
 
-    fun eventCount(): Int = mirror.size
+    /** Rows on screen: one per MAC address. */
+    fun eventCount(): Int = synchronized(mirrorLock) { mirror.rowCount() }
 
     // ---- background / screen-off reception test ----
 
     fun startBackgroundTest(note: String) {
         _background.value = BackgroundTest(
             running = true, startedMillis = now(), endedMillis = null,
-            eventsAtStart = mirror.size, eventsReceivedDuring = 0, disconnectsDuring = 0, note = note
+            eventsAtStart = eventCount(), eventsReceivedDuring = 0, disconnectsDuring = 0, note = note
         )
         log(LogEntry.Category.BACKGROUND, "background reception test STARTED ($note)")
     }
@@ -204,7 +224,7 @@ object ControllerRepository {
     }
 
     fun reset() {
-        mirror.clear(); currentSession = -1
+        synchronized(mirrorLock) { mirror.clear() }; currentSession = -1
         _events.value = emptyList(); _status.value = null; _server.value = null
         _background.value = null
     }

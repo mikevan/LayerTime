@@ -616,12 +616,72 @@ void two_wands_booted_together_drift_apart_only_with_a_random_source()
     CHECK_TRUE(scanOffsetSpread(true) > ReconScheduler::kBleScanMs);
 }
 
+void an_interesting_detection_holds_the_channel_about_1500_ms()
+{
+    Rig r;
+    r.s.start(ReconTarget::Deauth);               // Wi-Fi up on channel 1 at g_now = 1000
+    r.after(400);                                 // 400 ms into the dwell
+    CHECK_INT(0, r.hops());
+    r.s.noteInterest(g_now);                      // a deauth burst: hold until 1400 + 1500 = 2900
+    r.after(250);                                 // g_now = 1650: 650 ms of dwell is up, but held
+    CHECK_INT(0, r.hops());
+    r.after(849);                                 // g_now = 2499: still inside the hold
+    CHECK_INT(0, r.hops());
+    r.after(402);                                 // g_now = 2901: hold expired, dwell long past
+    CHECK_INT(1, r.hops());
+    CHECK_STR("hop 2", r.last().c_str());
+    // Normal hopping resumes afterward.
+    r.after(650);
+    CHECK_INT(2, r.hops());
+}
+
+// Slice 2 (2026-11-04): a deauth detection opens an evidence window and holds
+// the channel for kEvidenceHoldMs, so the window hears what follows the flood.
+void an_evidence_hold_keeps_the_channel_ten_seconds_and_a_short_hold_never_cuts_it()
+{
+    Rig r;
+    r.s.start(ReconTarget::Deauth);
+    r.after(100);
+    r.s.holdChannel(g_now, ReconScheduler::kEvidenceHoldMs); // held until 1100 + 10000
+    for (int i = 0; i < 18; ++i) {
+        r.after(500);
+        if (i == 4) r.s.noteInterest(g_now);                  // a later burst: 1.5 s, inside the 10 s
+    }
+    CHECK_INT(0, r.hops());                                   // g_now = 10100: still held
+    r.after(1001);                                            // g_now = 11101: past the hold
+    CHECK_INT(1, r.hops());
+    // A short hold after a long one has ended works as before.
+    r.after(100);
+    r.s.noteInterest(g_now);
+    r.after(1000);
+    CHECK_INT(1, r.hops());
+    r.after(600);
+    CHECK_INT(2, r.hops());
+}
+
+void an_evidence_hold_in_a_full_pass_holds_off_the_ble_burst()
+{
+    Rig r;
+    r.s.setSweepMode(SweepMode::FullPass);
+    r.s.start(ReconTarget::All);
+    r.after(10);
+    r.s.holdChannel(g_now, ReconScheduler::kEvidenceHoldMs);
+    for (int i = 0; i < 95; ++i) r.after(100);
+    size_t bleStarts = 0;
+    for (const std::string &c : r.radio.calls) if (c.rfind("ble-start", 0) == 0) ++bleStarts;
+    CHECK_INT(0, r.hops());
+    CHECK_INT(0, bleStarts);
+}
+
 int main(int argc, char **argv)
 {
     CHECK_MAIN(argc, argv);
     CASE(the_timing_constants_are_the_ones_reconservice_used);
     CASE(idle_scheduler_touches_no_radio);
     CASE(wifi_only_detector_starts_on_channel_1_and_hops_every_650_ms);
+    CASE(an_interesting_detection_holds_the_channel_about_1500_ms);
+    CASE(an_evidence_hold_keeps_the_channel_ten_seconds_and_a_short_hold_never_cuts_it);
+    CASE(an_evidence_hold_in_a_full_pass_holds_off_the_ble_burst);
     CASE(the_hop_cursor_wraps_from_11_to_1);
     CASE(a_late_poll_hops_once_not_several_times);
     CASE(ble_only_detector_scans_at_once_and_rescans_5_s_after_the_last_start);

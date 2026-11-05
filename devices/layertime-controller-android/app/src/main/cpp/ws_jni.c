@@ -7,9 +7,11 @@
 #define JFN(name) Java_com_projectrevivesolutions_layertime_controller_wireshark_WiresharkDecoder_##name
 
 /* Returns long[5]: {performedNow, ok, epanInitNs, totalInitNs, calls}. */
-JNIEXPORT jlongArray JNICALL JFN(nativeInit)(JNIEnv *env, jclass clazz) {
+JNIEXPORT jlongArray JNICALL JFN(nativeInit)(JNIEnv *env, jclass clazz, jstring baseDir) {
     (void)clazz;
-    ltws_init_result r = ltws_init();
+    const char *dir = baseDir ? (*env)->GetStringUTFChars(env, baseDir, NULL) : NULL;
+    ltws_init_result r = ltws_init(dir);
+    if (dir) (*env)->ReleaseStringUTFChars(env, baseDir, dir);
     jlong v[5] = { r.performed_now, r.ok, r.epan_init_ns, r.total_init_ns, r.calls };
     jlongArray a = (*env)->NewLongArray(env, 5);
     if (a) (*env)->SetLongArrayRegion(env, a, 0, 5, v);

@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "../logic/QuickMessages.h"
+#include "../logic/ReconSelection.h"
 
 namespace layertime {
 
@@ -33,7 +34,14 @@ void LayerTimeCore::attach(const CorePorts &ports)
 
 void LayerTimeCore::candidateThunk(const recon::Candidate &candidate, void *self)
 {
-    static_cast<LayerTimeCore *>(self)->_events.add(candidate);
+    LayerTimeCore *core = static_cast<LayerTimeCore *>(self);
+    // The SetSensors allow-list. Every radio path (Wi-Fi frames, BLE scans,
+    // manual sessions, early warning) on every device reaches the event log
+    // through this sink, so one check here keeps a switched-off sensor out of
+    // the log, the alerts, and the Link. Gating here rather than in the
+    // scheduler leaves radio timing exactly as it was.
+    if (!recon::sensorAllowed(core->_settings.sensorMask, candidate.detector)) return;
+    core->_events.add(candidate);
 }
 
 CommandResult LayerTimeCore::execute(const LayerTimeCommand &command)
@@ -107,6 +115,12 @@ CommandResult LayerTimeCore::execute(const LayerTimeCommand &command)
     case CommandType::SetEarlyWarning:
         if (!_ports.monitor) return CommandResult::Unsupported;
         _settings.earlyWarningEnabled = command.setting.enabled;
+        return CommandResult::Ok;
+
+    case CommandType::SetSensors:
+        if (!_ports.monitor) return CommandResult::Unsupported;
+        if (!recon::validSensorMask(command.sensors.mask)) return CommandResult::InvalidArgument;
+        _settings.sensorMask = command.sensors.mask;
         return CommandResult::Ok;
 
     case CommandType::MeshSetAdvertising:

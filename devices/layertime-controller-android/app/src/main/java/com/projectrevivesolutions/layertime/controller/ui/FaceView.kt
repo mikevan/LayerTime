@@ -69,6 +69,7 @@ fun FaceView(
     drawLeftBlack: Boolean = true,
     /** False when the caller draws FaceLightLayer over the face itself (the rolling face: the light must not turn). */
     drawLighting: Boolean = true,
+    refined: Boolean = false,
 ) {
     // The LayerScope aperture replaced the owl in build 69: the owl is the Layers and
     // PRS logo, and LayerScope carries its own mark (rendered from the launcher vector).
@@ -95,9 +96,16 @@ fun FaceView(
             fun k(v: Float) = g.k(v)
             fun sr(v: Float) = v * d / 454f      // full-circle scale, for the rim only
 
+            if (refined) {
+                drawRefinedDial(g, d, owl, conn, status, bluetoothOn, batteryPct,
+                    hourText, minText, dateText, tempValue, tempUnit, sunLabel, sunValue,
+                    sunAmPm, sunTag, linkStale, reconnecting)
+                return@Canvas
+            }
+
             // Left of the vertical bisector the background is black; right of it the face is
             // transparent outside the circle, so the console layer shows through.
-            if (drawLeftBlack) drawRect(LtColors.Bg, topLeft = Offset(0f, 0f), size = Size(cx, size.height))
+            if (drawLeftBlack && !refined) drawRect(LtColors.Bg, topLeft = Offset(0f, 0f), size = Size(cx, size.height))
             drawBronzeDial(cx, cy, d / 2f)
 
             drawBattery(g, batteryPct)
@@ -117,8 +125,8 @@ fun FaceView(
 
             // Clock: Garmin FONT_NUMBER_MEDIUM, 59 px digits; hour ink rows 192..251,
             // minute ink rows 258..317.
-            ink(hourText, cx, g.y(251f), k(59f), LtColors.Ivory, digits = true)
-            ink(minText, cx, g.y(317f), k(59f), LtColors.Amber, digits = true)
+            ink(hourText, cx, g.y(251f), k(59f), if (refined) Color.White else LtColors.Ivory, digits = true, refined = refined)
+            ink(minText, cx, g.y(317f), k(59f), if (refined) Color(0xFFFFD337) else LtColors.Amber, digits = true, refined = refined)
 
             // Complications: RING_Y 190, RING_R 62, x 95 and 359.
             val ry = g.y(190f); val rr = k(62f)
@@ -142,7 +150,7 @@ fun FaceView(
 
             drawRecon(g, conn, status, linkStale, reconnecting)
             // Date: XTINY, ink rows 401..419.
-            ink(dateText, cx, g.y(419f), k(19f), Color.White, maxW = k(210f))
+            ink(dateText, cx, g.y(419f), k(19f), if (refined) Color(0xFFFFD337) else Color.White, maxW = k(210f), refined = refined)
 
             // The bezel is drawn last: the battered rim holds a crystal above the metrics.
             // The light (rim shading, recessed dial, crystal) goes on top (FaceLight.kt).
@@ -165,6 +173,71 @@ private class FaceGeom(val cx: Float, val cy: Float, d: Float) {
     fun k(v: Float) = v * unit
 }
 
+/** Native live instrument layer under the photographic case. No material art carries data. */
+private fun DrawScope.drawRefinedDial(
+    g: FaceGeom, d: Float, mark: ImageBitmap, conn: ConnState, status: StatusSnapshot?,
+    bt: Boolean, battery: Int, hour: String, minute: String, date: String,
+    temp: String?, tempUnit: String?, sunLabel: String, sunValue: String,
+    sunUnit: String?, sunTag: String?, stale: Boolean, reconnecting: Boolean,
+) {
+    val gold = Color(0xFFFFD431)
+    val cyan = Color(0xFF13D6EB)
+    val green = Color(0xFF8FE326)
+    val c = Offset(g.cx, g.cy)
+    val radius = d / 2f
+    drawCircle(Brush.radialGradient(listOf(Color(0xFF10171C), Color(0xFF020507)),
+        center = c - Offset(radius*.2f, radius*.3f), radius = radius*1.3f), radius, c)
+    fun text(s: String, x: Float, y: Float, cap: Float, color: Color, max: Float = 0f) =
+        ink(s, g.x(x), g.y(y), g.k(cap), color, maxW = g.k(max), refined = true)
+    // Fine, crisp battery segments stay inside the black dial, separate from the case.
+    val r = g.k(209f)
+    for (i in 0 until 30) drawArc(if (battery >= 0 && i < battery * .3f) gold else Color(0xFF273038),
+        210f + i*4f, 2.8f, false, c-Offset(r,r), Size(r*2,r*2), style=Stroke(g.k(8f)))
+    text("BAT ${if (battery < 0) "—" else "$battery%"}",227f,57f,18f,gold)
+    text("—  LAYERSCOPE  —",227f,85f,18f,Color.White,285f)
+    val markSize=g.k(67f)
+    drawImage(mark,dstOffset=IntOffset((g.cx-markSize/2).toInt(),(g.y(130f)-markSize/2).toInt()),dstSize=IntSize(markSize.toInt(),markSize.toInt()))
+    drawBle(g.x(162f),g.y(121f),g.k(13f),if(bt)green else LtColors.Grey,g::k)
+    drawAntenna(g.x(292f),g.y(121f),g.k(13f),if(conn==ConnState.CONNECTED && !stale)green else LtColors.Grey,g::k)
+    for ((x,color) in listOf(95f to cyan,359f to green)) {
+        val rr=g.k(60f); val center=Offset(g.x(x),g.y(190f))
+        for(i in 0 until 12) drawArc(color,i*30f+2f,25f,false,center-Offset(rr,rr),Size(rr*2,rr*2),style=Stroke(g.k(6f)))
+    }
+    drawWeatherGlyph(g.x(95f),g.y(151f),g.k(9f),cyan)
+    drawSolarGlyph(g.x(359f),g.y(151f),g.k(9f),green)
+    text("TEMP",95f,181f,15f,cyan,90f)
+    text(temp ?: "N/A",95f,218f,27f,Color.White,99f)
+    tempUnit?.let { text(it,95f,239f,13f,Color.White,58f) }
+    text(sunLabel,359f,181f,13f,green,100f)
+    text(sunValue,359f,218f,27f,Color.White,103f)
+    (sunTag ?: sunUnit)?.let { text(it,359f,239f,12f,green,88f) }
+    text(hour,227f,249f,65f,Color.White,115f)
+    text(minute,227f,318f,65f,gold,115f)
+    val (left,right)=faceButtonRects(size.width,size.height)
+    for ((rect,label) in listOf(left to "COUNTER",right to "RECON")) {
+        val cut=g.k(9f)
+        val path=androidx.compose.ui.graphics.Path().apply {
+            moveTo(rect.left+cut,rect.top); lineTo(rect.right-cut,rect.top)
+            lineTo(rect.right,rect.top+cut); lineTo(rect.right,rect.bottom-cut)
+            lineTo(rect.right-cut,rect.bottom); lineTo(rect.left+cut,rect.bottom)
+            lineTo(rect.left,rect.bottom-cut); lineTo(rect.left,rect.top+cut); close()
+        }
+        drawPath(path,Color(0xFF071820))
+        drawPath(path,cyan.copy(alpha=.65f),style=Stroke(g.k(1.5f)))
+        if(label=="COUNTER") drawShieldGlyph(rect.center.x,rect.top+g.k(17f),g.k(7f))
+        else drawRadarGlyph(rect.center.x,rect.top+g.k(17f),g.k(7f))
+        ink(label,rect.center.x,rect.bottom-g.k(8f),g.k(15f),cyan,maxW=rect.width-g.k(12f),refined=true)
+    }
+    val connected=conn==ConnState.CONNECTED
+    val mode=when { stale && connected -> "LINK STALE"; reconnecting -> "RECONNECTING"
+        connected -> status?.let { ReconText.modeText(it.flags,it.active) } ?: "RECON OFF"
+        else -> "NO HUNTER" }
+    text(mode,227f,350f,18f,if(connected)gold else LtColors.Grey,270f)
+    text(if(connected || reconnecting) ReconText.countText(status?.eventCount ?: 0) else "AWAITING LINK",
+        227f,381f,23f,Color.White,285f)
+    text(date,227f,414f,18f,gold,270f)
+}
+
 /** Share of the circle the Garmin layout is scaled to, so it fits inside the bezel (inner edge 205 of 227). */
 private const val CONTENT = 0.93f
 
@@ -173,10 +246,10 @@ private const val PEN = 1.7f
 
 // ---- bronze dial ----
 
-private val BronzeGlaze = Color(0x40B87333)
-private val DialCentre = Color(0xFF3C2916)
-private val DialMid = Color(0xFF281B0E)
-private val DialEdge = Color(0xFF140D07)
+private val BronzeGlaze = Color(0x1E52707E)   // build 86: cool steel glaze (was warm bronze)
+private val DialCentre = Color(0xFF1C2630)   // build 86: cool dark steel dial (was bronze)
+private val DialMid = Color(0xFF121A22)
+private val DialEdge = Color(0xFF0A0F14)
 
 /**
  * The dial behind the metrics: a very faint burnished bronze, warmer and a little
@@ -194,12 +267,12 @@ private fun DrawScope.drawBronzeDial(cx: Float, cy: Float, r: Float) {
     while (rr < r) {
         val start = rnd.range(0f, 360f); val sweep = rnd.range(40f, 160f)
         val light = rnd.next() < 0.5f
-        drawArc(if (light) Color(0x18E0A060) else Color(0x1C000000), start, sweep, false,
+        drawArc(if (light) Color(0x18A6D4E4) else Color(0x1C000000), start, sweep, false,
             Offset(cx - rr, cy - rr), Size(2 * rr, 2 * rr), style = Stroke(1f))
         rr += rnd.range(2.5f, 6f)
     }
     // a soft sheen band across the upper left, like light caught on polished metal
-    drawCircle(Brush.linearGradient(listOf(Color.Transparent, Color(0x1CFFC890), Color.Transparent),
+    drawCircle(Brush.linearGradient(listOf(Color.Transparent, Color(0x1CCDEFFF), Color.Transparent),
         start = Offset(cx - r, cy - r), end = Offset(cx + r * 0.2f, cy + r * 0.2f)), radius = r, center = c)
 }
 
@@ -218,8 +291,8 @@ private val RimLip = Color(0xFFDDE3E8)
 private val RivetBody = Color(0xFF9AA3AC)
 private val RivetRim = Color(0xFF3A3F45)
 private val RivetShine = Color(0xFFEEF2F5)
-private val Rust = Color(0x668B4A1F)
-private val RustDark = Color(0x806B3A14)
+private val Rust = Color(0x00000000)   // build 86: no rust, the comp watch is clean steel
+private val RustDark = Color(0x00000000)
 private val Scratch = Color(0x7A202428)
 /** The rim's steel grain, LtColors.Steel pulled toward its middle so it no longer paints its own light. */
 private val RimSteel = listOf(
@@ -429,12 +502,13 @@ private val DigitFace: Typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOL
 private fun DrawScope.ink(
     str: String, x: Float, baseline: Float, capPx: Float, color: Color,
     digits: Boolean = false, maxW: Float = 0f, align: Paint.Align = Paint.Align.CENTER, glow: Boolean = false,
+    refined: Boolean = false,
 ): Float {
     val p = Paint().apply {
         isAntiAlias = true
         this.color = color.toArgb()
         textAlign = align
-        typeface = if (digits) DigitFace else LabelFace
+        typeface = if (refined) Typeface.create("sans-serif-medium", Typeface.NORMAL) else if (digits) DigitFace else LabelFace
         letterSpacing = if (digits) 0.02f else 0.06f
         textSize = 100f
     }

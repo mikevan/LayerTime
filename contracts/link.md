@@ -140,17 +140,26 @@ lengths:
 
 | CommandType | Value | Length | Argument |
 |---|---|---|---|
-| ReconStart | 1 | 4 | target u8: a ReconTarget from 1 (All) to 16 (GoogleTag) |
+| ReconStart | 1 | 4 | target u8: a ReconTarget from 1 (All) to 16 (GoogleTag), or 18 (Eapol) |
 | ReconStop | 2 | 3 | none |
 | ReconClearEvents | 3 | 3 | none |
 | ReconAcknowledgeAlert | 4 | 3 | none |
 | SetSleepMode | 11 | 4 | enabled u8: 0 or 1 |
 | SetEarlyWarning | 12 | 4 | enabled u8: 0 or 1 |
+| SetSensors | 15 | 7 | mask u32, little-endian: one bit per sensor at its ReconTarget value (bits 5 to 16 and 18). Only a Node with capability bit 7 takes it. |
 
 - A known command with any other length: ERROR BadLength.
 - An argument out of range (target 0, which is ReconStop's job; a target
-  above 16, EarlyWarning 17 included, which is SetEarlyWarning's job; an
-  enabled value above 1): RESULT InvalidArgument, and nothing changes.
+  above 16 other than 18, EarlyWarning 17 included, which is
+  SetEarlyWarning's job; an enabled value above 1; a SetSensors mask with
+  any bit outside 5 to 16 and 18): RESULT InvalidArgument, and nothing
+  changes.
+- SetSensors is an allow-list over every selection, manual and early
+  warning alike: a sensor whose bit is clear never becomes an event, an
+  alert, or an EVENT_SUMMARY. A mask of 0 (every sensor off) is legal. A
+  Node starts with every sensor on and keeps the last mask it was sent
+  across a power cycle (the Hunter, in NVS). Radio scheduling does not
+  change with the mask.
 - Any other commandType, with a length from 3 to 20: RESULT Unsupported.
 - A COMMAND shorter than 3 bytes: ERROR BadLength.
 
@@ -192,7 +201,7 @@ Every frame starts `type u8 | reqId u8 | linkStatus u8`.
 | 3 | 1 | serverMajor |
 | 4 | 1 | serverMinor |
 | 5 | 2 | sessionId |
-| 7 | 2 | capabilities: bit 0 localWifiMonitor, bit 1 localBleMonitor, bit 2 display, bit 3 led, bit 4 button |
+| 7 | 2 | capabilities: bit 0 localWifiMonitor, bit 1 localBleMonitor, bit 2 display, bit 3 led, bit 4 button, bit 6 hunt (link_0_2.md), bit 7 sensorSet (the Node takes COMMAND SetSensors); bit 5 is reserved for Link 0.2 |
 | 9 | 1 | maxFrame: the largest frame this Node will send, 20 |
 
 On VersionMismatch the Node still fills every field so the interface can

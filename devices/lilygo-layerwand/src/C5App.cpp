@@ -22,7 +22,8 @@
 // exactly as in the Increment 2A baseline (C5ReconBaseline.cpp): core's
 // ReconScheduler drives the C5ReconRadio, the core classifiers produce
 // candidates, LayerTimeCore keeps the event log. It runs whether or not a
-// watch is connected, starting in early warning. The LayerTime Link
+// watch is connected. Since 2026-11-04 it powers up stopped and waits for
+// START from the controller (HunterSettingsStore). The LayerTime Link
 // (C5Link, contracts/link.md) runs beside it: Status with the live Recon
 // fields, HELLO and PING, and through core's LinkServer the COMMAND,
 // GET_CHANGED and GET_TEXT requests the watch uses for its Recon page and
@@ -82,14 +83,18 @@
 #include "TDongleC5Pins.h"
 
 #include "core/app/LayerTimeCore.h"
+#include "core/link/LinkEvidence.h"
 #include "core/link/LinkHunt.h"
 #include "core/link/LinkServer.h"
+#include "core/logic/EvidenceStore.h"
 #include "core/logic/ReconSelection.h"
 #include "core/logic/ReconStageLog.h"
 #include "core/model/LayerTimeCommand.h"
 #include "core/ports/EventLog.h"
+#include "core/ports/SettingsStore.h"
 
 #include <Arduino.h>
+#include <Preferences.h>
 #include <esp_chip_info.h>
 #include <esp_heap_caps.h>
 #include <esp_idf_version.h>
@@ -188,6 +193,13 @@ private:
         lockEvents(nullptr);
         me->_sink(candidate, me->_context);
         unlockEvents(nullptr);
+        // An attack burst or a handshake is worth staying on this channel for:
+        // tell the scheduler to hold it briefly before the next hop. atMs is
+        // the uptime when the candidate was produced, the scheduler's clock.
+        // Not under the event lock; noteInterest only writes one word.
+        if (candidate.detector == ReconTarget::Deauth ||
+            candidate.detector == ReconTarget::Eapol)
+            me->_inner.scheduler().noteInterest(candidate.atMs);
     }
 
     C5MonitorSource &_inner;
@@ -210,23 +222,76 @@ private:
 BandTally gTally;
 C5SdLog gSdLog;
 
-// Core has one EventLog port; the screen's totals and the SD log both need
-// every new event, so the port feeds both.
+// ---- Evidence (Link 0.2 evidence, slice 2, 2026-11-04) -------------------------
+// The frames behind each Wi-Fi detection, in PSRAM (core/logic/EvidenceStore).
+// The Wi-Fi task writes it (every frame through the radio's tap, and a new
+// window from the event log below); the loop reads it to answer GET_FRAMES and
+// GET_FRAME_BYTES. gEvidenceLock is its own mutex: never held while the event
+// lock is taken, so the two cannot deadlock.
+evidence::EvidenceStore gEvidence;
+SemaphoreHandle_t gEvidenceLock = nullptr;
+recon::ReconScheduler *gEvidenceScheduler = nullptr;
+volatile uint32_t gEvidenceWindows = 0;     // windows opened since boot (read by the loop)
+volatile uint32_t gEvidenceHolds = 0;       // channel holds started by a deauth window
+uint32_t gEvidenceWindowsReported = 0;
+
+void lockEvidence(void *) { xSemaphoreTake(gEvidenceLock, portMAX_DELAY); }
+void unlockEvidence(void *) { xSemaphoreGive(gEvidenceLock); }
+
+// Every Wi-Fi frame, before classification (C5ReconRadio::setFrameTap).
+void evidenceTap(const uint8_t *frame, uint16_t len, int8_t rssi, uint8_t channel, uint32_t nowMs, void *)
+{
+    if (!gEvidence.attached()) return;
+    lockEvidence(nullptr);
+    gEvidence.noteFrame(frame, len, rssi, channel, nowMs);
+    unlockEvidence(nullptr);
+}
+
+// A new Wi-Fi event opens its window. A deauth also holds the channel for
+// kEvidenceHoldMs (Michael's option 1, 2026-11-04), so the window hears what
+// follows the flood. Called by core from the candidate sink, on the Wi-Fi task,
+// under the event lock; takes only the evidence lock. No Serial here: a print
+// can wait up to kSerialTxTimeoutMs, and this is the radio's task.
+class EvidenceOpener : public EventLog {
+public:
+    void append(const MonitorEvent &e) override
+    {
+        if (!gEvidence.attached() || e.sourceKind != SourceKind::Wifi) return;
+        uint8_t mac[6];
+        if (!evidence::EvidenceStore::parseMac(e.sourceId, mac)) return;
+        const uint32_t now = millis();
+        lockEvidence(nullptr);
+        const bool opened = gEvidence.openWindow(e.eventId, mac, now);
+        unlockEvidence(nullptr);
+        if (!opened) return;
+        gEvidenceWindows = gEvidenceWindows + 1;
+        if (e.detector == ReconTarget::Deauth && gEvidenceScheduler != nullptr) {
+            gEvidenceScheduler->holdChannel(now, recon::ReconScheduler::kEvidenceHoldMs);
+            gEvidenceHolds = gEvidenceHolds + 1;
+        }
+    }
+};
+EvidenceOpener gEvidenceOpener;
+
+// Core has one EventLog port; the screen's totals, the SD log, and the
+// evidence store all need every new event, so the port feeds all three.
 class EventLogFanout : public EventLog {
 public:
-    EventLogFanout(EventLog &first, EventLog &second) : _first(first), _second(second) {}
+    EventLogFanout(EventLog &first, EventLog &second, EventLog &third) : _first(first), _second(second), _third(third) {}
     void append(const MonitorEvent &e) override
     {
         _first.append(e);
         _second.append(e);
+        _third.append(e);
     }
 
 private:
     EventLog &_first;
     EventLog &_second;
+    EventLog &_third;
 };
 
-EventLogFanout gEventLogs(gTally, gSdLog);
+EventLogFanout gEventLogs(gTally, gSdLog, gEvidenceOpener);
 C5BootRecord gBoot; // D3: reset reason and retained boot history
 C5Display gDisplay;
 C5Led gLed;
@@ -338,6 +403,52 @@ void applyEarlyWarningIfChanged()
     gEarlyWarningApplied = wanted;
     gMonitor.setEarlyWarningEnabled(wanted);
     Serial.printf("early warning %s at %lu ms\n", wanted ? "on" : "off", static_cast<unsigned long>(millis()));
+}
+
+// The Hunter's settings store (2026-11-04). It keeps one thing between boots:
+// the SetSensors allow-list, in NVS namespace "hunter", key "sensors". Every
+// other ApplicationSettings field is set on each boot: early warning OFF (the
+// Hunter powers up stopped), sleep mode off, as core's defaults otherwise. A stored value that is not a valid mask (a corrupt
+// or future one) is ignored and every sensor stays on.
+class HunterSettingsStore : public SettingsStore {
+public:
+    void load(ApplicationSettings &out) override
+    {
+        out = ApplicationSettings{};
+        // The Hunter powers up stopped (Michael, 2026-11-04): no background
+        // early-warning sweep until the operator presses START. Core's default
+        // (early warning on) still holds for the watches, which boot without a
+        // controller; the Hunter always has one.
+        out.earlyWarningEnabled = false;
+        Preferences prefs;
+        // Read-only open fails until the namespace has been written once.
+        if (!prefs.begin("hunter", true)) return;
+        const uint32_t mask = prefs.getULong("sensors", kAllSensorsMask);
+        prefs.end();
+        if (recon::validSensorMask(mask)) out.sensorMask = mask;
+    }
+    void save(const ApplicationSettings &settings) override
+    {
+        Preferences prefs;
+        if (!prefs.begin("hunter", false)) return;
+        prefs.putULong("sensors", settings.sensorMask);
+        prefs.end();
+    }
+};
+HunterSettingsStore gSettingsStore;
+uint32_t gSensorMaskSaved = kAllSensorsMask;
+
+// SetSensors changes core's setting (and core's candidate sink applies it at
+// once); the platform writes it to flash here, only when it changed, so a
+// Hunter that reboots without a watch nearby keeps the operator's choice.
+void saveSensorsIfChanged()
+{
+    const uint32_t mask = gCore.settings().sensorMask;
+    if (mask == gSensorMaskSaved) return;
+    gSensorMaskSaved = mask;
+    gCore.saveSettings();
+    Serial.printf("sensors 0x%05lX saved at %lu ms\n", static_cast<unsigned long>(mask),
+                  static_cast<unsigned long>(millis()));
 }
 
 // The 10 s report stops at its first print that cannot get through (2026-10-31). With the
@@ -622,7 +733,7 @@ void showStatus()
     gDisplay.setLine(3, line);
     // During a hunt the last line counts the Vixen's sightings, so a BOOT
     // press on the Hunter shows whether it hears the Vixen at all.
-    if (gRadio.hunting()) snprintf(line, sizeof(line), "HUNT: %lu", static_cast<unsigned long>(gRadio.huntSightings()));
+    if (gRadio.hunting()) snprintf(line, sizeof(line), "VIXEN: %lu", static_cast<unsigned long>(gRadio.huntSightings()));
     else snprintf(line, sizeof(line), "NODES: %u", static_cast<unsigned>(gRadio.peerCount(millis())));
     gDisplay.setLine(4, line);
     // The eye: green with a LayerTime or LayerScope connected, red without.
@@ -699,6 +810,33 @@ void finishHunt(uint32_t now, const char *why, uint32_t sightings)
                   static_cast<unsigned long>(sightings), static_cast<unsigned long>(gHuntScanRestarts));
 }
 
+// C5Link hands GET_FRAMES and GET_FRAME_BYTES here, on the loop task, with
+// this connection's notification size and a send that waits for buffers.
+void answerEvidenceRequest(const uint8_t *request, size_t len, uint32_t nowMs, size_t frameSize,
+                           C5Link::EvidenceSend send, void *sendContext, void *)
+{
+    const uint32_t id = link::evidence::requestEventId(request, len);
+    bool known = false;
+    uint8_t kind = 0;
+    lockEvents(nullptr);
+    for (uint8_t i = 0; i < gCore.eventCount(); ++i) {
+        if (gCore.event(i).eventId == id) {
+            known = true;
+            kind = static_cast<uint8_t>(gCore.event(i).sourceKind);
+            break;
+        }
+    }
+    unlockEvents(nullptr);
+    link::evidence::Access a;
+    a.store = &gEvidence;
+    a.lock = lockEvidence;
+    a.unlock = unlockEvidence;
+    if (request[0] == link::evidence::kOpGetFrames)
+        link::evidence::answerGetFrames(a, request, len, known, kind, nowMs, send, sendContext);
+    else
+        link::evidence::answerGetFrameBytes(a, request, len, known, frameSize, send, sendContext);
+}
+
 // C5Link hands HUNT_START, HUNT_STOP and GET_HUNT here, on the loop task.
 size_t answerHuntRequest(const uint8_t *request, size_t len, uint32_t nowMs, uint8_t *reply, void *)
 {
@@ -746,6 +884,20 @@ void setup()
     while (!Serial && millis() - waitStart < kSerialWaitMs) delay(10);
 
     gEventLock = xSemaphoreCreateMutex();
+    gEvidenceLock = xSemaphoreCreateMutex();
+
+    // Evidence store in PSRAM (about 2.4 MB of the 7 MB free; Phase 0 M3).
+    {
+        const size_t bytes = evidence::EvidenceStore::poolBytes();
+        void *pool = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        const bool ok = pool != nullptr && gEvidence.attach(pool, bytes);
+        Serial.printf("Evidence store %s: %lu KB in PSRAM, %u windows of %u frames, %u-frame ring, %u-byte frame cap\n",
+                      ok ? "ready" : "NOT AVAILABLE", static_cast<unsigned long>(bytes / 1024),
+                      static_cast<unsigned>(evidence::kWindows), static_cast<unsigned>(evidence::kWindowFrames),
+                      static_cast<unsigned>(evidence::kRingFrames), static_cast<unsigned>(evidence::kMaxFrameBytes));
+        gEvidenceScheduler = &gMonitor.scheduler();
+        if (ok) gRadio.setFrameTap(evidenceTap, nullptr);
+    }
 
     // The LED shares the LCD's SPI bus (C5Led.h): start the bus, then send
     // the LED its state, so it is dark from boot even if it powered up lit.
@@ -815,7 +967,13 @@ void setup()
     CorePorts ports;
     ports.monitor = &gLockedMonitor;
     ports.eventLog = &gEventLogs;
+    ports.settings = &gSettingsStore;
     gCore.attach(ports);
+    // The sensor allow-list from the last run (every sensor on if none was saved).
+    gCore.loadSettings();
+    gSensorMaskSaved = gCore.settings().sensorMask;
+    Serial.printf("Sensors 0x%05lX%s\n", static_cast<unsigned long>(gSensorMaskSaved),
+                  gSensorMaskSaved == kAllSensorsMask ? " (all on)" : "");
     gServer.setLock(lockEvents, unlockEvents, nullptr);
     // No card log until the first look finds one (first loop pass).
     gServer.setMemoryOnly(true);
@@ -827,8 +985,10 @@ void setup()
     // initialised and use the same host.
     gLink.attachServer(&gServer);
     gLink.attachHunt(answerHuntRequest, nullptr);
+    gLink.attachEvidence(answerEvidenceRequest, nullptr);
     gBleOk = gLink.begin(link::kCapLocalWifiMonitor | link::kCapLocalBleMonitor | link::kCapDisplay |
-                         link::kCapLed | link::kCapButton | link::hunt::kCapHunt);
+                         link::kCapLed | link::kCapButton | link::hunt::kCapHunt | link::kCapSensorSet |
+                         (gEvidence.attached() ? link::evidence::kCapRawCapture : 0));
     const bool heapAfterBle = heapIntact();
     gHeapOk = gHeapOk && heapAfterBle;
     Serial.printf("Link %s, advertising as %s, session %04X\n", gBleOk ? "up" : "FAILED", gLink.advertisedName(),
@@ -843,7 +1003,7 @@ void setup()
                   static_cast<unsigned long>(recon::ReconScheduler::kEarlyWarningRestMs),
                   static_cast<unsigned long>(recon::ReconScheduler::kRestJitterMaxMs),
                   static_cast<unsigned long>(recon::ReconScheduler::kPassJitterMaxMs));
-    Serial.println("Recon starts in early warning and runs with or without a watch. BOOT button: dump the current run.");
+    Serial.println("Recon starts stopped; START from LayerScope begins a scan. BOOT button: dump the current run.");
 
     // Early warning is core's default setting; apply it, and start run 1.
     applyEarlyWarningIfChanged();
@@ -924,6 +1084,13 @@ void loop()
     serviceHunt(now);
     // A change to early warning during a hunt is applied when the hunt ends.
     if (!gRadio.hunting()) applyEarlyWarningIfChanged();
+    saveSensorsIfChanged();
+    // Evidence windows are opened on the Wi-Fi task, which never prints; report here.
+    if (gEvidenceWindows != gEvidenceWindowsReported) {
+        gEvidenceWindowsReported = gEvidenceWindows;
+        Serial.printf("evidence windows %lu, channel holds %lu at %lu ms\n", static_cast<unsigned long>(gEvidenceWindowsReported),
+                      static_cast<unsigned long>(gEvidenceHolds), static_cast<unsigned long>(millis()));
+    }
     gServer.refresh();
     gLink.updateStatus();
     gLink.service(now);

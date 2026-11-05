@@ -184,8 +184,9 @@ void enum_values_match_vectors()
         M(ReconTarget, Pwnagotchi), M(ReconTarget, MultiSSID), M(ReconTarget, Flock),
         M(ReconTarget, Pineapple), M(ReconTarget, AirTag), M(ReconTarget, Flipper),
         M(ReconTarget, Meta), M(ReconTarget, Axon), M(ReconTarget, Tile),
-        M(ReconTarget, SamsungTag), M(ReconTarget, GoogleTag), M(ReconTarget, EarlyWarning)};
-    checkEnum(j, "ReconTarget", target, 18);
+        M(ReconTarget, SamsungTag), M(ReconTarget, GoogleTag), M(ReconTarget, EarlyWarning),
+        M(ReconTarget, Eapol)};
+    checkEnum(j, "ReconTarget", target, 19);
 
     const EnumMember conf[] = {M(Confidence, Low), M(Confidence, Medium), M(Confidence, High)};
     checkEnum(j, "Confidence", conf, 3);
@@ -223,8 +224,8 @@ void enum_values_match_vectors()
         M(CommandType, MeshSetChannel), M(CommandType, MeshRemoveChannel),
         M(CommandType, SetClockFormat), M(CommandType, SetUnits), M(CommandType, SetSleepMode),
         M(CommandType, SetEarlyWarning), M(CommandType, MeshSetAdvertising),
-        M(CommandType, MeshSetOwnName)};
-    checkEnum(j, "CommandType", cmd, 15);
+        M(CommandType, MeshSetOwnName), M(CommandType, SetSensors)};
+    checkEnum(j, "CommandType", cmd, 16);
 
     const EnumMember res[] = {M(CommandResult, Ok), M(CommandResult, Unsupported),
                               M(CommandResult, InvalidArgument), M(CommandResult, NotReady),

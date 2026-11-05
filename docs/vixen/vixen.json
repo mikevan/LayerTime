@@ -1,0 +1,13 @@
+{
+  "name": "Vixen",
+  "version": "1.0.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-C5",
+      "parts": [
+        { "path": "firmware/vixen.bin", "offset": 0 }
+      ]
+    }
+  ]
+}

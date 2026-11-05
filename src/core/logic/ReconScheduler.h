@@ -93,6 +93,9 @@ public:
     static constexpr uint8_t kMaxPlanChannels = 48;
     static constexpr uint32_t kRestJitterMaxMs = 10000;
     static constexpr uint32_t kPassJitterMaxMs = 2000;
+    // When an attack or a handshake is seen, hold the current Wi-Fi channel
+    // this long before the next hop, so a burst is not cut off mid-event.
+    static constexpr uint32_t kInterestHoldMs = 1500;
 
     using Clock = uint32_t (*)();
     // Any 32-bit random value; the platform's hardware generator on a device,
@@ -131,6 +134,25 @@ public:
     // Once per application tick, with the tick's reading of the clock.
     void poll(uint32_t nowMs);
 
+    // Report that something worth staying on this channel for was just seen
+    // (a deauth/disassoc burst, or an EAPOL handshake frame). The hop cursor
+    // holds the current channel for up to kInterestHoldMs from `now`. Bounded,
+    // so the sweep always resumes. The caller decides which detections count.
+    void noteInterest(uint32_t now) { holdChannel(now, kInterestHoldMs); }
+
+    // Holds the current channel until `now + ms`, or keeps a longer hold
+    // already running (a short interest hold never cuts a long one short).
+    // The Hunter calls this with kEvidenceHoldMs when a deauth detection opens
+    // an evidence window (slice 2, 2026-11-04, Michael's option 1), so the
+    // window catches what follows the flood: a clone, a handshake, or the
+    // client still talking. The sweep resumes when the hold ends.
+    void holdChannel(uint32_t now, uint32_t ms)
+    {
+        const uint32_t until = now + ms;
+        if (_interestHoldUntilMs == 0 || (int32_t)(until - _interestHoldUntilMs) > 0) _interestHoldUntilMs = until;
+    }
+    static constexpr uint32_t kEvidenceHoldMs = 10000;
+
     const AcquisitionStatus &status() const { return _status; }
     // True while the early-warning Wi-Fi sweep is the reason the radio is
     // listening: the classifiers are gated on it (ReconSelection::wants).
@@ -153,6 +175,7 @@ private:
     Clock _clock;
     AcquisitionStatus _status;
     uint32_t _lastChannelHopMs = 0;
+    uint32_t _interestHoldUntilMs = 0;
     uint32_t _lastBleCycleMs = 0;
     // Shared Wi-Fi channel-hop cursor, used by manual Wi-Fi detectors and the
     // background sweep alike (a single physical radio, so one cursor).

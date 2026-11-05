@@ -53,6 +53,7 @@ enum class CommandType : uint8_t {
     SetEarlyWarning = 12,       // args: setting.enabled
     MeshSetAdvertising = 13,    // args: setting.network, setting.enabled
     MeshSetOwnName = 14,        // args: setting.network, setting.name. Meshtastic only.
+    SetSensors = 15,            // args: sensors.mask (kAllSensorsMask bits only)
 };
 
 // Every command gets exactly one of these back. Nothing is silently ignored.
@@ -66,6 +67,11 @@ enum class CommandResult : uint8_t {
 
 struct ReconStartArgs {
     ReconTarget target = ReconTarget::None;
+};
+
+// SetSensors: one bit per sensor at its ReconTarget value (kAllSensorsMask).
+struct SensorSetArgs {
+    uint32_t mask = kAllSensorsMask;
 };
 
 struct MeshSendTextArgs {
@@ -115,6 +121,7 @@ struct LayerTimeCommand {
     MeshSendQuickArgs meshQuick;
     MeshChannelArgs meshChannel;
     SettingArgs setting;
+    SensorSetArgs sensors;
 };
 
 } // namespace layertime

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vixen: flash the Vixen and the Hunter, install LayerScope</title>
+<meta name="description" content="Vixen is a Bluetooth fox hunt. Flash the Vixen and the Hunter onto two LilyGo T-Dongle-C5 boards from your browser, then install LayerScope on an Android device.">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  /* Taken from the Vixen logo: amber #FBB50C, green #89DB02, on black. */
+  --bg:#000000; --surface:#0E0E0B; --ink:#EDEBE2; --ink-2:#A3A196; --ink-3:#717066;
+  --rule:#2C2B25; --rule-soft:#1D1C18; --amber:#FBB50C; --green:#89DB02; --alert:#E5654B;
+  --display:"Saira Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Newsreader",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.graticule{height:14px;background-image:repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 12px);border-bottom:1px solid var(--rule)}
+.page{max-width:760px;margin:0 auto;padding:0 24px 96px}
+.sublogo{display:block;width:100%;max-width:409px;height:auto;margin:0 auto 18px}
+.logo{display:block;width:100%;max-width:595px;height:auto;margin:40px auto 0}
+h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+h2{font-size:clamp(22px,4vw,30px);text-transform:uppercase;border-bottom:2px solid var(--amber);padding-bottom:8px;margin:56px 0 22px}
+h2 .num{color:var(--amber);margin-right:10px}
+h3{font-size:19px;margin:26px 0 6px}
+p{margin:0 0 1.1em}
+a{color:var(--amber);text-underline-offset:3px}
+.lede{font-family:var(--display);font-weight:500;font-size:clamp(19px,3vw,25px);line-height:1.2;margin:22px 0 0;text-align:center}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-top:14px;text-align:center}
+.specstrip{display:flex;flex-wrap:wrap;justify-content:center;gap:0 20px;font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.04em;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:9px 0;margin:26px 0 0}
+.flashbox{border:1px solid var(--rule);border-left:3px solid var(--green);background:var(--surface);padding:26px 24px;margin:22px 0 0;text-align:center}
+.flashbox p{margin:14px 0 0;font-size:15.5px;color:var(--ink-2)}
+.btn{display:inline-block;font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--amber);background:var(--amber);color:#000;padding:14px 30px;cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--green);border-color:var(--green)}
+.note{border:1px solid var(--rule);border-left:3px solid var(--amber);background:var(--surface);padding:16px 20px;font-size:15.5px;color:var(--ink-2);margin:22px 0}
+.note b{color:var(--ink);font-weight:500}
+.nowebserial{display:none;border-left-color:var(--alert)}
+ol,ul{padding-left:22px;margin:0 0 1.1em}
+li{margin-bottom:7px;color:var(--ink-2)}
+li b{color:var(--ink);font-weight:500}
+code{font-family:var(--mono);font-size:.86em;background:var(--surface);border:1px solid var(--rule-soft);padding:1px 5px}
+.label{font-family:var(--mono);font-size:.84em;font-weight:600;letter-spacing:.06em;color:var(--green)}
+footer{border-top:2px solid var(--amber);margin-top:64px;padding-top:18px;font-family:var(--mono);font-size:12.5px;color:var(--ink-3);line-height:1.8}
+</style>
+</head>
+<body>
+<div class="graticule" aria-hidden="true"></div>
+<div class="page">
+
+  <img class="logo" src="vixen-logo.png" alt="Vixen" width="595" height="179">
+  <div class="lede">A fox hunt with radios. One player hides the Vixen, and the other one hunts it down.</div>
+  <div class="eyebrow">Flash it from this page &middot; no toolchain, no account</div>
+
+  <div class="specstrip">
+    <span>2 &times; LILYGO T-DONGLE-C5</span>
+    <span>ANDROID 8.0 OR NEWER</span>
+    <span>CHROME OR EDGE ON A DESKTOP</span>
+    <span>USB-C DATA CABLE</span>
+  </div>
+
+  <p style="margin-top:28px">You need two T-Dongle-C5 boards. One becomes the <b>Vixen</b>, the dongle you hunt. It's a small Bluetooth beacon that sits in a hiding spot and does nothing else. The other becomes the <b>Hunter</b>. It runs LayerWand, listens for the Vixen, and reports how strong its signal is. The Hunter talks to <b>LayerScope</b>, an Android app that turns that signal into a radar, a tone, and a step trail. Vixen is one game you can play with it. Bring two power banks: one for each dongle.</p>
+
+  <div class="note nowebserial" id="nowebserial">
+    <b>This browser can't flash.</b> Flashing over USB needs Web Serial, and only Chrome and Edge on a desktop have it. Firefox, Safari, and every browser on a phone do not. Open this page in Chrome or Edge on a computer. You can still download LayerScope in step 3 from here.
+  </div>
+
+  <div class="note">
+    <b>Flashing erases the dongle.</b> Whatever was on it before, including a LayerWand's settings, is gone. Label your dongles so the Vixen doesn't end up hunting itself.
+  </div>
+
+  <h2><span class="num">1</span>Flash the Vixen</h2>
+  <p>Plug in the dongle that will be the Vixen, then click the button and pick its port.</p>
+  <div class="flashbox flash">
+    <esp-web-install-button manifest="vixen.json">
+      <button slot="activate" class="btn">Install Vixen</button>
+      <span slot="unsupported"></span>
+      <span slot="not-allowed"></span>
+    </esp-web-install-button>
+    <p>When it finishes, the screen goes dark. That's the point: a Vixen that glows is easy to find.</p>
+  </div>
+
+  <h2><span class="num">2</span>Flash the Hunter</h2>
+  <img class="sublogo" src="hunter-logo.png" alt="Hunter" width="409" height="119">
+  <p>Unplug the Vixen. Plug in the second dongle, then click the button and pick its port.</p>
+  <div class="flashbox flash">
+    <esp-web-install-button manifest="hunter.json">
+      <button slot="activate" class="btn">Install LayerWand</button>
+      <span slot="unsupported"></span>
+      <span slot="not-allowed"></span>
+    </esp-web-install-button>
+    <p>When it finishes, the screen says LayerWand. That dongle is now the Hunter.</p>
+  </div>
+
+  <h2><span class="num">3</span>Install LayerScope</h2>
+  <img class="sublogo" src="layerscope-logo.png" alt="LayerScope" width="420" height="96" style="max-width:420px">
+  <p>LayerScope runs on any Android device with Android 8.0 or newer and Bluetooth: a phone, a tablet, or an Android watch. Open this page on that device and tap the button. It isn't in the Play Store, so Android will ask you to allow the install.</p>
+  <div class="flashbox" style="margin-bottom:22px">
+    <a class="btn" href="layerscope.apk" download>Download LayerScope</a>
+    <p>About 137 MB. Version <span id="apkver">0.1.82</span>.</p>
+  </div>
+  <ol>
+    <li>Tap <b>Download LayerScope</b>, then open the file when the download finishes.</li>
+    <li>If Android blocks it, tap <b>Settings</b> in the message, turn on <b>Allow from this source</b>, and go back.</li>
+    <li>Tap <b>Install</b>.</li>
+    <li>Open LayerScope. Allow Bluetooth and location when it asks. Android requires location permission to scan for Bluetooth devices, and the app doesn't record where you are.</li>
+  </ol>
+
+  <h2>How to play</h2>
+  <h3>The Vixen</h3>
+  <ol>
+    <li>Plug the Vixen into a power bank and hide it.</li>
+    <li>To check that it's running, give the BOOT button a short press. The screen lights up for 10 seconds with its name, power, and uptime, then goes dark again.</li>
+  </ol>
+  <h3>The Hunter</h3>
+  <ol>
+    <li>Plug the Hunter into the other power bank.</li>
+    <li>In LayerScope, tap <span class="label">SCAN &amp; CONNECT</span>.</li>
+    <li>Tap <span class="label">HUNT VIXEN</span>. The first time, Android asks for <b>Physical activity</b> permission. Allow it, because that's how the step trail counts your steps.</li>
+    <li>Walk. Each step drops a dot on the trail, colored red, yellow, or green by signal strength. The tone climbs as you close in, and the side of the screen says <span class="label">CLOSING</span> or <span class="label">OPENING</span>.</li>
+    <li>Hold a strong signal for two seconds and the screen flashes <span class="label">FOUND!</span>. Tap <span class="label">HUNT AGAIN</span> for another round, or <span class="label">STOP HUNT</span> to quit.</li>
+  </ol>
+  <div class="note">
+    <b>It tells you hotter or colder, not which way.</b> LayerScope doesn't use a compass, so the radar shows how close you are, never a direction. If the screen ever shows an arrow pointing at the Vixen, something is wrong. If the Vixen goes quiet for five seconds, you'll see <span class="label">TARGET LOST</span>. Usually that means the power bank went to sleep.
+  </div>
+
+  <h2>If it won't connect</h2>
+  <p>The T-Dongle-C5 uses the chip's built-in USB, so the browser can't always kick it into flashing mode by itself. If the port doesn't show up, or the install fails right away, do it by hand:</p>
+  <ol>
+    <li>Unplug the dongle.</li>
+    <li><b>Hold the BOOT button</b> while you plug it back in.</li>
+    <li>Let go after it's plugged in, then click the install button again and pick the port.</li>
+  </ol>
+  <p>The port shows up as USB ID <code>303A:1001</code>. If nothing shows up at all, it's almost always the cable. Plenty of USB-C cables carry power and nothing else.</p>
+
+  <footer>
+    <div><a href="../">LayerTime</a> &middot; <a href="https://github.com/mikevan/LayerTime">github.com/mikevan/LayerTime</a> &middot; <a href="https://discord.gg/3gBq4V2tA">LayerLand on Discord</a></div>
+    <div>The Vixen sends a Bluetooth beacon, the same kind your earbuds send. The Hunter only listens.</div>
+    <div>No cloud, no account, no telemetry.</div>
+  </footer>
+
+</div>
+
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+<script>
+  if (!('serial' in navigator)) {
+    document.getElementById('nowebserial').style.display = 'block';
+    document.querySelectorAll('.flash').forEach(function (el) { el.style.display = 'none'; });
+  }
+</script>
+</body>
+</html>

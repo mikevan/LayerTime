@@ -52,6 +52,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -68,6 +69,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -92,6 +94,7 @@ import com.projectrevivesolutions.layertime.controller.diag.EventsExporter
 import com.projectrevivesolutions.layertime.controller.diag.Exporter
 import com.projectrevivesolutions.layertime.controller.hunt.HuntSession
 import com.projectrevivesolutions.layertime.controller.link.LinkClient
+import com.projectrevivesolutions.layertime.controller.mission.SensorSelection
 import com.projectrevivesolutions.layertime.controller.link.LinkConstants
 import com.projectrevivesolutions.layertime.controller.link.LinkMeasure
 import com.projectrevivesolutions.layertime.controller.link.ConnNotice
@@ -103,6 +106,7 @@ import com.projectrevivesolutions.layertime.controller.service.LinkForegroundSer
 import com.projectrevivesolutions.layertime.controller.state.ControllerRepository
 import com.projectrevivesolutions.layertime.controller.ui.theme.LayerTimeControllerTheme
 import com.projectrevivesolutions.layertime.controller.ui.theme.LtColors
+import com.projectrevivesolutions.layertime.controller.ui.theme.LocalSpacecraft
 import com.projectrevivesolutions.layertime.controller.ui.theme.ConsoleShape
 import com.projectrevivesolutions.layertime.controller.ui.theme.ConsoleButtonShape
 import com.projectrevivesolutions.layertime.controller.ui.theme.consoleFrame
@@ -145,6 +149,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         ControllerRepository.deviceReport = DeviceReportBuilder.build(applicationContext)
+        // The shipped workflow (deauth triage) loads once; the Builder shows it and TRIAGE runs it.
+        com.projectrevivesolutions.layertime.controller.flow.TriageSession.load(applicationContext)
         intent?.getStringExtra(EXTRA_PAGE)?.let { NavRequest.page.value = it }
         setContent {
             LayerTimeControllerTheme {
@@ -185,18 +191,34 @@ internal object NavRequest { val page = kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * The mission setup, saved on the watch so a restart or Android recreating the screen
- * does not reset it: the Recon target (ALL or DEAUTH) and the sensor checkboxes. The
- * sensor selection is not sent to the LayerWand yet; that needs Link 0.2.
+ * does not reset it: the sensor checkboxes (sent to the Hunter as SetSensors since
+ * build 87). The Recon target is no longer stored: it follows the sensor list (ONLY
+ * DEAUTH when the list is Deauth alone, ALL otherwise). "target" stays in the prefs
+ * file, unread.
  */
 internal object MissionPrefs {
     private const val PREFS = "layertime_mission"
     fun readTarget(ctx: Context): Int = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         .getInt("target", LinkConstants.ReconTarget.ALL)
     fun writeTarget(ctx: Context, t: Int) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("target", t).apply() }
-    fun readSensors(ctx: Context): Set<Int> = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        .getStringSet("sensors", emptySet())!!.mapNotNull { it.toIntOrNull() }.toSet()
+    // "sensors_v2" marks the one-time move to the Hunter-wired list (2026-11-04):
+    // SensorSelection.migrate turns the old, never-sent list into every sensor on
+    // unless the operator had checked real sensors. After that the stored list is
+    // used as is (presets expanded), and an empty one means every sensor off.
+    private const val V2 = "sensors_v2"
+    fun readSensors(ctx: Context): Set<Int> {
+        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val stored = p.getStringSet("sensors", null)?.mapNotNull { it.toIntOrNull() }?.toSet()
+        if (!p.getBoolean(V2, false)) {
+            val migrated = SensorSelection.migrate(stored)
+            writeSensors(ctx, migrated)
+            return migrated
+        }
+        return SensorSelection.normalize(stored ?: emptySet())
+    }
     fun writeSensors(ctx: Context, on: Set<Int>) {
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putStringSet("sensors", on.map { it.toString() }.toSet()).apply()
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putStringSet("sensors", on.map { it.toString() }.toSet()).putBoolean(V2, true).apply()
     }
 }
 
@@ -238,7 +260,6 @@ object PanelTextScale {
 private val panelShape = CutCornerShape(topStart = 10.dp, bottomEnd = 10.dp)
 private val btnShape = CutCornerShape(topStart = 6.dp, bottomEnd = 6.dp)
 private val dataShape = RoundedCornerShape(16.dp)
-private val SENSOR_IDS = (2..16).toList()
 
 private fun batteryPct(ctx: Context): Int {
     val i = ctx.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return -1
@@ -270,8 +291,6 @@ private fun ControllerScreen() {
     val connDetail by repo.connDetail.collectAsState()
     val huntOpen by HuntSession.open.collectAsState()
 
-    var target by remember { mutableIntStateOf(MissionPrefs.readTarget(context)) }
-    LaunchedEffect(target) { MissionPrefs.writeTarget(context, target) }
     var showLog by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf("main") }
     var selectedEvent by remember { mutableStateOf<EventRow?>(null) }
@@ -320,6 +339,44 @@ private fun ControllerScreen() {
     }
 
     val active = conn == ConnState.CONNECTED
+    // MISSION's note: what the Hunter is doing with the sensor list (SetSensors, 2026-11-04).
+    val sensorsApplied by repo.sensorsApplied.collectAsState()
+    val missionSelection = sensorsOn.filterValues { it }.keys.toSet()
+    val missionLink = when {
+        !active -> MissionLink.OFFLINE
+        ((server?.capabilities ?: 0) and LinkConstants.Capability.SENSOR_SET) == 0 -> MissionLink.OLD_FIRMWARE
+        sensorsApplied == SensorSelection.mask(missionSelection) -> MissionLink.APPLIED
+        else -> MissionLink.SENDING
+    }
+    // SELECT SENSORS on OPS is a shortcut into MISSION and reads back from it (Michael,
+    // 2026-11-04): ALL SENSORS checks every box, ONLY DEAUTH leaves Deauth alone, and a
+    // hand-edited list lights neither. START's Recon target follows the list: the Wi-Fi-only
+    // deauth lock when the list is Deauth alone, the full sweep (with the list applied on
+    // the Hunter) otherwise.
+    val everySensor = SensorSelection.ALL_SENSORS.toSet()
+    val onlyDeauth = setOf(LinkConstants.ReconTarget.DEAUTH)
+    val target = if (missionSelection == onlyDeauth) LinkConstants.ReconTarget.DEAUTH else LinkConstants.ReconTarget.ALL
+    val scanPick = when (missionSelection) { everySensor -> LinkConstants.ReconTarget.ALL; onlyDeauth -> LinkConstants.ReconTarget.DEAUTH; else -> -1 }
+    val scanning = status?.monitoring == true
+    // QUICK START's badge: a hunt first, then stopped, then which page defined the running list.
+    val scanMode = when {
+        huntOpen -> ScanMode.HUNTING
+        !active || !scanning -> ScanMode.NOT_SCANNING
+        scanPick == -1 -> ScanMode.ON_MISSION
+        else -> ScanMode.QUICKSTART
+    }
+    // Saves the list and sends it; the one path for both MISSION layouts.
+    val setMission: (Set<Int>) -> Unit = { selection ->
+        sensorsOn.clear()
+        selection.forEach { sensorsOn[it] = true }
+        MissionPrefs.writeSensors(context, selection)
+        LinkForegroundService.active?.sensorsChanged()
+    }
+    // A QUICK START pick while scanning stops the scan: the operator presses START to run the new list.
+    val quickPick: (Set<Int>) -> Unit = { selection ->
+        if (scanning) LinkForegroundService.active?.reconStop()
+        setMission(selection)
+    }
     val connecting = conn in listOf(ConnState.SCANNING, ConnState.CONNECTING, ConnState.DISCOVERING, ConnState.HANDSHAKING)
     val wands = if (active) 1 else 0
 
@@ -414,7 +471,8 @@ private fun ControllerScreen() {
             tempValue = shown.tempValue, tempUnit = shown.tempUnit,
             sunLabel = shown.sunLabel, sunValue = shown.sunValue, sunAmPm = shown.sunAmPm, sunTag = shown.sunTag,
             onCounter = { page = "attacks"; faceActions.afterButton() }, onRecon = { page = "config"; faceActions.afterButton() },
-            onOutsideCircle = { faceActions.outsideCircle() }, modifier = m, drawLeftBlack = !sliding, drawLighting = !sliding)
+            onOutsideCircle = { faceActions.outsideCircle() }, modifier = m, drawLeftBlack = !sliding, drawLighting = !sliding,
+            refined = !sliding)
     }
 
     var textMult by remember { mutableStateOf(PanelTextScale.read(context)) }
@@ -425,19 +483,23 @@ private fun ControllerScreen() {
     val dataPane: @Composable (Modifier, PaddingValues, Boolean) -> Unit = { paneMod, outerPad, onHull ->
         BoxWithConstraints(paneMod.padding(outerPad)) {
             val autoScale = PanelTextScale.auto(maxWidth.value, maxHeight.value)
-            val fontScale = autoScale * textMult
+            val fontScale = autoScale * textMult * (if (onHull) 1f else LocalDensity.current.fontScale)
             val base = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale)) {
-            ProvideTextStyle(TextStyle(fontFamily = ConsoleFonts.body)) {
+            CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale), LocalSpacecraft provides !onHull,
+                LocalSystemScreen provides (!onHull && page == "system")) {
+            ProvideTextStyle(TextStyle(fontFamily = if (onHull) ConsoleFonts.body else FontFamily.SansSerif)) {
             Box(
-                (if (onHull) Modifier.fillMaxSize() else Modifier.fillMaxSize()
+                (if (onHull || page == "main" || page == "system" || page == "config" || page == "tools" || page == "attacks" || page == "builder") Modifier.fillMaxSize() else Modifier.fillMaxSize()
                     .consoleFrame(surface = LtColors.ConsoleBg, radius = 20.dp, elevation = 10.dp)
-                    .drawWithContent { drawContent(); drawCornerBrackets(LtColors.ConsoleEdge, 20.dp.toPx()) })
+                    .drawWithContent { drawContent() })
                     .clip(RoundedCornerShape(20.dp))
-                    .padding(CONSOLE_BAND)
+                    .padding(if (!onHull && (page == "main" || page == "system" || page == "config" || page == "tools" || page == "attacks" || page == "builder")) 0.dp else CONSOLE_BAND)
             ) {
                 when (page) {
                     "config" -> {
+                        if (!onHull) {
+                            MissionScreen(selected = missionSelection, link = missionLink, onSelectionChange = setMission)
+                        } else {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             item {
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
@@ -447,12 +509,39 @@ private fun ControllerScreen() {
                                         fontSize = 16.sp, letterSpacing = 2.sp, style = glowText())
                                 }
                             }
-                            item { Text("Check a connector to enable its sensor for the mission.", color = LtColors.Ivory, fontSize = 12.sp) }
+                            item { Text("Check a sensor to let the Hunter report it. A preset checks its whole group.", color = LtColors.Ivory, fontSize = 12.sp) }
                             item {
-                                Text("Saved on this watch. The Hunter runs all detectors until Link 0.2 can send this selection.",
-                                    color = LtColors.Amber, fontSize = 12.sp)
+                                val (title, text) = missionNote(missionLink, missionSelection)
+                                Text("$title. $text", color = if (missionLink == MissionLink.APPLIED && missionSelection.isNotEmpty()) LtColors.Green else LtColors.Amber,
+                                    fontSize = 12.sp)
                             }
-                            items(SENSOR_IDS) { id ->
+                            item { Text("PRESETS", color = LtColors.ConsoleEdge, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 2.sp) }
+                            items(SensorSelection.GROUPS) { g ->
+                                val st = SensorSelection.presetState(g.preset, missionSelection)
+                                val lit = st != SensorSelection.PresetState.NONE
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp)
+                                        .hudPanel(edge = if (lit) LtColors.Green else LtColors.ConsoleEdge, radius = 16.dp, elevation = if (lit) 4.dp else 1.dp, halo = st == SensorSelection.PresetState.ALL)
+                                        .clip(ConsoleShape).padding(horizontal = 19.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    TriStateCheckbox(
+                                        state = when (st) {
+                                            SensorSelection.PresetState.ALL -> androidx.compose.ui.state.ToggleableState.On
+                                            SensorSelection.PresetState.PARTIAL -> androidx.compose.ui.state.ToggleableState.Indeterminate
+                                            SensorSelection.PresetState.NONE -> androidx.compose.ui.state.ToggleableState.Off
+                                        },
+                                        onClick = { setMission(SensorSelection.togglePreset(g.preset, missionSelection)) },
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = LtColors.Green, uncheckedColor = LtColors.Grey, checkmarkColor = LtColors.Bg,
+                                        ),
+                                    )
+                                    Text(g.label, color = if (lit) LtColors.Green else LtColors.Ivory,
+                                        fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp)
+                                }
+                            }
+                            item { Text("SENSORS", color = LtColors.ConsoleEdge, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 2.sp) }
+                            items(SensorSelection.ALL_SENSORS) { id ->
                                 val on = sensorsOn[id] == true
                                 Row(
                                     Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp)
@@ -462,8 +551,7 @@ private fun ControllerScreen() {
                                 ) {
                                     Checkbox(
                                         checked = on, onCheckedChange = {
-                                            sensorsOn[id] = it
-                                            MissionPrefs.writeSensors(context, sensorsOn.filterValues { v -> v }.keys)
+                                            setMission(if (it) missionSelection + id else missionSelection - id)
                                         },
                                         colors = CheckboxDefaults.colors(
                                             checkedColor = LtColors.Green, uncheckedColor = LtColors.Grey, checkmarkColor = LtColors.Bg,
@@ -475,9 +563,15 @@ private fun ControllerScreen() {
                                 }
                             }
                         }
+                        }
                     }
 
                     "attacks" -> {
+                        if (!onHull) {
+                            EventsScreen(events, emptyEventsMessage(active, status),
+                                onImport = { page = "capture" },
+                                onOpen = { selectedEvent = it; detailFrom = "attacks"; page = "detail" })
+                        } else {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             item {
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
@@ -510,9 +604,12 @@ private fun ControllerScreen() {
                                 }
                             }
                         }
+                        }
                     }
 
-                    "capture" -> CaptureOnlyScreen { page = "attacks" }
+                    "builder" -> BuilderScreen()
+
+                    "capture" -> CaptureOnlyScreen(onBack = { page = "attacks" }, onOpenWireshark = { page = "wireshark" })
 
                     "wireshark" -> WiresharkScreen { page = "tools" }
 
@@ -521,7 +618,7 @@ private fun ControllerScreen() {
                     "detail" -> {
                         // The live row, so QUICK LOOK follows updates while it is open.
                         val ev = selectedEvent?.let { sel -> events.firstOrNull { it.eventId == sel.eventId && it.sessionId == sel.sessionId } ?: sel }
-                        if (ev != null) EventDetailScreen(ev, deviceLabel, conn) { page = detailFrom }
+                        if (ev != null) EventDetailScreen(ev, deviceLabel, conn, onBack = { page = detailFrom }, onOpenWireshark = { page = "wireshark" })
                         else LazyColumn(Modifier.fillMaxSize()) { item { Text("No detection selected.", color = LtColors.Grey) } }
                     }
 
@@ -529,6 +626,11 @@ private fun ControllerScreen() {
                     // measurement panel; the live Wireshark window and the rest arrive here next,
                     // as windows, per claude/layerscope_analytics_design.md.
                     "tools" -> {
+                        if (!onHull) {
+                            ToolsScreen(
+                                onWireshark = { page = "wireshark" }, onTimeline = { page = "timeline" },
+                            )
+                        } else {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             item {
                                 SciFiPanel("ANALYTICS TOOLS") {
@@ -542,6 +644,7 @@ private fun ControllerScreen() {
                                 }
                             }
                             if (BuildConfig.DEBUG) item { LinkMeasurePanel(active) }
+                        }
                         }
                     }
 
@@ -558,6 +661,7 @@ private fun ControllerScreen() {
                                 )
                             }
                             item { LayerTimeButtonPanel(nowMs) }
+                            if (BuildConfig.DEBUG && !onHull) item { LinkMeasurePanel(active) }
                             item {
                                 SciFiPanel("SCREEN-OFF RECEPTION TEST") {
                                     Text("Start, turn the screen off for a while, turn it on, then stop.", color = LtColors.Ivory, fontSize = 12.sp)
@@ -626,16 +730,40 @@ private fun ControllerScreen() {
                     }
 
                     else -> {
-                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            item { HudStatusStrip(active, connecting, events.size, linkStale) }
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(if (onHull) 8.dp else 0.dp)) {
+                            if (onHull) item {
+                                SciFiPanel("FIELD STATUS", statusColor = if (active && !linkStale) LtColors.Green else LtColors.Red) {
+                                    StatusRow("Hunter", if (active) "Online" else "Offline", if (active) LtColors.Green else LtColors.Red)
+                                    if (active && deviceLabel.isNotBlank()) StatusRow("Device", deviceLabel.uppercase(), LtColors.Cyan)
+                                    StatusRow("Active sensor", activeSensorLabel(huntOpen, status), LtColors.Cyan)
+                                    HudReadout("DETECTIONS", "${events.size}", LtColors.Amber)
+                                    events.maxByOrNull { it.eventId }?.let {
+                                        StatusRow("Last alert", "${it.detectorName} detected", LtColors.Amber)
+                                    }
+                                }
+                            }
+                            if (onHull) item { HudStatusStrip(active, connecting, events.size, linkStale) }
                             item {
+                                if (!onHull) {
+                                    var swipeOff by remember { mutableStateOf(LinkForegroundService.swipeDisconnects(context)) }
+                                    OpsConnectionPanel(
+                                        online = active, connecting = connecting, canDisconnect = conn != ConnState.IDLE,
+                                        device = deviceLabel,
+                                        metadata = server?.takeIf { active }?.let { "Server ${it.serverMajor}.${it.serverMinor}   |   Session ${it.sessionId}   |   Max frame ${it.maxFrame} B" },
+                                        notice = locationNotice?.let { ConnNotice.Notice(it, ConnNotice.Tone.PROBLEM) }
+                                            ?: ConnNotice.of(conn, connDetail, reconnecting),
+                                        swipeDisconnects = swipeOff,
+                                        onSwipeChange = { swipeOff = it; LinkForegroundService.setSwipeDisconnects(context, it) },
+                                        onConnect = { connect() }, onDisconnect = { LinkForegroundService.stop(context) },
+                                    )
+                                } else {
                                 SciFiPanel("CONNECTION", statusColor = if (active) LtColors.Green else LtColors.Red, statusCount = wands) {
                                     if (active && server != null) {
-                                        Text("SERVER 0.${server!!.serverMinor}  ·  SES ${server!!.sessionId}  ·  MAXF ${server!!.maxFrame}",
+                                        Text("Server 0.${server!!.serverMinor}   |   Session ${server!!.sessionId}   |   Max frames ${server!!.maxFrame}",
                                             color = LtColors.Ivory, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                                     }
                                     if (active && deviceLabel.isNotBlank()) {
-                                        Text(deviceLabel.uppercase(), color = LtColors.Cyan, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
+                                        Text(deviceLabel.uppercase(), color = LtColors.Cyan, fontSize = 13.sp, fontFamily = ConsoleFonts.mono, letterSpacing = 1.sp)
                                     }
                                     // Why the link is where it is, and what to tap next (ConnNotice).
                                     val notice = locationNotice?.let { ConnNotice.Notice(it, ConnNotice.Tone.PROBLEM) }
@@ -647,38 +775,83 @@ private fun ControllerScreen() {
                                     // Wraps DISCONNECT onto its own line when the panel is narrow (build 70:
                                     // on a phone it was crushed to a sliver or broke as "DISCONNEC / T").
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        SciFiPrimary("SCAN & CONNECT", enabled = !active && !connecting, large = true) { connect() }
+                                        SciFiPrimary("Scan & connect", enabled = !active && !connecting, large = true) { connect() }
                                         // Build 71: also live after a failure ("Link failed"), when the service is still running and retrying.
-                                        SciFiOutline("DISCONNECT", enabled = conn != ConnState.IDLE, large = true) {
+                                        SciFiOutline("Disconnect", enabled = conn != ConnState.IDLE, large = true) {
                                             LinkForegroundService.stop(context)
                                         }
                                     }
                                     // Build 71: an explicit off for always-on. Off by default.
                                     var swipeOff by remember { mutableStateOf(LinkForegroundService.swipeDisconnects(context)) }
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text("SWIPE AWAY DISCONNECTS", color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp,
+                                        Text("Swipe away disconnects", color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp,
                                             modifier = Modifier.align(Alignment.CenterVertically))
                                         val flip = { swipeOff = !swipeOff; LinkForegroundService.setSwipeDisconnects(context, swipeOff) }
                                         if (swipeOff) SciFiPrimary("ON", enabled = true) { flip() } else SciFiOutline("OFF", enabled = true) { flip() }
                                     }
                                 }
+                                }
                             }
                             item {
-                                SciFiPanel("DETECTION  //  ONE HUNTER") {
-                                    HudReadout("CONNECTED HUNTERS", "$wands", if (wands > 0) LtColors.Green else LtColors.Cyan)
+                                if (!onHull) {
+                                    OpsDetectionPanel(
+                                        hunters = wands, connected = active, running = scanning, mode = scanMode,
+                                        allSelected = scanPick == LinkConstants.ReconTarget.ALL,
+                                        deauthSelected = scanPick == LinkConstants.ReconTarget.DEAUTH,
+                                        onAll = { quickPick(everySensor) },
+                                        onDeauth = { quickPick(onlyDeauth) },
+                                        onStart = { LinkForegroundService.active?.reconStart(target) },
+                                        onStop = { LinkForegroundService.active?.reconStop() },
+                                        onClear = { LinkForegroundService.active?.clearEvents() },
+                                        onHunt = {
+                                            HuntSession.begin(android.os.SystemClock.elapsedRealtime())
+                                            LinkForegroundService.active?.huntStart()
+                                        },
+                                    )
+                                } else {
+                                SciFiPanel("QUICK START", statusColor = if (wands > 0) LtColors.Green else LtColors.Cyan, statusCount = wands) {
+                                    val (modeText, _) = scanModeLabel(scanMode)
+                                    Text(modeText, color = if (scanMode == ScanMode.NOT_SCANNING) LtColors.Red else if (scanMode == ScanMode.HUNTING) LtColors.Amber else LtColors.Green,
+                                        fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
                                     // Wraps onto a second line on narrow panels so CLEAR is never cut off.
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        TargetButton("ALL", LinkConstants.ReconTarget.ALL, target) { target = it }
-                                        TargetButton("DEAUTH", LinkConstants.ReconTarget.DEAUTH, target) { target = it }
-                                        SciFiPrimary("START", enabled = active) { LinkForegroundService.active?.reconStart(target) }
-                                        SciFiOutline("STOP", enabled = active) { LinkForegroundService.active?.reconStop() }
-                                        SciFiOutline("CLEAR", enabled = active) { LinkForegroundService.active?.clearEvents() }
+                                        TargetButton("All Sensors", LinkConstants.ReconTarget.ALL, scanPick) { quickPick(everySensor) }
+                                        TargetButton("Only Deauth", LinkConstants.ReconTarget.DEAUTH, scanPick) { quickPick(onlyDeauth) }
+                                        // The lit button shows the Hunter's state: START while stopped, STOP while scanning.
+                                        val running = status?.monitoring == true
+                                        if (running) SciFiOutline("Start", enabled = active) { LinkForegroundService.active?.reconStart(target) }
+                                        else SciFiPrimary("Start", enabled = active) { LinkForegroundService.active?.reconStart(target) }
+                                        if (running) SciFiPrimary("Stop", enabled = active) { LinkForegroundService.active?.reconStop() }
+                                        else SciFiOutline("Stop", enabled = active) { LinkForegroundService.active?.reconStop() }
+                                        SciFiOutline("Clear", enabled = active) { LinkForegroundService.active?.clearEvents() }
                                     }
                                     // HUNT v1: the fox hunt. The whole screen becomes the hunt screen.
-                                    SciFiPrimary("HUNT VIXEN", enabled = active, large = true) {
+                                    SciFiPrimary("Hunt Vixen", enabled = active, large = true) {
                                         HuntSession.begin(android.os.SystemClock.elapsedRealtime())
                                         LinkForegroundService.active?.huntStart()
                                     }
+                                }
+                                }
+                            }
+                            item {
+                                if (!onHull) {
+                                    OpsLatestDetection(
+                                        detector = events.maxByOrNull { it.lastUpdatedMillis }?.detectorName,
+                                        count = events.size,
+                                    )
+                                } else {
+                                events.maxByOrNull { it.eventId }?.let { latest ->
+                                    Box(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 3.dp)
+                                        .hudPanel(edge = LtColors.Amber, radius = 16.dp, elevation = 4.dp)
+                                        .clip(ConsoleShape).padding(horizontal = 18.dp, vertical = 12.dp)) {
+                                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                            Text("Latest detection", color = LtColors.Amber, fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp, letterSpacing = 1.sp)
+                                            Text("${latest.detectorName}  /  ${events.size} detections", color = LtColors.Ivory,
+                                                fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
+                                        }
+                                    }
+                                }
                                 }
                             }
                         }
@@ -790,14 +963,35 @@ private fun ControllerScreen() {
             val body: @Composable (Modifier) -> Unit = { m ->
                 Column(m) {
                     if (dest == Destination.OPS) {
-                        Box(Modifier.fillMaxWidth().height(FACE_PHONE + 8.dp)) {
-                            face(Modifier.size(FACE_PHONE).align(Alignment.TopStart).offset(x = 12.dp, y = 8.dp), false)
+                        BoxWithConstraints(Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 8.dp)) {
+                            val diameter = (maxWidth * .55f).coerceAtMost(300.dp)
+                            val panelStart = diameter * .86f
+                            Box(Modifier.fillMaxWidth()) {
+                                // Offset the instruments as one assembly; the foreground watch stays fixed.
+                                Column(Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                                FieldStatusPanel(
+                                    modifier = Modifier.padding(start = panelStart, top = 8.dp).fillMaxWidth(),
+                                    minHeight = diameter * .80f,
+                                    online = active,
+                                    stale = linkStale,
+                                    connecting = connecting,
+                                    device = deviceLabel.substringBefore(" / "),
+                                    sensor = activeSensorLabel(huntOpen, status),
+                                    detections = events.size,
+                                    latest = status?.lastAlertEventId?.let { alertId ->
+                                        events.firstOrNull { it.eventId == alertId || alertId in it.mergedEventIds }?.detectorName
+                                    },
+                                )
+                                    OpsLinkStrip(active, connecting, linkStale, events.size)
+                                }
+                                OpsWatchAssembly(Modifier.size(diameter * 1.10f).zIndex(1f)) { face(it, false) }
+                            }
                         }
                     } else {
                         NavHeaderStrip(dest.label, active, events.size, linkStale)
                     }
                     dataPane(Modifier.fillMaxWidth().weight(1f),
-                        PaddingValues(start = 10.dp, top = 0.dp, end = if (rail) 10.dp else 24.dp, bottom = 10.dp), false)
+                        PaddingValues(start = 10.dp, top = 0.dp, end = if (rail || page == "main" || page == "system" || page == "config" || page == "tools" || page == "attacks" || page == "builder") 10.dp else 24.dp, bottom = 10.dp), false)
                 }
             }
             if (rail) {
@@ -834,6 +1028,19 @@ private data class FaceInputs(
     val tempValue: String?, val tempUnit: String?, val sunLabel: String, val sunValue: String, val sunAmPm: String?,
     val sunTag: String?, val linkStale: Boolean, val reconnecting: Boolean,
 )
+
+/**
+ * What "Active sensor" shows (2026-11-04): the operator's selection, not the
+ * sweep's current phase. Status.active is which part of an ALL sweep the radio is
+ * on this instant (DEAUTH on the Wi-Fi part, FLOCK on the Bluetooth burst), which
+ * read as the wrong answer after ALL SENSORS and START. Status.selected is what
+ * was started. Not scanning reads STOPPED; a hunt reads VIXEN.
+ */
+internal fun activeSensorLabel(huntOpen: Boolean, status: com.projectrevivesolutions.layertime.controller.link.StatusSnapshot?): String = when {
+    huntOpen -> "VIXEN"
+    status == null || !status.monitoring -> "STOPPED"
+    else -> LinkConstants.ReconTarget.name(status.selected)
+}
 
 /** Empty-list text that matches the real state instead of always saying "connect a Hunter". */
 internal fun emptyEventsMessage(connected: Boolean, status: com.projectrevivesolutions.layertime.controller.link.StatusSnapshot?): String = when {
@@ -879,6 +1086,10 @@ private fun SciFiPanel(
     statusCount: Int? = null,
     content: @Composable () -> Unit,
 ) {
+    if (LocalSystemScreen.current) {
+        SystemModule(title, status = statusColor) { content() }
+        return
+    }
     Box(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 3.dp).hudPanel()) {
         Column(Modifier.padding(start = 21.dp, end = 21.dp, top = 19.dp, bottom = 21.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             HudHeader(title, statusColor, statusCount)
@@ -894,6 +1105,19 @@ private fun SciFiPanel(
 @Composable
 private fun HudHeader(title: String, statusColor: Color?, statusCount: Int?) {
     val edge = LtColors.ConsoleEdge
+    if (LocalSpacecraft.current) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (statusColor != null) Box(Modifier.size(6.dp).background(statusColor, CircleShape))
+                Text(title, color = LtColors.Ivory, fontSize = 13.sp, letterSpacing = 1.sp,
+                    fontWeight = FontWeight.Medium, fontFamily = FontFamily.SansSerif, modifier = Modifier.weight(1f))
+                statusCount?.let { Text("$it", color = statusColor ?: edge, fontSize = 12.sp) }
+            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(edge.copy(alpha = .18f)))
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             Modifier.fillMaxWidth()
@@ -963,6 +1187,7 @@ private fun pageFor(d: Destination): String = when (d) {
     Destination.OPS -> "main"
     Destination.EVENTS -> "attacks"
     Destination.TOOLS -> "tools"
+    Destination.BUILDER -> "builder"
     Destination.MISSION -> "config"
     Destination.SYSTEM -> "system"
 }
@@ -972,6 +1197,7 @@ private fun pageFor(d: Destination): String = when (d) {
 private fun destForPage(page: String): Destination = when (page) {
     "attacks", "capture", "detail" -> Destination.EVENTS
     "tools", "wireshark", "timeline" -> Destination.TOOLS
+    "builder" -> Destination.BUILDER
     "config" -> Destination.MISSION
     "system" -> Destination.SYSTEM
     else -> Destination.OPS
@@ -983,26 +1209,23 @@ private fun NavTab(modifier: Modifier, label: String, selected: Boolean, onClick
     val edge = if (selected) LtColors.Cyan else LtColors.ConsoleEdge
     val flash = rememberPressFlash()
     Box(
-        modifier.padding(3.dp).height(38.dp)
-            .glassPill(edge, selected)
-            .border(if (selected) 2.dp else 1.dp, railBrush(edge), PillShape)
+        modifier.padding(3.dp).height(48.dp)
+            .background(if (selected) Color(0xFF12394C) else Color(0xFF091323), RoundedCornerShape(8.dp))
+            .border(1.dp, edge.copy(alpha = if (selected) .85f else .18f), RoundedCornerShape(8.dp))
             .pressFlash(flash, false, edge)
-            .clip(PillShape)
+            .clip(RoundedCornerShape(8.dp))
             .clickable { flash.fire(); onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, color = edge, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp,
-            fontFamily = ConsoleFonts.heading)
+        Text(label, color = edge, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 0.sp,
+            fontFamily = FontFamily.SansSerif, maxLines = 1)
     }
 }
 
 /** The compact phone's bottom navigation bar: the five destinations, evenly across the width. */
 @Composable
 private fun NeonNavBar(current: Destination, onSelect: (Destination) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        for (d in Destination.values()) NavTab(Modifier.weight(1f), d.label, d == current) { onSelect(d) }
-    }
+    OpsNavigationBar(current, onSelect)
 }
 
 /** The wide screen's left navigation rail. */
@@ -1072,6 +1295,16 @@ private fun HudReadout(label: String, value: String, color: Color) {
     }
 }
 
+/** A label on the left and a value on the right, for a status panel row. */
+@Composable
+private fun StatusRow(label: String, value: String, color: Color) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp, fontFamily = ConsoleFonts.heading)
+        Spacer(Modifier.weight(1f))
+        Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 13.sp, fontFamily = ConsoleFonts.body)
+    }
+}
+
 /** Button geometry follows the panel's text scale; [large] is for buttons that are a panel's only controls. */
 @Composable
 private fun buttonHeight(large: Boolean) = (if (large) 44.dp else 32.dp) * LocalDensity.current.fontScale
@@ -1081,6 +1314,10 @@ private val btnPadPill = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
 /** Filled green pill: domed face, tube-shaded rim, specular line, and glow. Disabled, it is dim glass that still reads as a button. */
 @Composable
 fun SciFiPrimary(text: String, enabled: Boolean, large: Boolean = false, onClick: () -> Unit) {
+    if (LocalSpacecraft.current) {
+        SpacecraftKey(text, enabled, true, onClick)
+        return
+    }
     val g = LtColors.Green
     val look = if (enabled)
         Modifier.shadow(if (large) 8.dp else 5.dp, PillShape, clip = false, ambientColor = g.copy(alpha = 0.7f), spotColor = g)
@@ -1108,6 +1345,10 @@ fun SciFiPrimary(text: String, enabled: Boolean, large: Boolean = false, onClick
 /** Outlined cyan pill: lit glass with a tube rim and glowing text. Disabled, dim glass with a faint rim. */
 @Composable
 fun SciFiOutline(text: String, enabled: Boolean, large: Boolean = false, onClick: () -> Unit) {
+    if (LocalSpacecraft.current) {
+        SpacecraftKey(text, enabled, false, onClick)
+        return
+    }
     val e = LtColors.ConsoleEdge
     val glow = if (enabled) Modifier.shadow(if (large) 6.dp else 4.dp, PillShape, clip = false,
         ambientColor = e.copy(alpha = 0.7f), spotColor = e).haloOnly(e, radius = buttonHeight(large) / 2) else Modifier
@@ -1125,6 +1366,27 @@ fun SciFiOutline(text: String, enabled: Boolean, large: Boolean = false, onClick
         Text(text, fontSize = if (large) 13.sp else 11.sp, letterSpacing = 1.sp, fontFamily = ConsoleFonts.heading,
             maxLines = 1, softWrap = false,
             style = if (enabled) TextStyle(shadow = Shadow(e, Offset.Zero, 9f)) else TextStyle.Default)
+    }
+}
+
+/** Recessed glass key for phones/tablets; callbacks and watch keys remain unchanged. */
+@Composable
+private fun SpacecraftKey(text: String, enabled: Boolean, primary: Boolean, onClick: () -> Unit) {
+    val edge = LtColors.ConsoleEdge
+    val shape = RoundedCornerShape(7.dp)
+    Button(onClick = onClick, enabled = enabled, shape = shape,
+        modifier = Modifier.height(48.dp)
+            .background(Brush.verticalGradient(if (enabled && primary)
+                listOf(Color(0xFF15546C), Color(0xFF092332))
+                else listOf(Color(0xFF142636), Color(0xFF08121D))), shape)
+            .border(1.dp, edge.copy(alpha = if (!enabled) .12f else if (primary) .85f else .35f), shape),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent,
+            contentColor = LtColors.Ivory, disabledContainerColor = Color.Transparent,
+            disabledContentColor = Color(0xFF6F8292)),
+        elevation = ButtonDefaults.buttonElevation(0.dp)) {
+        Text(text, fontFamily = FontFamily.SansSerif, fontSize = 12.sp,
+            fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
     }
 }
 
@@ -1169,6 +1431,10 @@ private fun PositionPanel(
     gpsTime: Long?, manual: RingData.Manual?, useManual: Boolean, posLat: Double?, posLon: Double?,
     onSet: (Double, Double) -> Unit, onClear: () -> Unit,
 ) {
+    if (LocalSystemScreen.current) {
+        SystemPositionPanels(gpsTime, manual, useManual, posLat, posLon, onSet, onClear)
+        return
+    }
     var text by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<Pair<String, Boolean>?>(null) }   // text, isError
     val fmt = remember { SimpleDateFormat("MMM dd HH:mm", Locale.US) }
@@ -1263,6 +1529,10 @@ private fun HudKey(label: String, edge: Color, wide: Boolean = false, onClick: (
  */
 @Composable
 private fun LayerTimeButtonPanel(nowMs: Long) {
+    if (LocalSystemScreen.current) {
+        SystemSideButtonPanel(nowMs)
+        return
+    }
     val context = LocalContext.current
     val on = remember(nowMs / 3_000L) { com.projectrevivesolutions.layertime.controller.service.LayerTimeKeyService.isEnabled(context) }
     SciFiPanel("LAYERSCOPE BUTTON", statusColor = if (on) LtColors.Green else LtColors.Amber) {

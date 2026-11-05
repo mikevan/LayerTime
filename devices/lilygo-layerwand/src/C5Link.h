@@ -36,6 +36,7 @@
 #include <stdint.h>
 
 #include "core/link/LinkCodec.h"
+#include "core/link/LinkEvidence.h"
 #include "core/link/LinkHunt.h"
 #include "core/link/LinkPipe.h"
 #include "core/link/LinkServer.h"
@@ -70,6 +71,20 @@ public:
     {
         _hunt = handler;
         _huntContext = context;
+    }
+    // Link 0.2 evidence (slice 2, 2026-11-04). A Node that keeps evidence
+    // attaches a handler before begin(). GET_FRAMES and GET_FRAME_BYTES then
+    // wait for the loop like COMMAND; serviceRequests() hands each one to the
+    // handler with this connection's notification size and a send function
+    // that waits for NimBLE buffers (as BULK does), because one GET_FRAME_BYTES
+    // streams a whole window, far more than the 48-frame reply pipe holds.
+    using EvidenceSend = bool (*)(const uint8_t *frame, size_t len, void *context);
+    using EvidenceHandler = void (*)(const uint8_t *request, size_t len, uint32_t nowMs, size_t frameSize,
+                                     EvidenceSend send, void *sendContext, void *context);
+    void attachEvidence(EvidenceHandler handler, void *context)
+    {
+        _evidence = handler;
+        _evidenceContext = context;
     }
     // Sets or clears Status flag bit 6, hunting. Notified by service().
     void setHunting(bool hunting) { _extraFlags = hunting ? link::hunt::kFlagHunting : 0; }
@@ -115,11 +130,14 @@ public:
     void onDisconnected();
     void onControlWritten(const uint8_t *data, size_t len);
 
-#if defined(LAYERTIME_MEASURE)
-    // Link 0.2 Phase 0 measurement build only. The connection's ATT MTU (23
-    // until the central asks for more), and the BULK runs answered so far.
+    // The connection's ATT MTU: 23 until the central asks for more. Every
+    // build tracks it since slice 2 (2026-11-04), because the evidence ops
+    // stream at MTU minus 3; it was measurement-build only before.
     void onMtuChanged(uint16_t mtu) { _mtu = mtu; }
     uint16_t mtu() const { return _mtu; }
+
+#if defined(LAYERTIME_MEASURE)
+    // Link 0.2 Phase 0 measurement build only: the BULK runs answered so far.
     uint32_t bulkRuns() const { return _bulkRuns; }
     const link::measure::BulkDone &lastBulk() const { return _lastBulk; }
     // A BULK frame NimBLE keeps refusing for this long ends the run early.
@@ -127,12 +145,12 @@ public:
 #endif
 
 private:
+    uint16_t _mtu = 23;
 #if defined(LAYERTIME_MEASURE)
     // Answers BULK on the loop task: count Data notifications of the
     // requested size (capped by the MTU), then BULK_DONE. Blocks the loop
     // for the length of the run, which the measurement build accepts.
     void runBulk(const uint8_t *request, size_t len);
-    uint16_t _mtu = 23;
     uint32_t _bulkRuns = 0;
     link::measure::BulkDone _lastBulk;
 #endif
@@ -146,6 +164,11 @@ private:
     link::LinkServer *_server = nullptr;
     RequestHandler _hunt = nullptr;
     void *_huntContext = nullptr;
+    EvidenceHandler _evidence = nullptr;
+    void *_evidenceContext = nullptr;
+    static bool sendEvidenceFrame(const uint8_t *frame, size_t len, void *self);
+    uint32_t _evidenceFramesSent = 0;
+    uint32_t _evidenceRefused = 0;
     uint8_t _extraFlags = 0; // ORed into Status.flags (setHunting)
     // Guards _status and _pipe, which the BLE task and the loop share.
     void *_io = nullptr;

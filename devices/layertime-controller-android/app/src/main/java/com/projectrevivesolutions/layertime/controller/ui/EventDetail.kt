@@ -91,6 +91,7 @@ fun EventDetailScreen(
     wandLabel: String,
     conn: ConnState,
     onBack: () -> Unit,
+    onOpenWireshark: () -> Unit = {},
 ) {
     val noFrames = "Raw 802.11 frames are not transported by LayerTime Link 0.1 (EVENT_SUMMARY is normalized). See the Link 0.2 evidence-transfer proposal."
     val capture = rememberCaptureImportUi()
@@ -104,6 +105,10 @@ fun EventDetailScreen(
             }
         }
 
+        // TRIAGE first (Michael, 2026-11-04): the pull and the finding are the point of
+        // this page, so they sit above QUICK LOOK instead of below the fold.
+        item { Section("TRIAGE") { TriageSection(e, onOpenWireshark) } }
+
         item { QuickLook(e) }
 
         item {
@@ -115,7 +120,7 @@ fun EventDetailScreen(
                 Field("First observed (phone)", tsFmt.format(Date(e.firstSeenMillis)), Prov.CALC, "Phone receive time, not the Hunter's capture time.")
                 Field("Last observed (phone)", tsFmt.format(Date(e.lastUpdatedMillis)), Prov.CALC, "Phone receive time.")
                 Field("Observation window", "${(e.lastUpdatedMillis - e.firstSeenMillis) / 1000}s", Prov.CALC, "Across phone receive times.")
-                Field("Repeated sightings", "${e.count}", Prov.CALC, "EVENT_SUMMARY count, saturating at 65535.")
+                Field("Repeated sightings", "${e.count}", Prov.CALC, "EVENT_SUMMARY counts, each saturating at 65535, added up across the ${maxOf(1, e.mergedEventIds.size)} Hunter record(s) for this MAC address.")
                 Field("Age at last report", "${e.ageSeconds}s", Prov.CALC)
                 Field("Captured frame count", null, Prov.UNAVAIL, "Link 0.1 reports a sighting count, not a captured-frame count.")
                 Field("Measured frame rate", null, Prov.UNAVAIL, "No per-frame timing crosses the link.")
@@ -364,7 +369,7 @@ fun LazyListScope.captureImportItems(ui: CaptureImportUi, title: String, eventId
  * event-detail screen.
  */
 @Composable
-fun CaptureOnlyScreen(onBack: () -> Unit) {
+fun CaptureOnlyScreen(onBack: () -> Unit, onOpenWireshark: () -> Unit = {}) {
     val capture = rememberCaptureImportUi()
     LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
@@ -375,13 +380,15 @@ fun CaptureOnlyScreen(onBack: () -> Unit) {
                     fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp, style = glowText())
             }
         }
+        // The analytic pipeline on the capture itself, above the frame list so it is seen first.
+        item { Section("TRIAGE") { CaptureTriageSection(onOpenWireshark) } }
         captureImportItems(capture, "IMPORTED CAPTURE (WIRESHARK)", null)
     }
 }
 
 /** One imported frame. Collapsed: a one-line summary. Expanded: every Wireshark field with its byte offset, then the bytes. */
 @Composable
-private fun FrameCard(f: WiresharkDecoder.PcapFrame, open: Boolean, onToggle: () -> Unit) {
+internal fun FrameCard(f: WiresharkDecoder.PcapFrame, open: Boolean, onToggle: () -> Unit) {
     Box(
         Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 3.dp)
             .hudPanel(edge = if (f.malformed) LtColors.Red else LtColors.Green, radius = 16.dp, elevation = 4.dp)

@@ -45,7 +45,18 @@ void MonitorEventLog::add(const Candidate &c)
 
     uint8_t index = _count;
     if (index >= kCapacity) {
-        memmove(&_events[0], &_events[1], sizeof(MonitorEvent) * (kCapacity - 1));
+        // Full: drop the weakest, then oldest, record so that a flood of
+        // Low-confidence ambient traffic cannot push a High-confidence
+        // detection (a confirmed tracker, a deauth) out of the log. Records
+        // are kept in first-seen order, so among records of equal confidence
+        // the lowest index is the oldest; scanning with a strict < keeps that
+        // oldest one as the victim. With every record at the same confidence
+        // this is exactly the old drop-the-oldest behaviour.
+        uint8_t victim = 0;
+        for (uint8_t i = 1; i < kCapacity; ++i)
+            if (_events[i].confidence < _events[victim].confidence) victim = i;
+        memmove(&_events[victim], &_events[victim + 1],
+                sizeof(MonitorEvent) * (kCapacity - 1 - victim));
         index = kCapacity - 1;
     } else ++_count;
 

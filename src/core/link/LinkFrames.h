@@ -97,6 +97,9 @@ constexpr uint16_t kCapLocalBleMonitor = 0x0002;
 constexpr uint16_t kCapDisplay = 0x0004;
 constexpr uint16_t kCapLed = 0x0008;
 constexpr uint16_t kCapButton = 0x0010;
+// Bits 5 and 6 belong to Link 0.2 (5 reserved, 6 is HUNT, LinkHunt.h).
+// Bit 7: the Node takes COMMAND SetSensors, the sensor allow-list (2026-11-04).
+constexpr uint16_t kCapSensorSet = 0x0080;
 
 // Request and reply sizes on the wire.
 constexpr size_t kHelloSize = 4;

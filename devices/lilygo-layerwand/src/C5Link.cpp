@@ -66,12 +66,10 @@ public:
         if (gLink) gLink->onDisconnected();
         // advertiseOnDisconnect(true) restarts advertising; nothing to do here.
     }
-#if defined(LAYERTIME_MEASURE)
     void onMTUChange(uint16_t mtu, NimBLEConnInfo &) override
     {
         if (gLink) gLink->onMtuChanged(mtu);
     }
-#endif
 };
 
 class ControlCallbacks : public NimBLECharacteristicCallbacks {
@@ -205,6 +203,24 @@ void C5Link::pushFrame(const uint8_t *frame, size_t len, void *self)
     me->unlockIo();
 }
 
+// One evidence frame: wait for NimBLE buffers, as BULK does (Phase 0: about
+// 3.6 refusals per frame at full speed, never a lost frame). Gives up when the
+// central goes or after kEvidenceStallMs with no buffer, so a stuck stack
+// cannot hold the loop.
+bool C5Link::sendEvidenceFrame(const uint8_t *frame, size_t len, void *self)
+{
+    C5Link *me = static_cast<C5Link *>(self);
+    static constexpr uint32_t kEvidenceStallMs = 2000;
+    const uint32_t start = millis();
+    while (me->_connected) {
+        if (gData->notify(frame, len)) { ++me->_evidenceFramesSent; return true; }
+        ++me->_evidenceRefused;
+        if (millis() - start > kEvidenceStallMs) return false;
+        vTaskDelay(1);
+    }
+    return false;
+}
+
 void C5Link::serviceRequests(uint32_t nowMs)
 {
     if (_server == nullptr) return;
@@ -225,7 +241,11 @@ void C5Link::serviceRequests(uint32_t nowMs)
             return;
         }
 #endif
-        if (_hunt != nullptr && link::hunt::isHuntOp(request[0])) {
+        if (_evidence != nullptr && link::evidence::isEvidenceOp(request[0])) {
+            // Streamed straight to NimBLE at this connection's size, not through
+            // the reply pipe; the pipe is empty here (one request at a time).
+            _evidence(request, n, nowMs, link::evidence::frameSizeForMtu(_mtu), sendEvidenceFrame, this, _evidenceContext);
+        } else if (_hunt != nullptr && link::hunt::isHuntOp(request[0])) {
             // HUNT v1: one reply frame, queued like any other, and sent below
             // in this same pass.
             uint8_t reply[link::kMaxFrame];
@@ -279,11 +299,7 @@ void C5Link::notifyStatus(uint32_t nowMs)
 
 void C5Link::onConnected(const char *peer, uint16_t mtu)
 {
-#if defined(LAYERTIME_MEASURE)
     _mtu = mtu;
-#else
-    (void)mtu;
-#endif
     strncpy(_peer, peer, sizeof(_peer) - 1);
     _peer[sizeof(_peer) - 1] = '\0';
     _connected = true;
@@ -309,7 +325,11 @@ void C5Link::onControlWritten(const uint8_t *data, size_t len)
         const bool deferred = op == static_cast<uint8_t>(link::Op::Command) ||
                               op == static_cast<uint8_t>(link::Op::GetChanged) ||
                               op == static_cast<uint8_t>(link::Op::GetText) ||
-                              (_hunt != nullptr && link::hunt::isHuntOp(op))
+                              (_hunt != nullptr && link::hunt::isHuntOp(op)) ||
+                              // Slice 2: GET_FRAMES and GET_FRAME_BYTES wait for the loop,
+                              // which streams the answer (serviceRequests). Without this they
+                              // fell through to dispatch() and got ERROR UnknownOp.
+                              (_evidence != nullptr && link::evidence::isEvidenceOp(op))
 #if defined(LAYERTIME_MEASURE)
                               || op == link::measure::kOpBulk
 #endif

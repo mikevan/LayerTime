@@ -163,6 +163,44 @@ void when_full_the_oldest_is_dropped()
     CHECK_STR("00:00:00:00:00:02", log.event(0).sourceId);
 }
 
+void when_full_a_high_record_outlives_a_flood_of_low()
+{
+    MonitorEventLog log;
+    char addr[MonitorEventLog::kCapacity + 8][18];
+    // One High detection first (a confirmed tracker), then fill and overflow
+    // the log with Low-confidence ambient traffic.
+    snprintf(addr[0], sizeof(addr[0]), "AA:00:00:00:00:00");
+    log.add(cand(ReconTarget::AirTag, addr[0], Confidence::High));
+    const uint32_t highId = log.event(0).eventId;
+    for (int i = 1; i < MonitorEventLog::kCapacity + 7; ++i) {
+        snprintf(addr[i], sizeof(addr[i]), "00:00:00:00:%02X:%02X", i >> 8, i & 0xFF);
+        log.add(cand(ReconTarget::Tile, addr[i], Confidence::Low));
+    }
+    CHECK_INT(40, log.count());
+    // The High record survived: find it by its eventId.
+    bool kept = false;
+    for (uint8_t i = 0; i < log.count(); ++i)
+        if (log.event(i).eventId == highId) { kept = true;
+            CHECK_STR("AA:00:00:00:00:00", log.event(i).sourceId);
+            CHECK_INT(static_cast<int>(Confidence::High), static_cast<int>(log.event(i).confidence)); }
+    CHECK_TRUE(kept);
+}
+
+void when_full_and_all_equal_the_oldest_is_dropped()
+{
+    // The weakest-then-oldest rule degenerates to oldest when confidence is
+    // uniform: this is the pre-change behaviour, pinned.
+    MonitorEventLog log;
+    char addr[MonitorEventLog::kCapacity + 1][18];
+    for (int i = 0; i <= MonitorEventLog::kCapacity; ++i) {
+        snprintf(addr[i], sizeof(addr[i]), "11:00:00:00:00:%02X", i);
+        log.add(cand(ReconTarget::Tile, addr[i], Confidence::Medium));
+    }
+    CHECK_INT(40, log.count());
+    CHECK_STR("11:00:00:00:00:01", log.event(0).sourceId);
+    CHECK_STR("11:00:00:00:00:28", log.event(39).sourceId);
+}
+
 void new_records_alert_by_the_core_policy()
 {
     MonitorEventLog log;
@@ -250,6 +288,8 @@ int main(int argc, char **argv)
     CASE(same_address_under_another_detector_is_a_new_record);
     CASE(detector_identity_matches_the_old_category_key);
     CASE(when_full_the_oldest_is_dropped);
+    CASE(when_full_a_high_record_outlives_a_flood_of_low);
+    CASE(when_full_and_all_equal_the_oldest_is_dropped);
     CASE(new_records_alert_by_the_core_policy);
     CASE(low_then_high_never_alerts_KNOWN_DEFECT);
     CASE(acknowledge_keeps_the_history);

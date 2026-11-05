@@ -41,7 +41,8 @@ int main(int argc, char **argv) {
     int fail = 0;
 
     long rss0 = rss_kb();
-    ltws_init_result a = ltws_init(), b = ltws_init();
+    /* Same call the app makes: Wireshark config and data folders under a private base. */
+    ltws_init_result a = ltws_init("/tmp/ltws_core_test"), b = ltws_init("/tmp/ltws_core_test");
     printf("init #1: performed_now=%d ok=%d epan_init=%.1f ms total=%.1f ms calls=%d\n",
         a.performed_now, a.ok, a.epan_init_ns/1e6, a.total_init_ns/1e6, a.calls);
     printf("init #2: performed_now=%d ok=%d (reports first-init epan_init=%.1f ms) calls=%d\n",

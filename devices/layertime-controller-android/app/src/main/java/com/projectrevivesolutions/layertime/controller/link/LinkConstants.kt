@@ -93,12 +93,15 @@ object LinkConstants {
         const val DISPLAY = 0x04
         const val LED = 0x08
         const val BUTTON = 0x10
+        // Bit 7: the Node takes COMMAND SetSensors, the sensor allow-list (2026-11-04).
+        const val SENSOR_SET = 0x80
         fun describe(mask: Int): List<String> = buildList {
             if (mask and LOCAL_WIFI_MONITOR != 0) add("wifi")
             if (mask and LOCAL_BLE_MONITOR != 0) add("ble")
             if (mask and DISPLAY != 0) add("display")
             if (mask and LED != 0) add("led")
             if (mask and BUTTON != 0) add("button")
+            if (mask and SENSOR_SET != 0) add("sensorSet")
         }
     }
 
@@ -106,12 +109,13 @@ object LinkConstants {
     // these with the exact lengths below; everything else is rejected or
     // reported Unsupported (contracts/link.md "COMMAND").
     object CommandType {
-        const val RECON_START = 1          // arg: target u8 (1..16)
+        const val RECON_START = 1          // arg: target u8 (1..16, or 18 EAPOL)
         const val RECON_STOP = 2           // no arg
         const val RECON_CLEAR_EVENTS = 3   // no arg
         const val RECON_ACK_ALERT = 4      // no arg
         const val SET_SLEEP_MODE = 11      // arg: enabled u8 (0/1)
         const val SET_EARLY_WARNING = 12   // arg: enabled u8 (0/1)
+        const val SET_SENSORS = 15         // arg: mask u32 little-endian (7-byte frame); needs Capability.SENSOR_SET
     }
 
     object CommandResult {
@@ -136,7 +140,8 @@ object LinkConstants {
             0 to "STOPPED", 1 to "ALL", 2 to "TRACKERS", 3 to "COUNTER-SURVEIL",
             4 to "COUNTER-INTRUSION", 5 to "DEAUTH", 6 to "PWNAGOTCHI", 7 to "MULTISSID",
             8 to "FLOCK", 9 to "PINEAPPLE", 10 to "AIRTAG", 11 to "FLIPPER", 12 to "META",
-            13 to "AXON", 14 to "TILE", 15 to "SMARTTAG", 16 to "GOOGLE TAG", 17 to "EARLY WARNING"
+            13 to "AXON", 14 to "TILE", 15 to "SMARTTAG", 16 to "GOOGLE TAG", 17 to "EARLY WARNING",
+            18 to "EAPOL"
         )
         fun name(v: Int) = display[v] ?: "TARGET($v)"
     }

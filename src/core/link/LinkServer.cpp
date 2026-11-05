@@ -78,6 +78,9 @@ bool commandLength(uint8_t commandType, size_t &length)
     case CommandType::ReconAcknowledgeAlert:
         length = kCommandMinSize;
         return true;
+    case CommandType::SetSensors:
+        length = kCommandMinSize + 4; // mask u32, little-endian
+        return true;
     default:
         return false;
     }
@@ -186,10 +189,14 @@ void LinkServer::handleCommand(const uint8_t *request, size_t len, FrameSink sin
     CommandResult result = CommandResult::Ok;
     switch (cmd.type) {
     case CommandType::ReconStart:
-        // 1 (All) to 16 (GoogleTag). None is ReconStop's job and
-        // EarlyWarning is SetEarlyWarning's.
+        // Selectable targets: All (1), the groups (2 to 4), the single
+        // detectors (5 to 16), and Eapol (18). None (0) is ReconStop's job
+        // and EarlyWarning (17) is SetEarlyWarning's, so both are refused
+        // here. Eapol sits at 18, past EarlyWarning, so the bound is no
+        // longer a single range.
         if (c.argument < static_cast<uint8_t>(ReconTarget::All) ||
-            c.argument > static_cast<uint8_t>(ReconTarget::GoogleTag)) {
+            (c.argument > static_cast<uint8_t>(ReconTarget::GoogleTag) &&
+             c.argument != static_cast<uint8_t>(ReconTarget::Eapol))) {
             result = CommandResult::InvalidArgument;
             break;
         }
@@ -220,6 +227,16 @@ void LinkServer::handleCommand(const uint8_t *request, size_t len, FrameSink sin
         break;
     case CommandType::ReconClearEvents:
     case CommandType::ReconAcknowledgeAlert:
+        lock();
+        result = _core.execute(cmd);
+        unlock();
+        break;
+    case CommandType::SetSensors:
+        // The mask is four bytes, so it is read here rather than from the
+        // one-byte argument. Under the lock: the candidate sink reads it on
+        // the radio tasks. The platform persists it from core's settings.
+        cmd.sensors.mask = static_cast<uint32_t>(request[3]) | (static_cast<uint32_t>(request[4]) << 8) |
+                           (static_cast<uint32_t>(request[5]) << 16) | (static_cast<uint32_t>(request[6]) << 24);
         lock();
         result = _core.execute(cmd);
         unlock();

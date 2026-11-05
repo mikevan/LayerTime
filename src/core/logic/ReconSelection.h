@@ -67,6 +67,14 @@ bool isBackgroundWifiDetector(ReconTarget detector);
 bool wants(bool monitoring, ReconTarget selection, bool earlyWarningSweeping,
            ReconTarget detector);
 
+// The bit a single sensor holds in a SetSensors mask; 0 for a selection.
+uint32_t sensorBit(ReconTarget detector);
+// Whether the allow-list lets this sensor report. A selection (None, All,
+// a group, EarlyWarning) is never a reporting sensor, so it is never allowed.
+bool sensorAllowed(uint32_t mask, ReconTarget detector);
+// Whether a mask names only real sensors (no selection bits, nothing past 18).
+bool validSensorMask(uint32_t mask);
+
 const char *detectorName(ReconTarget detector);
 const char *detectorShortName(ReconTarget detector);
 const char *confidenceLabel(Confidence confidence);

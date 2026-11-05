@@ -29,7 +29,7 @@ constexpr ReconTarget kCounterSurveilMembers[] = {
     ReconTarget::Flock, ReconTarget::Axon, ReconTarget::Meta};
 constexpr ReconTarget kCounterIntrusionMembers[] = {
     ReconTarget::Deauth, ReconTarget::Pwnagotchi, ReconTarget::MultiSSID,
-    ReconTarget::Pineapple, ReconTarget::Flipper};
+    ReconTarget::Pineapple, ReconTarget::Flipper, ReconTarget::Eapol};
 }
 
 const ReconTarget *groupMembers(ReconTarget group, size_t &count)
@@ -71,7 +71,8 @@ bool isWifiDetector(ReconTarget d)
 {
     return d == ReconTarget::Deauth || d == ReconTarget::Pwnagotchi ||
            d == ReconTarget::MultiSSID || d == ReconTarget::Pineapple ||
-           d == ReconTarget::Flock || d == ReconTarget::Axon;
+           d == ReconTarget::Flock || d == ReconTarget::Axon ||
+           d == ReconTarget::Eapol;
 }
 
 bool needsBle(ReconTarget selection)
@@ -128,6 +129,24 @@ bool wants(bool monitoring, ReconTarget selection, bool earlyWarningSweeping,
     return earlyWarningSweeping && isBackgroundWifiDetector(detector);
 }
 
+uint32_t sensorBit(ReconTarget detector)
+{
+    const uint8_t v = static_cast<uint8_t>(detector);
+    if (v > 31) return 0;
+    const uint32_t bit = 1u << v;
+    return (bit & kAllSensorsMask) ? bit : 0;
+}
+
+bool sensorAllowed(uint32_t mask, ReconTarget detector)
+{
+    return (mask & sensorBit(detector)) != 0;
+}
+
+bool validSensorMask(uint32_t mask)
+{
+    return (mask & ~kAllSensorsMask) == 0;
+}
+
 const char *detectorName(ReconTarget detector)
 {
     switch (detector) {
@@ -147,6 +166,7 @@ const char *detectorName(ReconTarget detector)
     case ReconTarget::Tile: return "TILE";
     case ReconTarget::SamsungTag: return "SMARTTAG";
     case ReconTarget::GoogleTag: return "GOOGLE TAG";
+    case ReconTarget::Eapol: return "EAPOL";
     case ReconTarget::EarlyWarning: return "EARLY WARNING";
     default: return "STOPPED";
     }

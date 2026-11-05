@@ -9,14 +9,16 @@
 typedef struct {
     int     performed_now;  /* 1 only on the call that actually ran initialization */
     int     ok;             /* 1 if epan_init returned true */
-    int64_t epan_init_ns;   /* epan_init alone (dissector registration), monotonic clock */
-    int64_t total_init_ns;  /* log + privileges + wtap_init + epan_init */
+    int64_t epan_init_ns;   /* epan_init plus settings load, monotonic clock */
+    int64_t total_init_ns;  /* log + privileges + config + wtap_init + epan_init + settings */
     int     calls;          /* how many times ltws_init has been called in this process */
 } ltws_init_result;
 
 /* Idempotent and thread-safe. Later calls return the first call's timings
- * with performed_now = 0; initialization is never re-run. */
-ltws_init_result ltws_init(void);
+ * with performed_now = 0; initialization is never re-run. base_dir is an
+ * app-private folder; Wireshark's config and data folders are created under it
+ * (base_dir/config, base_dir/data). NULL leaves Wireshark's default folders. */
+ltws_init_result ltws_init(const char *base_dir);
 
 /* epan version string (static storage). */
 const char *ltws_version(void);

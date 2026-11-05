@@ -87,6 +87,15 @@ object LinkCodec {
     fun setEarlyWarning(reqId: Int, enabled: Boolean) =
         commandArg(reqId, LinkConstants.CommandType.SET_EARLY_WARNING, if (enabled) 1 else 0)
 
+    /** COMMAND SetSensors: op | reqId | 15 | mask u32 little-endian (7 bytes). */
+    fun setSensors(reqId: Int, mask: Long): ByteArray {
+        val b = ByteArray(7)
+        b[0] = LinkConstants.Op.COMMAND.toByte(); b[1] = reqId.toByte()
+        b[2] = LinkConstants.CommandType.SET_SENSORS.toByte()
+        putU32(b, 3, mask)
+        return b
+    }
+
     /** GET_CHANGED: op | reqId | sinceChangeSeq u32 (6 bytes). */
     fun getChanged(reqId: Int, sinceChangeSeq: Long): ByteArray {
         val b = ByteArray(6)

@@ -38,7 +38,7 @@ using namespace layertime::recon;
 
 namespace {
 
-bool isSingleDetector(int v) { return v >= 5 && v <= 16; }
+bool isSingleDetector(int v) { return (v >= 5 && v <= 16) || v == 18; }  // 18 = Eapol
 
 } // namespace
 
@@ -53,7 +53,7 @@ void every_single_detector_maps_both_ways()
         ++mapped;
         CHECK_INT(v, static_cast<int>(fromSensorDetector(d)));
     }
-    CHECK_INT(12, mapped);
+    CHECK_INT(13, mapped);
     for (lts::DetectorId d : lts::kAllDetectors) {
         lts::DetectorId back = lts::DetectorId::Deauth;
         CHECK_TRUE(toSensorDetector(fromSensorDetector(d), back));
@@ -103,13 +103,14 @@ void ble_scan_sets_for_the_menu_entries()
         return out;
     };
     CHECK_TRUE(members(ReconTarget::None).empty());
-    CHECK_INT(12, members(ReconTarget::All).size());
+    CHECK_INT(13, members(ReconTarget::All).size());
     CHECK_TRUE((members(ReconTarget::EarlyWarning) == std::vector<int>{11, 12}));       // Flipper, Meta
     CHECK_TRUE((members(ReconTarget::Trackers) == std::vector<int>{10, 14, 15, 16}));   // AirTag, Tile, SmartTag, Google
     CHECK_TRUE((members(ReconTarget::CounterSurveil) == std::vector<int>{8, 12, 13}));  // Flock, Meta, Axon
-    CHECK_TRUE((members(ReconTarget::CounterIntrusion) == std::vector<int>{5, 6, 7, 9, 11}));
+    CHECK_TRUE((members(ReconTarget::CounterIntrusion) == std::vector<int>{5, 6, 7, 9, 11, 17}));  // + Eapol (DetectorId 17)
     for (int v = 5; v <= 16; ++v) CHECK_TRUE((members(static_cast<ReconTarget>(v)) == std::vector<int>{v}));
-    for (int v : {17 + 1, 19, 20, 100, 255}) CHECK_TRUE(members(static_cast<ReconTarget>(v)).empty());
+    CHECK_TRUE((members(ReconTarget::Eapol) == std::vector<int>{17}));  // ReconTarget 18 -> DetectorId 17
+    for (int v : {19, 20, 100, 255}) CHECK_TRUE(members(static_cast<ReconTarget>(v)).empty());
 }
 
 struct Mode {
@@ -155,13 +156,15 @@ void custom_wants_rules_become_exactly_their_sets()
 {
     // Empty, one, a cross-radio pair, everything, and only non-detectors.
     const std::vector<std::vector<int>> rules = {
-        {}, {10}, {10, 5}, {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}, {0, 1, 2, 3, 4, 17, 200}};
+        {}, {10}, {10, 5}, {5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18}, {0, 1, 2, 3, 4, 17, 200}};
     for (const auto &rule : rules) {
         Custom c{rule};
         const lts::DetectorSet set = enabledDetectors(customWants, &c);
         for (lts::DetectorId d : lts::kAllDetectors) {
             bool expected = false;
-            for (int v : rule) expected = expected || v == static_cast<int>(d);
+            // The rule is in ReconTarget space (Eapol is 18 there, 17 as a
+            // DetectorId), so compare against the detector's ReconTarget.
+            for (int v : rule) expected = expected || v == static_cast<int>(fromSensorDetector(d));
             CHECK_INT(expected, set.contains(d));
         }
     }
@@ -171,13 +174,13 @@ void the_numbers_layertime_stores_and_sends_do_not_move()
 {
     // ReconTarget travels in the link's status and event records, the
     // ReconStart command, and the C5 stage log (contracts/link.md).
-    const int expected[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17};
+    const int expected[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
     const ReconTarget all[] = {
         ReconTarget::None, ReconTarget::All, ReconTarget::Trackers, ReconTarget::CounterSurveil,
         ReconTarget::CounterIntrusion, ReconTarget::Deauth, ReconTarget::Pwnagotchi,
         ReconTarget::MultiSSID, ReconTarget::Flock, ReconTarget::Pineapple, ReconTarget::AirTag,
         ReconTarget::Flipper, ReconTarget::Meta, ReconTarget::Axon, ReconTarget::Tile,
-        ReconTarget::SamsungTag, ReconTarget::GoogleTag, ReconTarget::EarlyWarning};
+        ReconTarget::SamsungTag, ReconTarget::GoogleTag, ReconTarget::EarlyWarning, ReconTarget::Eapol};
     for (size_t i = 0; i < sizeof(all) / sizeof(all[0]); ++i)
         CHECK_INT(expected[i], static_cast<int>(all[i]));
     // Confidence, SourceKind, and Band are the library's types, unchanged.

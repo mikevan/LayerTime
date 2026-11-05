@@ -23,6 +23,7 @@
 #include <stdint.h>
 
 #include "Mesh.h"
+#include "MonitorEvent.h"
 
 namespace layertime {
 
@@ -44,6 +45,11 @@ struct ApplicationSettings {
 
     // The duty-cycled background Recon sweep.
     bool earlyWarningEnabled = true;
+
+    // Which sensors may report at all (SetSensors): an allow-list over every
+    // Recon selection, manual and early warning alike. A sensor whose bit is
+    // clear never becomes an event. Default: every sensor on.
+    uint32_t sensorMask = kAllSensorsMask;
 
     // Announce this node on each mesh network. Indexed by MeshNetwork value.
     bool meshAdvertising[kMeshNetworkCount] = {false, false};

@@ -39,7 +39,7 @@ namespace layertime {
 // Numeric values are part of the contract. Do not renumber; append only.
 //
 // A MonitorEvent always carries a single-detector value (Deauth through
-// GoogleTag). None, All, the three groups, and EarlyWarning are selections,
+// GoogleTag, or Eapol). None, All, the three groups, and EarlyWarning are selections,
 // never event sources. The single detectors correspond one to one to the
 // sensor library's lts::DetectorId; the conversion is an explicit mapping in
 // core/logic/ReconClassification, never a cast.
@@ -62,7 +62,19 @@ enum class ReconTarget : uint8_t {
     SamsungTag = 15,
     GoogleTag = 16,
     EarlyWarning = 17,
+    // 1.1.2: unencrypted WPA/RSN 4-way handshake (EAPOL-Key) frames, a Wi-Fi
+    // attack indicator. 18, not 17, because EarlyWarning already holds 17
+    // here; it maps to the sensor library's DetectorId::Eapol (17).
+    Eapol = 18,
 };
+
+// The sensors an operator can switch on and off (Set Sensors, 2026-11-04):
+// every single detector, one bit each at its ReconTarget value, so bit 5 is
+// Deauth and bit 18 is Eapol. Selections (None, All, the groups,
+// EarlyWarning) have no bit. A Node starts with every sensor on, so a
+// client that never sends Set Sensors sees no change in behavior.
+constexpr uint32_t kAllSensorsMask =
+    (((1u << 17) - 1u) & ~((1u << 5) - 1u)) | (1u << 18); // bits 5 to 16, and 18
 
 // Confidence, SourceKind, and Band are the sensor library's types, used
 // unchanged so a candidate needs no conversion. Their numbers are part of

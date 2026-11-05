@@ -351,6 +351,27 @@ void stop_clear_acknowledge_and_the_two_settings()
     CHECK_TRUE(r.core.settings().sleepModeEnabled); // unchanged
 }
 
+// SetSensors (15): mask u32 little-endian after the command type (2026-11-04).
+void set_sensors_takes_a_four_byte_mask_under_the_lock()
+{
+    Rig r;
+    // Every sensor but the four trackers: 0x5FFE0 & ~0x1C400 = 0x43BE0.
+    r.sendHex("03600FE03B0400");
+    CHECK_STR("8360000F00", r.frames.hex[0].c_str());
+    CHECK_INT(0x43BE0u, r.core.settings().sensorMask);
+    r.monitor.deliver(ReconTarget::AirTag, addr(1), 10);
+    r.monitor.deliver(ReconTarget::Deauth, addr(2), 20);
+    CHECK_INT(1, r.core.eventCount());
+    r.sendHex("03610F02000000");
+    CHECK_STR("8361000F02", r.frames.hex[0].c_str()); // the All bit: InvalidArgument
+    CHECK_INT(0x43BE0u, r.core.settings().sensorMask);   // unchanged
+    r.sendHex("03620FE03B04");
+    CHECK_STR("8F6202", r.frames.hex[0].c_str());     // three mask bytes
+    r.sendHex("03630FE03B040000");
+    CHECK_STR("8F6302", r.frames.hex[0].c_str());     // five
+    CHECK_INT(kCapSensorSet, 0x0080);
+}
+
 void command_lengths_and_unknown_commands()
 {
     Rig r;
@@ -667,6 +688,7 @@ int main(int argc, char **argv)
     CASE(recon_start_rejects_none_early_warning_and_beyond);
     CASE(stop_clear_acknowledge_and_the_two_settings);
     CASE(command_lengths_and_unknown_commands);
+    CASE(set_sensors_takes_a_four_byte_mask_under_the_lock);
     CASE(hello_and_ping_still_go_to_dispatch);
     CASE(get_changed_from_zero_returns_every_event_oldest_first_then_end);
     CASE(get_changed_since_returns_only_what_changed);

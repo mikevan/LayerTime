@@ -24,7 +24,10 @@
 //   * One record per (detector, sourceId). A repeat sighting updates rssi,
 //     channel, lastSeen and count in place and keeps the strongest
 //     confidence ever seen (AlertPolicy::onRepeatSighting).
-//   * When full, the oldest record is dropped to make room.
+//   * When full, the weakest then oldest record is dropped to make room: a
+//     High-confidence detection is not pushed out by a flood of
+//     Low-confidence traffic. With all records at one confidence this is the
+//     oldest, as before.
 //   * eventId comes from a serial that only a new record advances. clear()
 //     does not reset it.
 //   * A new record raises the alert per AlertPolicy::raisesOnNewRecord. A

@@ -109,13 +109,13 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_detectio
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_monitor_event_log test_monitor_event_log/test_monitor_event_log.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/ReconSelection.cpp
 ./tests_monitor_event_log
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_layertime_core test_layertime_core/test_layertime_core.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_layertime_core test_layertime_core/test_layertime_core.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/core/logic/ReconSelection.cpp
 ./tests_layertime_core
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_mesh_commands test_mesh_commands/test_mesh_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_mesh_commands test_mesh_commands/test_mesh_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/core/logic/ReconSelection.cpp
 ./tests_mesh_commands
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_settings_commands test_settings_commands/test_settings_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_settings_commands test_settings_commands/test_settings_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/core/logic/ReconSelection.cpp
 ./tests_settings_commands
 ```
 
@@ -155,7 +155,7 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_cod
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_vectors_mc test_link_vectors_mc/test_link_vectors_mc.cpp
 ./tests_link_vectors_mc
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_server test_link_server/test_link_server.cpp ../src/core/link/LinkServer.cpp ../src/core/link/ChangeTracker.cpp ../src/core/link/LinkCodec.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_server test_link_server/test_link_server.cpp ../src/core/link/LinkServer.cpp ../src/core/link/ChangeTracker.cpp ../src/core/link/LinkCodec.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/core/logic/ReconSelection.cpp
 ./tests_link_server
 ```
 
@@ -202,4 +202,16 @@ folders. Run from `test/`, because it reads `../src` and
 ```
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_boundary test_boundary/test_boundary.cpp
 ./tests_boundary
+```
+
+## Evidence (Link 0.2 slice 2, 2026-11-04)
+
+The frames behind each Wi-Fi detection (`src/core/logic/EvidenceStore`) and the
+two Link requests that pull them (`src/core/link/LinkEvidence`).
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_evidence_store test_evidence_store/test_evidence_store.cpp ../src/core/logic/EvidenceStore.cpp
+./tests_evidence_store
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_evidence test_link_evidence/test_link_evidence.cpp ../src/core/link/LinkEvidence.cpp ../src/core/link/LinkCodec.cpp ../src/core/logic/EvidenceStore.cpp
+./tests_link_evidence
 ```

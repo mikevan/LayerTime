@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
@@ -42,9 +43,9 @@ object LtColors {
     val Grey = Color(0xFFB4B4B4)   // lightened for small dark screens (was 0xFF8C8C8C)
     val Dim = Color(0xFF2E2E2E)
     val Panel = Color(0xFF121212)
-    val Bg = Color(0xFF000000)
+    val Bg = Color(0xFF07171C)   // build 86: deep teal ground to match the OPS comp (was black)
     // Data console: flat, bright, glowing, set against the dark bronze bezel.
-    val ConsoleBg = Color(0xFF02060F)       // build 37: colder, toward blue-black
+    val ConsoleBg = Color(0xFF06161C)       // build 86: teal ground to match the OPS comp
     val ConsoleSurface = Color(0xFF0B1A2C)  // build 37: colder steel-blue
     val ConsoleEdge = Color(0xFF6FE6FF)     // build 37: icier cyan
     val ConsoleGlow = Color(0xFF30D0FF)
@@ -91,7 +92,9 @@ fun Modifier.consoleFrame(
     radius: Dp = 10.dp,
     elevation: Dp = 6.dp,
     halo: Boolean = true,
-): Modifier = this
+): Modifier = composed { if (LocalSpacecraft.current) spacecraftPanel(edge) else legacyConsoleFrame(edge, surface, radius, elevation, halo) }
+
+private fun Modifier.legacyConsoleFrame(edge: Color, surface: Color, radius: Dp, elevation: Dp, halo: Boolean): Modifier = this
     .shadow(elevation, RoundedCornerShape(radius), clip = false, ambientColor = edge.copy(alpha = 0.7f), spotColor = edge)
     .drawBehind { if (halo) drawHalo(edge, radius.toPx()) }
     .background(surface, RoundedCornerShape(radius))
@@ -193,7 +196,9 @@ fun Modifier.hudPanel(
     radius: Dp = 18.dp,
     elevation: Dp = 6.dp,
     halo: Boolean = true,
-): Modifier = this
+): Modifier = composed { if (LocalSpacecraft.current) spacecraftPanel(edge) else legacyHudPanel(edge, radius, elevation, halo) }
+
+private fun Modifier.legacyHudPanel(edge: Color, radius: Dp, elevation: Dp, halo: Boolean): Modifier = this
     .shadow(elevation, RoundedCornerShape(radius), clip = false, ambientColor = edge.copy(alpha = 0.7f), spotColor = edge)
     .drawBehind {
         if (halo) drawHalo(edge, radius.toPx())

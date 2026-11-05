@@ -25,7 +25,9 @@ import androidx.core.content.ContextCompat
 import com.projectrevivesolutions.layertime.controller.hunt.HuntSession
 import com.projectrevivesolutions.layertime.controller.model.ConnState
 import com.projectrevivesolutions.layertime.controller.model.LogEntry
+import com.projectrevivesolutions.layertime.controller.mission.SensorSelection
 import com.projectrevivesolutions.layertime.controller.state.ControllerRepository
+import com.projectrevivesolutions.layertime.controller.ui.MissionPrefs
 import java.util.ArrayDeque
 import java.util.UUID
 
@@ -67,6 +69,7 @@ class LinkClient(private val appContext: Context) {
     // Link-level one-outstanding-request gate.
     private data class Pending(val reqId: Int, val kind: Int) // kind = op byte
     private val linkQueue = ArrayDeque<Pair<Int, ByteArray>>() // kind to frame
+    private val textTargets = HashMap<Int, Pair<Long, Int>>() // reqId -> (eventId, field) for a queued GET_TEXT
     private var linkBusy = false
     private var pending: Pending? = null
 
@@ -144,7 +147,7 @@ class LinkClient(private val appContext: Context) {
             gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
             gatt = null; control = null; statusCh = null; dataCh = null
             linkBusy = false; gattBusy = false
-            linkQueue.clear(); gattOps.clear()
+            linkQueue.clear(); gattOps.clear(); textTargets.clear()
         }
         wantConnected = true
         reconnectAttempts = 0
@@ -181,8 +184,8 @@ class LinkClient(private val appContext: Context) {
         stopScan()
         gatt?.let { g -> g.disconnect(); g.close() }
         gatt = null; control = null; statusCh = null; dataCh = null
-        handshakeDone = false; linkBusy = false; gattBusy = false
-        linkQueue.clear(); gattOps.clear(); summaries.clear(); textFrags.clear()
+        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence()
+        linkQueue.clear(); gattOps.clear(); textTargets.clear(); summaries.clear(); textFrags.clear()
         repo.setConn(ConnState.IDLE)
     }
 
@@ -217,8 +220,8 @@ class LinkClient(private val appContext: Context) {
         repo.log(LogEntry.Category.ERROR, "link lost: no Status for ${silenceMs / 1000} s; dropping and reconnecting")
         gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
         gatt = null; control = null; statusCh = null; dataCh = null
-        handshakeDone = false; linkBusy = false; gattBusy = false
-        linkQueue.clear(); gattOps.clear()
+        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence()
+        linkQueue.clear(); gattOps.clear(); textTargets.clear()
         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
         repo.noteBackgroundDisconnect()
         repo.setConn(ConnState.DISCONNECTED, "no Status for ${silenceMs / 1000} s")
@@ -237,8 +240,8 @@ class LinkClient(private val appContext: Context) {
         reconnectPending = Runnable {
             gatt?.let { g -> runCatching { g.close() } }
             gatt = null; control = null; statusCh = null; dataCh = null
-            handshakeDone = false; linkBusy = false; gattBusy = false
-            linkQueue.clear(); gattOps.clear()
+            handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence()
+            linkQueue.clear(); gattOps.clear(); textTargets.clear()
             start(autoStartTarget)
         }.also { handler.postDelayed(it, delay) }
     }
@@ -290,10 +293,10 @@ class LinkClient(private val appContext: Context) {
                         if (pingBurstLeft > 0) { pingBurstLeft = 0; LinkMeasure.addLine("PING burst stopped: the link dropped.") }
                         bulkRun?.let { reportBulk(it, null, "the link dropped.") }
                         LinkMeasure.setMtu(23)
-                        handshakeDone = false; linkBusy = false; gattBusy = false
+                        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence()
                         huntPollOutstanding = false
                         if (huntWanted) HuntSession.setProblem("The link to the Hunter dropped. Reconnecting.")
-                        linkQueue.clear(); gattOps.clear()
+                        linkQueue.clear(); gattOps.clear(); textTargets.clear()
                         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
                         repo.noteBackgroundDisconnect()
                         repo.setConn(ConnState.DISCONNECTED, "gattStatus=$status")
@@ -423,7 +426,12 @@ class LinkClient(private val appContext: Context) {
         if (kind == LinkConstants.Op.PING && pingBurstLeft > 0) pingSentNs = android.os.SystemClock.elapsedRealtimeNanos()
         if (kind == LinkMeasure.OP_BULK) bulkRun?.requestedNs = android.os.SystemClock.elapsedRealtimeNanos()
         if (kind == LinkConstants.Op.GET_CHANGED) summaries.clear()
-        if (kind == LinkConstants.Op.GET_TEXT) textFrags.clear()
+        if (kind == LinkConstants.Op.GET_TEXT) {
+            textFrags.clear()
+            // Bind the reply target now, at send time. Several GET_TEXTs can sit in the
+            // FIFO at once; binding at queue time would let a later one overwrite it.
+            textTargets.remove(reqId)?.let { textEventId = it.first; textField = it.second }
+        }
         enqueueGatt { sendControl(frame) }
         armRequestTimeout(reqId, kind)
     }
@@ -438,6 +446,7 @@ class LinkClient(private val appContext: Context) {
                 if (kind == LinkConstants.Op.PING && pingBurstLeft > 0) onBurstPing(null)
                 if (kind == LinkMeasure.OP_BULK) bulkRun?.let { reportBulk(it, null, "timed out") }
                 if (kind == LinkHunt.OP_GET_HUNT) huntPollOutstanding = false
+                if (LinkEvidence.isEvidenceOp(kind) && evidence != null) failEvidence("The Hunter stopped sending frames (no reply for ${REQUEST_TIMEOUT_MS / 1000} s).")
             }
         }.also { handler.postDelayed(it, REQUEST_TIMEOUT_MS) }
     }
@@ -464,6 +473,25 @@ class LinkClient(private val appContext: Context) {
         repo.log(LogEntry.Category.COMMAND, "ReconStop #$id")
     }
 
+    // ---- SetSensors: the MISSION allow-list (2026-11-04) ----
+
+    private var sensorSetSupported = false
+    private var sentSensorMask: Long? = null
+
+    /** Sends the saved MISSION list. Only a Hunter with Capability.SENSOR_SET takes it. */
+    private fun sendSensors() {
+        val mask = SensorSelection.mask(MissionPrefs.readSensors(appContext))
+        sentSensorMask = mask
+        val id = nextReqId(); submit(LinkConstants.Op.COMMAND, LinkCodec.setSensors(id, mask))
+        repo.log(LogEntry.Category.COMMAND, "SetSensors 0x%05X #$id".format(mask))
+    }
+
+    /** MISSION changed; the new list is already saved. Sent now when the Hunter is up and takes it. */
+    fun sensorsChanged() = handler.post {
+        repo.setSensorsApplied(null)
+        if (handshakeDone && sensorSetSupported) sendSensors()
+    }
+
     fun clearEvents() {
         val id = nextReqId(); submit(LinkConstants.Op.COMMAND, LinkCodec.reconClearEvents(id))
         repo.log(LogEntry.Category.COMMAND, "ReconClearEvents #$id")
@@ -475,8 +503,8 @@ class LinkClient(private val appContext: Context) {
 
     private fun getText(eventId: Long, field: Int) {
         val id = nextReqId()
-        textEventId = eventId; textField = field
-        submit(LinkConstants.Op.GET_TEXT, LinkCodec.getText(id, eventId, field))
+        val frame = LinkCodec.getText(id, eventId, field)
+        handler.post { textTargets[id] = eventId to field; linkQueue.add(LinkConstants.Op.GET_TEXT to frame); pumpLink() }
     }
 
     // ---- notification handling ----
@@ -504,6 +532,7 @@ class LinkClient(private val appContext: Context) {
     private fun onDataFrame(value: ByteArray) {
         if (LinkMeasure.isBulk(value) && bulkRun != null) { onBulkFrame(value); return }
         if (LinkHunt.isReading(value)) { onHuntReading(value); return }
+        if (LinkEvidence.isEvidenceFrame(value)) { onEvidenceFrame(value); return }
         when (val f = LinkCodec.decodeFrame(value)) {
             is Frame.HelloAck -> {
                 repo.onServerInfo(f)
@@ -515,6 +544,15 @@ class LinkClient(private val appContext: Context) {
                     repo.setReconnecting(false)
                     reconnectAttempts = 0 // link restored; reset backoff
                     repo.setConn(ConnState.CONNECTED, "link up, server ${f.serverMajor}.${f.serverMinor}")
+                    // The MISSION sensor list goes first, so a start below never runs
+                    // a sensor the operator switched off, not even for one frame.
+                    sensorSetSupported = f.capabilities and LinkConstants.Capability.SENSOR_SET != 0
+                    if (sensorSetSupported) sendSensors()
+                    // Evidence (slice 2): a Hunter that keeps frames streams them at the
+                    // connection's packet size, so ask for the large one (Phase 0 M5:
+                    // 56 KB/s at MTU 247 against 15 KB/s at the default 23).
+                    rawCapture = f.capabilities and LinkEvidence.CAP_RAW_CAPTURE != 0
+                    if (rawCapture && LinkMeasure.state.value.mtu < LinkMeasure.MTU_REQUEST) requestLargeMtu()
                     autoStartTarget?.let { reconStart(it) }
                     // A hunt that was running when the link dropped picks up again.
                     if (huntWanted) sendHuntStart()
@@ -533,6 +571,17 @@ class LinkClient(private val appContext: Context) {
             is Frame.Result -> {
                 if (f.commandType == LinkHunt.OP_HUNT_START || f.commandType == LinkHunt.OP_HUNT_STOP) {
                     onHuntResult(f.commandType, f.commandResult)
+                } else if (LinkEvidence.isEvidenceOp(f.commandType) && evidence != null) {
+                    failEvidence(when (f.commandResult) {
+                        LinkConstants.CommandResult.NOT_READY -> "The Hunter kept no frames for this detection. Its window was reused by newer detections, or the detection was not on Wi-Fi."
+                        LinkConstants.CommandResult.INVALID_ARGUMENT -> "The Hunter no longer holds this detection."
+                        else -> "The Hunter answered ${LinkConstants.CommandResult.name(f.commandResult)}."
+                    })
+                } else if (f.commandType == LinkConstants.CommandType.SET_SENSORS) {
+                    val ok = f.commandResult == LinkConstants.CommandResult.OK
+                    repo.setSensorsApplied(if (ok) sentSensorMask else null)
+                    repo.log(if (ok) LogEntry.Category.COMMAND else LogEntry.Category.ERROR,
+                        "RESULT SetSensors 0x%05X => %s".format(sentSensorMask ?: 0L, LinkConstants.CommandResult.name(f.commandResult)))
                 } else {
                     repo.log(LogEntry.Category.COMMAND,
                         "RESULT cmd=${f.commandType} => ${LinkConstants.CommandResult.name(f.commandResult)}")
@@ -547,11 +596,16 @@ class LinkClient(private val appContext: Context) {
                 if (newOne && f.hasDetail) getTextQueued(f.eventId, LinkConstants.TextField.DETAIL)
             }
             is Frame.Text -> textFrags.add(f)
-            is Frame.End -> {
+            is Frame.End -> if (pending?.kind?.let { LinkEvidence.isEvidenceOp(it) } == true) {
+                val kind = pending!!.kind
+                finishLink()
+                onEvidenceEnd(kind)
+            } else {
                 if (pending?.kind == LinkConstants.Op.GET_TEXT) {
                     val ordered = textFrags.sortedBy { it.index }
                     val bytes = ordered.fold(ByteArray(0)) { acc, t -> acc + t.bytes }
                     if (bytes.isNotEmpty()) repo.onEventText(textEventId, textField, String(bytes, Charsets.UTF_8))
+                    else repo.log(LogEntry.Category.LINK, "GET_TEXT event #$textEventId field=$textField came back empty (record likely evicted on the Hunter)")
                 } else { // GET_CHANGED run
                     lastSeenChangeSeq = f.changeSeq
                     if (f.gap == 1) repo.log(LogEntry.Category.LINK, "GET_CHANGED gap=1: a change was dropped before we saw it")
@@ -561,6 +615,9 @@ class LinkClient(private val appContext: Context) {
             is Frame.Error -> {
                 repo.log(LogEntry.Category.ERROR, "ERROR linkStatus=${LinkConstants.LinkStatus.name(f.linkStatus)} reqId=${f.reqId}")
                 val wasBulk = pending?.kind == LinkMeasure.OP_BULK
+                if (pending?.kind?.let { LinkEvidence.isEvidenceOp(it) } == true && evidence != null) failEvidence(
+                    if (f.linkStatus == LinkConstants.LinkStatus.UNKNOWN_OP) "This Hunter's firmware does not keep frames. Flash the evidence firmware."
+                    else "The Hunter refused the request (${LinkConstants.LinkStatus.name(f.linkStatus)}).")
                 val huntOp = pending?.kind?.takeIf { LinkHunt.isHuntOp(it) }
                 if (huntOp == LinkHunt.OP_GET_HUNT) huntPollOutstanding = false
                 if (huntOp != null && huntWanted) HuntSession.setProblem(
@@ -575,6 +632,88 @@ class LinkClient(private val appContext: Context) {
             }
             is Frame.Unknown -> repo.log(LogEntry.Category.ERROR, "unknown frame type=0x%02X: ${LinkCodec.toHex(f.raw)}".format(f.type))
         }
+    }
+
+    // ---- Link 0.2 evidence: the frames behind a detection (slice 2) ----
+
+    private var rawCapture = false
+    private var evidence: LinkEvidence.Assembler? = null
+    private var evidenceStartedMs = 0L
+    private var evidenceResumes = 0
+
+    /** Whether the connected Hunter keeps frames (HELLO_ACK capability bit 5). */
+    val keepsFrames: Boolean get() = rawCapture
+
+    /** Pulls one detection's window; EvidencePull reports progress and the pcap. */
+    fun pullEvidence(eventId: Long) = handler.post {
+        if (evidence != null) return@post
+        if (!handshakeDone) { EvidencePull.set(EvidencePull.State.Failed(eventId, "The Hunter is not connected.")); return@post }
+        if (!rawCapture) { EvidencePull.set(EvidencePull.State.Failed(eventId, "This Hunter's firmware does not keep frames. Flash the evidence firmware.")); return@post }
+        evidence = LinkEvidence.Assembler(eventId)
+        evidenceStartedMs = android.os.SystemClock.elapsedRealtime()
+        evidenceResumes = 0
+        EvidencePull.set(EvidencePull.State.Pulling(eventId, "Listing the frames.", 0, 0, 0))
+        val id = nextReqId(); submit(LinkEvidence.OP_GET_FRAMES, LinkEvidence.getFrames(id, eventId))
+        repo.log(LogEntry.Category.COMMAND, "GET_FRAMES event #$eventId #$id")
+    }
+
+    private fun requestLargeMtu() = enqueueGatt {
+        val g = gatt
+        mtuRequested = g != null && g.requestMtu(LinkMeasure.MTU_REQUEST)
+        if (!mtuRequested) gattOpComplete()
+    }
+
+    private fun onEvidenceFrame(value: ByteArray) {
+        val a = evidence ?: return
+        when ((value[0].toInt() and 0xFF)) {
+            LinkEvidence.TYPE_FRAME_WINDOW -> LinkEvidence.decodeWindow(value)?.let { a.onWindow(it) }
+            LinkEvidence.TYPE_FRAME_INDEX -> LinkEvidence.decodeIndex(value)?.let { a.onIndex(it) }
+            LinkEvidence.TYPE_FRAME_BYTES -> LinkEvidence.decodeBytes(value)?.let { a.onBytes(it) }
+        }
+        // A long stream is one request: keep its timeout alive while frames arrive.
+        pending?.let { armRequestTimeout(it.reqId, it.kind) }
+        val phase = if (a.bytesReceived == 0) "Listing the frames." else "Pulling the frames."
+        EvidencePull.set(EvidencePull.State.Pulling(a.eventId, phase, a.listed, a.bytesReceived, a.bytesExpected))
+    }
+
+    private fun onEvidenceEnd(kind: Int) {
+        val a = evidence ?: return
+        if (kind == LinkEvidence.OP_GET_FRAMES) {
+            val w = a.window ?: return failEvidence("The Hunter sent no window header.")
+            if (a.listed == 0) return failEvidence("The Hunter's window for this detection is empty.")
+            if (a.listed != w.retained) repo.log(LogEntry.Category.LINK, "GET_FRAMES listed ${a.listed} of ${w.retained} (window reused while listing)")
+            val id = nextReqId(); submit(LinkEvidence.OP_GET_FRAME_BYTES, LinkEvidence.getFrameBytes(id, a.eventId, 0, 0))
+            return
+        }
+        if (a.complete()) return finishEvidence(a)
+        val resume = a.resumePoint()
+        if (resume != null && a.gaps == 0 && evidenceResumes < 2) {
+            evidenceResumes++
+            repo.log(LogEntry.Category.LINK, "GET_FRAME_BYTES incomplete; resuming at frame ${resume.first} byte ${resume.second}")
+            val id = nextReqId(); submit(LinkEvidence.OP_GET_FRAME_BYTES, LinkEvidence.getFrameBytes(id, a.eventId, resume.first, resume.second))
+            return
+        }
+        failEvidence("Some frames arrived incomplete: " + a.missing().take(3).joinToString("; ") + (if (a.gaps > 0) "; ${a.gaps} out-of-order chunks refused." else "."))
+    }
+
+    private fun finishEvidence(a: LinkEvidence.Assembler) {
+        evidence = null
+        val frames = a.frames()
+        val dir = java.io.File(appContext.cacheDir, "evidence").apply { mkdirs() }
+        val file = java.io.File(dir, "hunter_event_${a.eventId}.pcap")
+        file.writeBytes(LinkEvidence.toPcap(frames, System.currentTimeMillis()))
+        val ms = android.os.SystemClock.elapsedRealtime() - evidenceStartedMs
+        repo.log(LogEntry.Category.LINK, "evidence event #${a.eventId}: ${frames.size} frames, ${a.bytesReceived} bytes in $ms ms")
+        EvidencePull.set(EvidencePull.State.Done(a.eventId, a.window!!, frames.size, file, ms))
+    }
+
+    private fun dropEvidence() { if (evidence != null) failEvidence("The connection dropped during the pull.") }
+
+    private fun failEvidence(message: String) {
+        val a = evidence ?: return
+        evidence = null
+        repo.log(LogEntry.Category.ERROR, "evidence event #${a.eventId}: $message")
+        EvidencePull.set(EvidencePull.State.Failed(a.eventId, message))
     }
 
     // ---- Link 0.2 Phase 0 measurement (the LINK MEASURE panel) ----
@@ -747,16 +886,12 @@ class LinkClient(private val appContext: Context) {
                 "heard ${r.msSinceHeard?.let { "$it ms ago" } ?: "never"}, flags 0x%02X".format(r.flags))
     }
 
-    // Deferred GET_TEXT so it does not reenter while a GET_CHANGED run is open.
-    private val textWants = ArrayDeque<Pair<Long, Int>>()
-    private fun getTextQueued(eventId: Long, field: Int) {
-        textWants.add(eventId to field)
-        // Drain after the current run finishes (pumpLink picks them up).
-        handler.post { drainTextWants() }
-    }
-    private fun drainTextWants() {
-        if (linkBusy) { handler.postDelayed({ drainTextWants() }, 150); return }
-        val next = textWants.poll() ?: return
-        getText(next.first, next.second)
-    }
+    // GET_TEXT goes straight into the link FIFO (linkQueue). One request is outstanding at a
+    // time, so it cannot interleave with the GET_CHANGED run that produced it; it is sent in
+    // order once that run ends. The earlier design parked these in a separate deque that only
+    // submitted when it sampled the link idle, every 150 ms. Under an event flood the link is
+    // almost never idle at those instants, so MAC fetches starved (field test 2026-11-02:
+    // 2 of 31 rows carried a source MAC). By the time a fetch did go out the Hunter had often
+    // evicted the weakest (LOW) record, so it came back empty. Prompt FIFO fetching closes that.
+    private fun getTextQueued(eventId: Long, field: Int) = getText(eventId, field)
 }

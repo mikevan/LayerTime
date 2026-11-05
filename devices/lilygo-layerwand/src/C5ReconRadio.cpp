@@ -367,6 +367,29 @@ void C5ReconRadio::onPromiscuousPacket(void *buf, int type)
     // A reset asked for from another task is done here, on the only task
     // that classifies, before this frame is classified.
     if (_resetRequested.exchange(false)) _wifiClassifier.reset();
+    // Declutter switch, OFF by default (idiom: Signatures.h kMatchProximityPairing).
+    // When on, a Protected (encrypted) data frame is dropped before
+    // classification: it cannot carry a cleartext signature, so this only
+    // trims noise. It is OFF so the Hunter keeps seeing every transmitter,
+    // including a client that only ever sends encrypted data; a radar wants
+    // the quiet scope, a detector wants the coverage. EAPOL is unencrypted,
+    // so it is never dropped by this. Flip to true to trade coverage for a
+    // lighter classify load on a saturated channel. No operator control is
+    // wired yet: that is a settings/Link/UI increment, deferred until a field
+    // run shows the C5 dropping frames under load.
+    static constexpr bool kDropEncryptedData = false;
+    if (kDropEncryptedData && packet->rx_ctrl.sig_len >= 2) {
+        const uint8_t *fcp = packet->payload;
+        const uint16_t fc = (uint16_t)fcp[0] | ((uint16_t)fcp[1] << 8);
+        if (((fcp[0] >> 2) & 0x03) == 2 && (fc & 0x4000)) return;
+    }
+    // Evidence: the frame goes into the ring before it is classified, so a
+    // detection made on this frame finds it as the ring's newest entry.
+    if (_frameTap != nullptr) {
+        const uint16_t sig = packet->rx_ctrl.sig_len;
+        _frameTap(packet->payload, sig > 4 ? static_cast<uint16_t>(sig - 4) : sig, packet->rx_ctrl.rssi, channel, millis(),
+                  _frameTapContext);
+    }
 #if defined(LAYERTIME_MEASURE)
     measureWifi(packet->payload, packet->rx_ctrl.sig_len);
     const int64_t classifyStart = esp_timer_get_time();

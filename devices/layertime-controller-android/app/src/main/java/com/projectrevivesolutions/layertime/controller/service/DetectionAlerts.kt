@@ -19,10 +19,12 @@ import com.projectrevivesolutions.layertime.controller.ui.MainActivity
  * operator whatever is on screen (the face, the console, another app, or a dark
  * screen). Tapping it opens the controller on DETECTED ATTACKS.
  *
- * "New" means an event id above the highest already alerted for that LayerWand
- * session, remembered across restarts so a reconnect or an app restart does not
- * alert the same detections again. More than three new at once collapse into one
- * summary alert. While the LayerWand reports sleep mode, alerts are silent, as on
+ * One alert per row, and a row is one MAC address (build 74): the same device seen
+ * again, even as a new Hunter record, does not alert again. A Low row that rises to
+ * Medium or High alerts then. [AlertSelector] decides; what it has alerted is
+ * remembered across restarts so a reconnect or an app restart does not alert the
+ * same detections again. More than three new at once collapse into one summary
+ * alert. While the LayerWand reports sleep mode, alerts are silent, as on
  * the Garmin face.
  *
  * Low-confidence detections never raise an alert. LayerTime-Sensors defines Low as
@@ -49,8 +51,11 @@ class DetectionAlerts(private val ctx: Context) {
         }
     }
 
-    /** Events alerted while their session was unknown (-1); kept in memory only. */
-    private val unknownSessionAlerted = HashSet<Long>()
+    /** The stored alert state, cached after the first read. */
+    private var saved: AlertSelector.State? = null
+
+    /** Alert state while the session is unknown (-1); kept in memory only. */
+    private var unknownSessionState = AlertSelector.State(session = -1)
 
     /** Called with the full event list whenever it changes; alerts only what is new. */
     fun onEvents(events: List<EventRow>, sleepMode: Boolean) {
@@ -59,28 +64,42 @@ class DetectionAlerts(private val ctx: Context) {
         if (session == -1) {
             // Should not happen now that the session comes from HELLO_ACK, but never let an
             // unknown session suppress or poison alerts: alert, remember in memory only.
-            val fresh = events.filter { it.eventId !in unknownSessionAlerted }.sortedBy { it.eventId }
-            if (fresh.isEmpty()) return
-            unknownSessionAlerted.addAll(fresh.map { it.eventId })
-            alert(fresh, sleepMode)
-            Log.i(TAG, "alerted ${fresh.size} new detection(s) with the session not yet known")
+            val r = AlertSelector.select(events, -1, unknownSessionState)
+            unknownSessionState = r.state
+            if (r.fresh.isEmpty()) return
+            alert(r.fresh, sleepMode)
+            Log.i(TAG, "alerted ${r.fresh.size} new detection(s) with the session not yet known")
             return
         }
-        val lastSession = prefs.getInt(KEY_SESSION, Int.MIN_VALUE)
-        var lastId = if (session == lastSession) prefs.getLong(KEY_EVENT, -1L) else -1L
-        // Event ids only grow within a session; if every id is below the last one alerted, the
-        // LayerWand restarted and happened to reuse the session number, so start over.
-        if (lastId >= 0 && events.maxOf { it.eventId } < lastId) lastId = -1L
-        val fresh = events.filter { it.sessionId == session && it.eventId > lastId }.sortedBy { it.eventId }
-        if (fresh.isEmpty()) return
-        prefs.edit().putInt(KEY_SESSION, session).putLong(KEY_EVENT, fresh.last().eventId).apply()
-        alert(fresh, sleepMode)
-        Log.i(TAG, "alerted ${fresh.size} new detection(s) in session $session, last event ${fresh.last().eventId}, sleep=$sleepMode")
+        // Read from storage once; written back only when something changed, since this
+        // runs on every update the Hunter sends.
+        val prior = saved ?: loadState().also { saved = it }
+        val r = AlertSelector.select(events, session, prior)
+        if (r.state != prior) { saveState(r.state); saved = r.state }
+        if (r.fresh.isEmpty()) return
+        alert(r.fresh, sleepMode)
+        Log.i(TAG, "alerted ${r.fresh.size} new detection(s) in session $session, rows ${r.fresh.map { it.eventId }}, sleep=$sleepMode")
+    }
+
+    private fun loadState(): AlertSelector.State {
+        val session = prefs.getInt(KEY_SESSION, Int.MIN_VALUE)
+        val ids = prefs.getString(KEY_ALERTED, "").orEmpty().split(',').mapNotNull { it.toLongOrNull() }.toSet()
+        if (!prefs.contains(KEY_ALERTED)) {
+            // First run after build 73, which remembered only the highest event id alerted.
+            val legacy = prefs.getLong(KEY_LEGACY_EVENT, -1L)
+            return AlertSelector.State(session, legacy, emptySet(), legacy)
+        }
+        return AlertSelector.State(session, prefs.getLong(KEY_MAX_ID, -1L), ids, prefs.getLong(KEY_THROUGH, -1L))
+    }
+
+    private fun saveState(s: AlertSelector.State) {
+        prefs.edit().putInt(KEY_SESSION, s.session).putLong(KEY_MAX_ID, s.maxId)
+            .putLong(KEY_THROUGH, s.alertedThrough)
+            .putString(KEY_ALERTED, s.alerted.sorted().joinToString(",")).apply()
     }
 
     private fun alert(fresh: List<EventRow>, sleepMode: Boolean) {
-        val worth = fresh.filter { AlertPolicy.worthAnAlert(it.confidence) }
-        if (worth.size < fresh.size) Log.i(TAG, "${fresh.size - worth.size} new low-confidence detection(s) listed without an alert")
+        val worth = fresh   // AlertSelector already left out Low rows
         if (worth.size > 3) {
             val latest = worth.last()
             post(SUMMARY_ID, "${worth.size} new detections.", "Latest: ${describe(latest)}", sleepMode)
@@ -90,7 +109,8 @@ class DetectionAlerts(private val ctx: Context) {
     }
 
     private fun describe(e: EventRow): String =
-        "Event ${e.eventId}, ${LinkConstants.Band.name(e.band)} channel ${e.channel}, ${e.rssi} dBm, " +
+        "Event ${e.eventId}" + (e.sourceId?.let { ", $it" } ?: "") +
+            ", ${LinkConstants.Band.name(e.band)} channel ${e.channel}, ${e.rssi} dBm, " +
             "${LinkConstants.Confidence.name(e.confidence).lowercase()} confidence."
 
     private fun post(id: Int, title: String, text: String, quiet: Boolean) {
@@ -118,21 +138,13 @@ class DetectionAlerts(private val ctx: Context) {
         const val CHANNEL_ID = "layertime_detections"
         const val CHANNEL_QUIET = "layertime_detections_quiet"
         private const val KEY_SESSION = "alerted_session"
-        private const val KEY_EVENT = "alerted_event"
+        // Build 74 keys. The build 73 key "alerted_event" is read once, on upgrade.
+        private const val KEY_LEGACY_EVENT = "alerted_event"
+        private const val KEY_THROUGH = "alerted_through"
+        private const val KEY_MAX_ID = "alerted_max_row"
+        private const val KEY_ALERTED = "alerted_rows"
         private const val NOTIF_BASE = 2000
         private const val SUMMARY_ID = 1999
         private val VIBRATION = longArrayOf(0, 400, 150, 400)
     }
-}
-
-/**
- * Which detections raise an alert. Kept apart from [DetectionAlerts] so it can be
- * tested on the JVM. Link confidence values: 0 Low, 1 Medium, 2 High. Low is logged
- * and listed, never alerted. Any other value alerts, including one this build does
- * not know, so a future confidence level can never silence the wrist by accident.
- */
-object AlertPolicy {
-    const val CONFIDENCE_LOW = 0
-
-    fun worthAnAlert(confidence: Int): Boolean = confidence != CONFIDENCE_LOW
 }

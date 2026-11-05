@@ -257,7 +257,11 @@ object WiresharkDecoder {
 
     fun initialize(): InitResult? {
         if (!ensureLoaded()) return null
-        val a = nativeInit()
+        // Wireshark's config and data folders live in the app's private cache
+        // (java.io.tmpdir is the app cache directory on Android), so settings
+        // loading never reads stray files from the phone. See ltws_init.
+        val base = java.io.File(System.getProperty("java.io.tmpdir") ?: "/data/local/tmp", "wireshark")
+        val a = nativeInit(base.absolutePath)
         return InitResult(a[0] == 1L, a[1] == 1L, a[2] / 1e6, a[3] / 1e6, a[4])
     }
 
@@ -298,7 +302,7 @@ object WiresharkDecoder {
     /** Decode frames from a pcap/pcapng file; returns the tab-separated summary (or an error string). */
     fun decodePcap(path: String, maxFrames: Int): String? = if (loaded) nativeDecodePcap(path, maxFrames) else null
 
-    private external fun nativeInit(): LongArray
+    private external fun nativeInit(baseDir: String): LongArray
     private external fun nativeVersion(): String
     private external fun nativeDecode(frame: ByteArray): String?
     private external fun nativeControl(frame: ByteArray): String?

@@ -6,6 +6,8 @@
 
 #include "core/logic/ReconSelection.h"
 
+#include <initializer_list>
+
 using namespace layertime;
 using namespace layertime::recon;
 
@@ -110,6 +112,43 @@ void names()
     CHECK_STR("HIGH", confidenceLabel(Confidence::High));
 }
 
+// SetSensors (2026-11-04): one bit per single sensor at its ReconTarget value.
+void sensor_bits_cover_every_single_sensor_and_no_selection()
+{
+    CHECK_INT(0x0005FFE0u, kAllSensorsMask); // bits 5 to 16, and 18
+    for (ReconTarget d : kSingles) CHECK_INT(1u << static_cast<uint8_t>(d), sensorBit(d));
+    CHECK_INT(1u << 18, sensorBit(ReconTarget::Eapol));
+    for (ReconTarget s : {ReconTarget::None, ReconTarget::All, ReconTarget::Trackers, ReconTarget::CounterSurveil,
+                          ReconTarget::CounterIntrusion, ReconTarget::EarlyWarning})
+        CHECK_INT(0, sensorBit(s));
+    CHECK_INT(0, sensorBit(static_cast<ReconTarget>(200))); // past 31: no shift, no bit
+}
+
+void sensor_allowed_follows_the_mask()
+{
+    const uint32_t noTrackers = kAllSensorsMask & ~(sensorBit(ReconTarget::AirTag) | sensorBit(ReconTarget::Tile) |
+                                                    sensorBit(ReconTarget::SamsungTag) | sensorBit(ReconTarget::GoogleTag));
+    CHECK_FALSE(sensorAllowed(noTrackers, ReconTarget::AirTag));
+    CHECK_FALSE(sensorAllowed(noTrackers, ReconTarget::GoogleTag));
+    CHECK_TRUE(sensorAllowed(noTrackers, ReconTarget::Deauth));
+    CHECK_TRUE(sensorAllowed(noTrackers, ReconTarget::Eapol));
+    CHECK_FALSE(sensorAllowed(0, ReconTarget::Deauth));
+    for (ReconTarget d : kSingles) CHECK_TRUE(sensorAllowed(kAllSensorsMask, d));
+    // A selection never reports, whatever the mask says.
+    CHECK_FALSE(sensorAllowed(0xFFFFFFFFu, ReconTarget::All));
+}
+
+void valid_masks_hold_only_sensor_bits()
+{
+    CHECK_TRUE(validSensorMask(0));
+    CHECK_TRUE(validSensorMask(kAllSensorsMask));
+    CHECK_TRUE(validSensorMask(sensorBit(ReconTarget::Eapol)));
+    CHECK_FALSE(validSensorMask(1u << 1));  // All
+    CHECK_FALSE(validSensorMask(1u << 2));  // a group
+    CHECK_FALSE(validSensorMask(1u << 17)); // EarlyWarning
+    CHECK_FALSE(validSensorMask(1u << 19));
+}
+
 int main(int argc, char **argv)
 {
     CHECK_MAIN(argc, argv);
@@ -121,5 +160,8 @@ int main(int argc, char **argv)
     CASE(wants_during_manual_session);
     CASE(wants_outside_a_manual_session);
     CASE(names);
+    CASE(sensor_bits_cover_every_single_sensor_and_no_selection);
+    CASE(sensor_allowed_follows_the_mask);
+    CASE(valid_masks_hold_only_sensor_bits);
     CHECK_SUMMARY();
 }

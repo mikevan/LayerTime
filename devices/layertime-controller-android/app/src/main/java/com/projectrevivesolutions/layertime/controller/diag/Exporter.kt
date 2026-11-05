@@ -139,7 +139,8 @@ object Exporter {
             "\"channel\": ${e.channel}, \"rssiDbm\": ${e.rssi}, \"count\": ${e.count}, " +
             "\"ageSeconds\": ${e.ageSeconds}, " +
             "\"sourceId\": ${esc(e.sourceId)}, \"detail\": ${esc(e.detail)}, " +
-            "\"firstSeenAt\": ${esc(ts(e.firstSeenMillis))}, \"lastUpdatedAt\": ${esc(ts(e.lastUpdatedMillis))}}"
+            "\"firstSeenAt\": ${esc(ts(e.firstSeenMillis))}, \"lastUpdatedAt\": ${esc(ts(e.lastUpdatedMillis))}, " +
+            "\"hunterRecords\": ${e.mergedEventIds.size}, \"mergedEventIds\": [${e.mergedEventIds.joinToString(", ")}]}"
 
     private fun buildText(): String {
         val repo = ControllerRepository
@@ -168,12 +169,14 @@ object Exporter {
             sb.appendLine("  note: ${bt.note}")
         }
         sb.appendLine()
-        sb.appendLine("EVENTS (${repo.events.value.size})")
+        sb.appendLine("EVENTS (${repo.events.value.size}, one row per MAC address)")
         for (e in repo.events.value) {
             sb.appendLine("  #${e.eventId} ${e.detectorName} ${LinkConstants.SourceKind.name(e.sourceKind)} " +
                 "${LinkConstants.Band.name(e.band)} ch${e.channel} ${e.rssi}dBm x${e.count} age${e.ageSeconds}s " +
                 "conf=${LinkConstants.Confidence.name(e.confidence)}" +
-                (e.sourceId?.let { " id=\"$it\"" } ?: "") + (e.detail?.let { " detail=\"$it\"" } ?: ""))
+                (e.sourceId?.let { " id=\"$it\"" } ?: "") + (e.detail?.let { " detail=\"$it\"" } ?: "") +
+                " hunterRecords=${e.mergedEventIds.size}" +
+                (if (e.mergedEventIds.size > 1) " merged=${e.mergedEventIds.joinToString(",")}" else ""))
         }
         sb.appendLine()
         sb.appendLine("CONNECTION / EVENT LOG (${repo.log.value.size} entries)")

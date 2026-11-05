@@ -102,6 +102,13 @@ public:
     void bindScheduler(const recon::ReconScheduler *scheduler) { _scheduler = scheduler; }
     void setStageLog(C5StageLog *log) { _stage = log; }
     void setCandidateSink(recon::CandidateSink sink, void *context);
+    // Evidence (slice 2, 2026-11-04): called on the Wi-Fi task with every frame,
+    // before it is classified, so the frame that triggers a detection is the
+    // newest one the tap has seen. `len` excludes the trailing 4 bytes, which on
+    // the C5 are not a valid FCS (Phase 0 M1: 0 of 1,989 matched). Optional.
+    using FrameTap = void (*)(const uint8_t *frame, uint16_t len, int8_t rssi, uint8_t channel, uint32_t nowMs,
+                              void *context);
+    void setFrameTap(FrameTap tap, void *context) { _frameTapContext = context; _frameTap = tap; }
     // Forgets the Wi-Fi detectors' own tracking state. Acquisition-side only.
     // Safe from any task: it only asks for the reset, and the Wi-Fi task
     // performs it before it classifies the next frame, so the classifier is
@@ -224,6 +231,8 @@ private:
     ReconTarget _currentBleScanDetector = ReconTarget::None;
     recon::CandidateSink _candidateSink = nullptr;
     void *_candidateSinkContext = nullptr;
+    FrameTap _frameTap = nullptr;
+    void *_frameTapContext = nullptr;
     // Which channel the capture is on, for the first-frame-after-hop record.
     uint8_t _channel = 0;
     bool _firstFrameOnChannel = false;

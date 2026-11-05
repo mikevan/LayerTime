@@ -77,6 +77,11 @@ void ReconScheduler::startWifi()
 
 bool ReconScheduler::hopIfDue(uint32_t now, bool stopAtPassEnd)
 {
+    // Interest hold: stay on this channel while a just-seen burst or
+    // handshake is still worth watching. Signed compare so it is false once
+    // now has passed the hold (and when nothing set it). Does not touch
+    // _lastChannelHopMs, so the normal dwell resumes the moment it expires.
+    if ((int32_t)(_interestHoldUntilMs - now) > 0) return false;
     const bool onLast = _planIndex + 1 >= _planCount;
     const uint32_t dwell = kChannelHopMs + (onLast ? _lastChannelExtraMs : 0);
     if (now - _lastChannelHopMs < dwell) return false;

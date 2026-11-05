@@ -16,6 +16,15 @@
 #include <wsutil/privileges.h>
 #include <wsutil/wslog.h>
 #include <epan/manuf.h>
+#include <epan/prefs.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <glib/gstdio.h>
+#include <wsutil/filesystem.h>
+#include <wsutil/report_message.h>
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
 
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static int g_attempted = 0;
@@ -31,18 +40,82 @@ static int64_t now_ns(void) {
     return (int64_t)ts.tv_sec * 1000000000LL + ts.tv_nsec;
 }
 
-ltws_init_result ltws_init(void) {
+/* Wireshark reports settings-load and file errors through these routines. They
+ * must be registered before epan_load_settings(): report_failure() calls through
+ * the registered table with no NULL check, so an unregistered reporter turns any
+ * load error into a crash. Messages go to logcat under the tag LTWS. */
+static void ltws_vlog(const char *kind, const char *fmt, va_list ap) {
+    char msg[512];
+    vsnprintf(msg, sizeof msg, fmt, ap);
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_WARN, "LTWS", "%s: %s", kind, msg);
+#else
+    fprintf(stderr, "LTWS %s: %s\n", kind, msg);
+#endif
+}
+static void ltws_logf(const char *kind, const char *fmt, ...) {
+    va_list ap; va_start(ap, fmt); ltws_vlog(kind, fmt, ap); va_end(ap);
+}
+static void rp_failure(const char *fmt, va_list ap) { ltws_vlog("failure", fmt, ap); }
+static void rp_warning(const char *fmt, va_list ap) { ltws_vlog("warning", fmt, ap); }
+static void rp_open(const char *f, int err, bool w) { ltws_logf("open", "%s (%s): %s", f, w ? "write" : "read", g_strerror(err)); }
+static void rp_read(const char *f, int err) { ltws_logf("read", "%s: %s", f, g_strerror(err)); }
+static void rp_write(const char *f, int err) { ltws_logf("write", "%s: %s", f, g_strerror(err)); }
+static void rp_cf_open(const char *f, int err, char *ei) { ltws_logf("capture open", "%s: %s %s", f, wtap_strerror(err), ei ? ei : ""); g_free(ei); }
+static void rp_cf_dump_open(const char *f, int err, char *ei, int ft _U_) { ltws_logf("capture dump open", "%s: %s %s", f, wtap_strerror(err), ei ? ei : ""); g_free(ei); }
+static void rp_cf_read(const char *f, int err, char *ei) { ltws_logf("capture read", "%s: %s %s", f, wtap_strerror(err), ei ? ei : ""); g_free(ei); }
+static void rp_cf_write(const char *in, const char *out _U_, int err, char *ei, uint64_t n _U_, int ft _U_) { ltws_logf("capture write", "%s: %s %s", in ? in : "", wtap_strerror(err), ei ? ei : ""); g_free(ei); }
+static void rp_cf_close(const char *f, int err, char *ei) { ltws_logf("capture close", "%s: %s %s", f, wtap_strerror(err), ei ? ei : ""); g_free(ei); }
+static const struct report_message_routines g_report = {
+    rp_failure, rp_warning, rp_open, rp_read, rp_write,
+    rp_cf_open, rp_cf_dump_open, rp_cf_read, rp_cf_write, rp_cf_close
+};
+
+/* Point Wireshark's personal-config and data folders at two empty app-private
+ * folders, so settings loading is deterministic and never reads stray files from
+ * the device. The environment variables are honoured only after
+ * configuration_init() has set the "Wireshark" namespace. */
+static void ltws_set_dirs(const char *base) {
+    if (!base || !base[0]) return;
+    char *cfg = g_build_filename(base, "config", NULL);
+    char *dat = g_build_filename(base, "data", NULL);
+    g_mkdir_with_parents(cfg, 0700);
+    g_mkdir_with_parents(dat, 0700);
+    setenv("WIRESHARK_CONFIG_DIR", cfg, 1);
+    setenv("WIRESHARK_DATA_DIR", dat, 1);
+    g_free(cfg);
+    g_free(dat);
+}
+
+ltws_init_result ltws_init(const char *base_dir) {
     ltws_init_result r;
     pthread_mutex_lock(&g_lock);
     g_calls++;
     if (!g_attempted) {
         g_attempted = 1;
         int64_t t0 = now_ns();
+        /* Wireshark's own startup order (as tshark runs it). Every step matters:
+         * epan_load_settings() loads each settings table (UAT), and loading a
+         * table runs its post-update callback even when no file exists. 802.11
+         * builds its decryption context that way (init_wepkeys ->
+         * Dot11DecryptSetKeys -> Dot11DecryptInitContext creates sa_hash).
+         * Without this step sa_hash stays NULL and the first real EAPOL key frame
+         * crashes in Dot11DecryptGetSa -> g_hash_table_lookup (build 89, EAPOL
+         * evidence pull). prefs_apply_all() alone does not help: it only runs
+         * apply callbacks for modules whose preferences changed. */
         ws_log_init("ltws", NULL);
+        init_report_message("LayerScope", &g_report);
         init_process_policies();
+        ltws_set_dirs(base_dir);
+        char *cfg_err = configuration_init("/system/bin/app_process64", "Wireshark");
+        if (cfg_err) { ltws_logf("configuration", "%s", cfg_err); g_free(cfg_err); }
         wtap_init(false);
         int64_t t1 = now_ns();
         bool ok = epan_init(NULL, NULL, false);
+        if (ok) {
+            epan_load_settings();
+            prefs_apply_all();
+        }
         int64_t t2 = now_ns();
         g_first.performed_now = 1;
         g_first.ok = ok ? 1 : 0;

@@ -24,7 +24,8 @@
     "Tile": 14,
     "SamsungTag": 15,
     "GoogleTag": 16,
-    "EarlyWarning": 17
+    "EarlyWarning": 17,
+    "Eapol": 18
   },
   "Confidence": {
     "Low": 0,
@@ -81,7 +82,8 @@
     "SetSleepMode": 11,
     "SetEarlyWarning": 12,
     "MeshSetAdvertising": 13,
-    "MeshSetOwnName": 14
+    "MeshSetOwnName": 14,
+    "SetSensors": 15
   },
   "CommandResult": {
     "Ok": 0,
@@ -116,7 +118,8 @@
     "Tile": "TILE",
     "SamsungTag": "SMARTTAG",
     "GoogleTag": "GOOGLE TAG",
-    "EarlyWarning": "EARLY WARNING"
+    "EarlyWarning": "EARLY WARNING",
+    "Eapol": "EAPOL"
   },
   "reconTargetShortNames": {
     "None": "STOPPED",
@@ -136,7 +139,8 @@
     "Tile": "TILE",
     "SamsungTag": "SMARTTAG",
     "GoogleTag": "GOOGLE TAG",
-    "EarlyWarning": "EARLY WARN"
+    "EarlyWarning": "EARLY WARN",
+    "Eapol": "EAPOL"
   },
   "confidenceDisplayNames": {
     "Low": "LOW",

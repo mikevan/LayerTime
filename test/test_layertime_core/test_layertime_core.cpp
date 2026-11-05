@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "core/app/LayerTimeCore.h"
+#include "core/logic/ReconSelection.h"
 
 using namespace layertime;
 
@@ -155,6 +156,53 @@ void candidates_become_events_and_reach_the_event_log()
     CHECK_INT(2, r.core.reconState().lastEventId);
 }
 
+// SetSensors (2026-11-04).
+void every_sensor_is_on_until_set_sensors_says_otherwise()
+{
+    Rig r;
+    CHECK_INT(kAllSensorsMask, r.core.settings().sensorMask);
+    r.monitor.deliver(ReconTarget::AirTag, kA);
+    r.monitor.deliver(ReconTarget::Eapol, kB);
+    CHECK_INT(2, r.core.eventCount());
+}
+
+void a_switched_off_sensor_never_becomes_an_event()
+{
+    Rig r;
+    LayerTimeCommand c;
+    c.type = CommandType::SetSensors;
+    c.sensors.mask = kAllSensorsMask & ~(recon::sensorBit(ReconTarget::AirTag) | recon::sensorBit(ReconTarget::Tile));
+    CHECK_INT(static_cast<int>(CommandResult::Ok), static_cast<int>(r.core.execute(c)));
+    r.monitor.deliver(ReconTarget::AirTag, kA);
+    r.monitor.deliver(ReconTarget::Tile, kB);
+    CHECK_INT(0, r.core.eventCount());
+    CHECK_INT(0, r.log.ids.size());       // not logged
+    CHECK_FALSE(r.core.reconState().alertPending); // no alert
+    r.monitor.deliver(ReconTarget::Deauth, kA);
+    CHECK_INT(1, r.core.eventCount());
+    // Back on: reports again.
+    c.sensors.mask = kAllSensorsMask;
+    r.core.execute(c);
+    r.monitor.deliver(ReconTarget::AirTag, kA);
+    CHECK_INT(2, r.core.eventCount());
+}
+
+void set_sensors_rejects_selection_bits_and_keeps_the_old_mask()
+{
+    Rig r;
+    LayerTimeCommand c;
+    c.type = CommandType::SetSensors;
+    c.sensors.mask = kAllSensorsMask | (1u << static_cast<uint8_t>(ReconTarget::Trackers));
+    CHECK_INT(static_cast<int>(CommandResult::InvalidArgument), static_cast<int>(r.core.execute(c)));
+    CHECK_INT(kAllSensorsMask, r.core.settings().sensorMask);
+    c.sensors.mask = 0; // every sensor off is a legal choice
+    CHECK_INT(static_cast<int>(CommandResult::Ok), static_cast<int>(r.core.execute(c)));
+    r.monitor.deliver(ReconTarget::Deauth, kA);
+    CHECK_INT(0, r.core.eventCount());
+    LayerTimeCore bare; // no monitor: nothing to limit
+    CHECK_INT(static_cast<int>(CommandResult::Unsupported), static_cast<int>(bare.execute(c)));
+}
+
 void tick_raises_the_alert_once_then_polls()
 {
     Rig r;
@@ -264,5 +312,8 @@ int main(int argc, char **argv)
     CASE(sleep_mode_suppresses_the_alert_not_the_event);
     CASE(recon_state_combines_acquisition_and_history);
     CASE(navigation_is_read_on_refresh_only);
+    CASE(every_sensor_is_on_until_set_sensors_says_otherwise);
+    CASE(a_switched_off_sensor_never_becomes_an_event);
+    CASE(set_sensors_rejects_selection_bits_and_keeps_the_old_mask);
     CHECK_SUMMARY();
 }

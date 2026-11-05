@@ -24,3 +24,7 @@ build-log.txt
 .ndk-cache/
 app/src/main/jniLibs/
 app/src/main/cpp/wireshark-prebuilt/
+
+# Release signing secrets - never commit these
+keystore.properties
+*.jks

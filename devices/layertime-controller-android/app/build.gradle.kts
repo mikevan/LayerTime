@@ -1,8 +1,16 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+// Release signing. keystore.properties is gitignored and holds the keystore path and passwords.
+// Without it (a machine that does not have the key), release builds are left unsigned instead of failing.
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply { if (keystorePropsFile.exists()) FileInputStream(keystorePropsFile).use { load(it) } }
 
 android {
     namespace = "com.projectrevivesolutions.layertime.controller"
@@ -14,8 +22,13 @@ android {
         applicationId = "com.projectrevivesolutions.layerscope"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
         targetSdk = 36
-        versionCode = 81
-        versionName = "0.1.80" // build 81: events export (CSV + JSON) with triage filter (drop LOW noise, keep away-from-owner, flag tracker dwell) and external-dir autosave
+        versionCode = 89
+        versionName = "0.1.88" // build 89: Link 0.2 evidence (slice 2) - pull a Wi-Fi detection's frames from the Hunter (GET_FRAMES/GET_FRAME_BYTES, MTU 247), import them, run the triage; protected-network flood now LIKELY ATTACK with a note
+        // build 88: analytic pipeline slice 1 - workflow wiring files (deauth triage shipped), engine, seven checks + verdict, frame fabricator fixtures, read-only Builder viewer, TRIAGE on event detail
+        // build 87: MISSION wired to the Hunter (SetSensors allow-list), presets check their sensors, sensors grouped, EAPOL listed; OPS "Select Sensors" (All Sensors / Only Deauth) is a shortcut into MISSION
+        // build 86: watch to cool steel, teal ground, toward the OPS comp; six destinations (OPS, EVENTS, TOOLS, BUILDER, MISSION, SYSTEM)
+        // build 83: first release-signed build (PRS upload key)
+        // build 82: GET_TEXT through the link FIFO so source MACs stop starving under an event flood; target bound at send time; empty replies logged
         // build 79: Wireshark window in TOOLS - import, display filter, packet list, protocol tree and hex
         // build 78: OPS thinned to face + connection + detection; panels moved to SYSTEM, measure to TOOLS
         // build 77: adaptive shell - five destinations, bottom bar (compact) / left rail (wide), face rolls to a header off OPS
@@ -30,6 +43,27 @@ android {
         ndk { abiFilters += "arm64-v8a" }
     }
 
+    flavorDimensions += "distribution"
+    productFlavors {
+        // full: the sideload and watch build. Keeps the accessibility service (the watch hardware button).
+        create("full") { dimension = "distribution" }
+        // play: the Google Play build. src/play/AndroidManifest.xml removes the accessibility service so the
+        // app is not subject to Google Play accessibility review. Same applicationId and signing key as full,
+        // so the two are update-compatible.
+        create("play") { dimension = "distribution" }
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keystorePropsFile.exists()) {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // Diagnostic APK: no minification so logs and class names stay readable.
@@ -40,6 +74,7 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystorePropsFile.exists()) signingConfig = signingConfigs.getByName("release")
         }
     }
 

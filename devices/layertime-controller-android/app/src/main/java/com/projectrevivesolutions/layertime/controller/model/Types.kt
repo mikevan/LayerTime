@@ -16,6 +16,10 @@ data class LogEntry(
  * One RF detection event, mirrored from EVENT_SUMMARY frames and keyed by
  * (sessionId, eventId) per the contract's session rule. Text fields are filled
  * in later by GET_TEXT when present.
+ *
+ * The list on screen shows one row per MAC address (EventGrouper, build 74): a row
+ * then stands for every Hunter record of that MAC. Its eventId is the lowest one
+ * merged, its count is the sum, and [mergedEventIds] lists every record merged.
  */
 data class EventRow(
     val sessionId: Int,
@@ -37,6 +41,8 @@ data class EventRow(
     val lastUpdatedMillis: Long,
     /** Signal readings from successive EVENT_SUMMARY updates, oldest first, at most [RssiSample.KEEP]. */
     val rssiHistory: List<RssiSample> = emptyList(),
+    /** The Hunter event ids folded into this row, lowest first; empty for a raw record. */
+    val mergedEventIds: List<Long> = emptyList(),
 )
 
 /** One signal reading for an event, as the phone received it. */
