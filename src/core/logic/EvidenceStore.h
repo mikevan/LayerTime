@@ -30,8 +30,12 @@
 //     ring that belong to it (the access point's beacons just before the
 //     attack), then the triggering frame.
 //   * Up to kWindows windows, one per detection, each up to kWindowFrames
-//     frames. A window keeps collecting matching frames for kFollowMs after
-//     it opens, which is what the Hunter's channel hold after a deauth is for.
+//     frames. A window keeps collecting matching frames until its deadline:
+//     followMsFor(evidence hold) after it opens, pushed out again by each
+//     repeat sighting of the same detection (extendWindow). Collecting costs
+//     no radio time, so a window never collects for less than kFollowMs even
+//     when the hold is shorter or Off; the channel hold is what costs the
+//     sweep, and only the hold follows the setting below 10 s.
 //
 // A frame belongs to a window when any of its three addresses is the
 // detection's transmitter, the BSSID of the triggering frame, or a station
@@ -102,9 +106,33 @@ public:
 
     // A new detection: opens its window, triggered by the newest frame in the
     // ring (the one being classified when the detection was made). `subject`
-    // is the detection's transmitter address. False when nothing is attached
-    // or the ring is empty.
-    bool openWindow(uint32_t eventId, const uint8_t subject[6], uint32_t nowMs);
+    // is the detection's transmitter address. The window collects for
+    // `followMs` from `nowMs`. False when nothing is attached or the ring is
+    // empty.
+    bool openWindow(uint32_t eventId, const uint8_t subject[6], uint32_t nowMs, uint32_t followMs = kFollowMs);
+
+    // A repeat sighting of the detection behind `eventId`: the window collects
+    // until at least `nowMs + followMs`, reopening a window whose deadline had
+    // passed. A later deadline already set is kept. False when the window is
+    // gone (never opened, or reused for a newer detection).
+    bool extendWindow(uint32_t eventId, uint32_t nowMs, uint32_t followMs);
+
+    // Saving windows to the card (2026-11-04). A window needs saving once it
+    // has stopped collecting and has heard something since it was last saved
+    // (never saved, or revived by a repeat sighting and heard more). Gives the
+    // oldest such window; false when none does.
+    bool nextToSave(uint32_t nowMs, uint32_t &eventId) const;
+    // The window behind `eventId` was written when it had heard `seen` frames
+    // (WindowInfo.seen from the copy that was written), so a frame heard after
+    // the copy still makes it due again.
+    void markSaved(uint32_t eventId, uint16_t seen);
+    // Windows reused for a newer detection before they were ever saved, with
+    // frames in them: evidence that never reached the card. Expected 0.
+    uint32_t lostUnsaved() const { return _lostUnsaved; }
+
+    // How long a window collects for an evidence hold of `holdSec` seconds:
+    // the hold, but never less than kFollowMs.
+    static uint32_t followMsFor(uint8_t holdSec);
 
     bool info(uint32_t eventId, uint32_t nowMs, WindowInfo &out) const;
     // One kept frame's meta and its time offset from the trigger, in ms.
@@ -124,6 +152,7 @@ private:
     struct Window {
         uint32_t eventId = 0;   // 0 = free
         uint32_t openMs = 0;
+        uint32_t untilMs = 0;   // collecting while now is before this
         uint32_t triggerMs = 0;
         uint8_t subject[6] = {0};
         uint8_t bssid[6] = {0};
@@ -139,6 +168,8 @@ private:
         uint8_t retained = 0;
         uint16_t dropped = 0;
         uint8_t truncated = 0;
+        bool saved = false;     // written to the card at least once
+        uint16_t savedSeen = 0; // `seen` when it was last written
     };
 
     Slot *ringSlot(uint16_t i) const { return &_slots[i]; }
@@ -155,6 +186,7 @@ private:
     Window *_windows = nullptr;
     uint16_t _ringNext = 0;
     uint16_t _ringCount = 0;
+    uint32_t _lostUnsaved = 0;
 };
 
 } // namespace evidence

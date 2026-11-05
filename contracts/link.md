@@ -53,9 +53,13 @@ per attribute. These are fixed.
 
 - The primary advertisement carries the flags AD and the 128-bit service UUID
   (21 bytes of the 31 available).
-- The scan response carries the complete local name `LT-C5-xxxx`, where
-  `xxxx` is the last two bytes of the Node's Bluetooth address in upper-case
-  hex.
+- The scan response carries the complete local name, which says what the
+  Node is (2026-11-04): `Hunter-C5-001`, the kind, the chip (`C5` from
+  ESP32-C5), and the unit number given when it was flashed (1 to 999, three
+  digits). A Node with no number uses the last two bytes of its Bluetooth
+  address in upper-case hex instead: `Hunter-C5-3FA2`. (Before 2026-11-04 the
+  name was `LT-C5-xxxx`.) The Vixen beacon is named the same way,
+  `Vixen-C5-001`.
 - The Node advertises whenever no central is connected, and accepts one
   central at a time. On disconnect it advertises again at once.
 - The interface discovers by service UUID, not by name.
@@ -147,13 +151,22 @@ lengths:
 | SetSleepMode | 11 | 4 | enabled u8: 0 or 1 |
 | SetEarlyWarning | 12 | 4 | enabled u8: 0 or 1 |
 | SetSensors | 15 | 7 | mask u32, little-endian: one bit per sensor at its ReconTarget value (bits 5 to 16 and 18). Only a Node with capability bit 7 takes it. |
+| SetEvidenceHold | 16 | 4 | seconds u8: 0 (Off) to 30. Only a Node with capability bit 8 uses it. |
 
 - A known command with any other length: ERROR BadLength.
 - An argument out of range (target 0, which is ReconStop's job; a target
   above 16 other than 18, EarlyWarning 17 included, which is
   SetEarlyWarning's job; an enabled value above 1; a SetSensors mask with
-  any bit outside 5 to 16 and 18): RESULT InvalidArgument, and nothing
-  changes.
+  any bit outside 5 to 16 and 18; a SetEvidenceHold above 30 seconds):
+  RESULT InvalidArgument, and nothing changes.
+- SetEvidenceHold sets how long a Node that keeps evidence frames stays on
+  the channel after a deauth detection, and how long that detection's
+  evidence window keeps collecting. 0 never holds the channel; the window
+  still opens. A repeat sighting of the same deauth transmitter restarts
+  both, so the Node stays on a sustained flood and resumes its sweep when
+  the flood stops. A window that is already collecting keeps the time it
+  opened with. A Node starts at 10 seconds and keeps the last value it was
+  sent across a power cycle (the Hunter, in NVS).
 - SetSensors is an allow-list over every selection, manual and early
   warning alike: a sensor whose bit is clear never becomes an event, an
   alert, or an EVENT_SUMMARY. A mask of 0 (every sensor off) is legal. A
@@ -201,7 +214,7 @@ Every frame starts `type u8 | reqId u8 | linkStatus u8`.
 | 3 | 1 | serverMajor |
 | 4 | 1 | serverMinor |
 | 5 | 2 | sessionId |
-| 7 | 2 | capabilities: bit 0 localWifiMonitor, bit 1 localBleMonitor, bit 2 display, bit 3 led, bit 4 button, bit 6 hunt (link_0_2.md), bit 7 sensorSet (the Node takes COMMAND SetSensors); bit 5 is reserved for Link 0.2 |
+| 7 | 2 | capabilities: bit 0 localWifiMonitor, bit 1 localBleMonitor, bit 2 display, bit 3 led, bit 4 button, bit 6 hunt (link_0_2.md), bit 7 sensorSet (the Node takes COMMAND SetSensors), bit 8 evidenceHold (the Node takes COMMAND SetEvidenceHold), bit 9 cardRead (CARD_LIST and CARD_READ, link_0_2.md); bit 5 is reserved for Link 0.2 |
 | 9 | 1 | maxFrame: the largest frame this Node will send, 20 |
 
 On VersionMismatch the Node still fills every field so the interface can

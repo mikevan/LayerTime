@@ -203,6 +203,32 @@ void set_sensors_rejects_selection_bits_and_keeps_the_old_mask()
     CHECK_INT(static_cast<int>(CommandResult::Unsupported), static_cast<int>(bare.execute(c)));
 }
 
+// SetEvidenceHold (2026-11-04): stored for the platform, 0 to 30 seconds.
+void set_evidence_hold_stores_whole_seconds_up_to_thirty()
+{
+    Rig r;
+    CHECK_INT(kDefaultEvidenceHoldSec, r.core.settings().evidenceHoldSec);
+    CHECK_INT(10, kDefaultEvidenceHoldSec);
+    CHECK_INT(30, kMaxEvidenceHoldSec);
+    LayerTimeCommand c;
+    c.type = CommandType::SetEvidenceHold;
+    c.evidenceHold.seconds = 0;
+    CHECK_INT(static_cast<int>(CommandResult::Ok), static_cast<int>(r.core.execute(c)));
+    CHECK_INT(0, r.core.settings().evidenceHoldSec);
+    c.evidenceHold.seconds = 30;
+    CHECK_INT(static_cast<int>(CommandResult::Ok), static_cast<int>(r.core.execute(c)));
+    CHECK_INT(30, r.core.settings().evidenceHoldSec);
+    c.evidenceHold.seconds = 31;
+    CHECK_INT(static_cast<int>(CommandResult::InvalidArgument), static_cast<int>(r.core.execute(c)));
+    CHECK_INT(30, r.core.settings().evidenceHoldSec); // unchanged
+    c.evidenceHold.seconds = 255;
+    CHECK_INT(static_cast<int>(CommandResult::InvalidArgument), static_cast<int>(r.core.execute(c)));
+    CHECK_INT(30, r.core.settings().evidenceHoldSec);
+    LayerTimeCore bare; // no monitor: no radio, no evidence
+    c.evidenceHold.seconds = 5;
+    CHECK_INT(static_cast<int>(CommandResult::Unsupported), static_cast<int>(bare.execute(c)));
+}
+
 void tick_raises_the_alert_once_then_polls()
 {
     Rig r;
@@ -315,5 +341,6 @@ int main(int argc, char **argv)
     CASE(every_sensor_is_on_until_set_sensors_says_otherwise);
     CASE(a_switched_off_sensor_never_becomes_an_event);
     CASE(set_sensors_rejects_selection_bits_and_keeps_the_old_mask);
+    CASE(set_evidence_hold_stores_whole_seconds_up_to_thirty);
     CHECK_SUMMARY();
 }

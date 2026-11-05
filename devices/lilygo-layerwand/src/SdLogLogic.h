@@ -38,7 +38,10 @@
 //     serial after the highest one already on the card. The LayerWand has no
 //     clock, so date names wait for a watch time-set command.
 //   - One CSV line per record: boots, events, link changes, and Recon mode
-//     changes. Every text field is quoted. SSIDs and device names come off
+//     changes. Since 2026-11-04 also `repeat` lines (an event seen again: its
+//     count, signal, and last seen, at most once per kRepeatEveryMs per event)
+//     and `evidence` lines (an evidence window saved as a pcap file beside the
+//     log, ev_NNNN/event_EEEEE.pcap for layerwand_NNNN.log). Every text field is quoted. SSIDs and device names come off
 //     the air and are untrusted, so a quote is doubled and a control byte or
 //     backslash is written as \xNN or \\ (nothing is dropped). Core's
 //     DetectionCsv carries a known quoting defect; this log does not share
@@ -85,18 +88,62 @@ uint16_t logFileSerial(const char *name);
 // kMaxLogSerial) or the buffer is too small.
 bool logFileName(uint16_t serial, char *out, size_t size);
 
+// Evidence files (2026-11-04): the windows saved during layerwand_NNNN.log go
+// in the folder ev_NNNN beside it, one file per detection, event_EEEEE.pcap
+// (at least five digits; a longer event id keeps all its digits).
+constexpr size_t kEvidenceFolderSize = sizeof("ev_0000");
+constexpr size_t kEvidencePathSize = sizeof("ev_0000/event_4294967295.pcap");
+// "ev_NNNN" for a log serial. False if the serial is out of range.
+bool evidenceFolderName(uint16_t logSerial, char *out, size_t size);
+// "ev_NNNN/event_EEEEE.pcap", relative to the card's root. False if out of range.
+bool evidencePath(uint16_t logSerial, uint32_t eventId, char *out, size_t size);
+
+// --- Repeat sightings ----------------------------------------------------
+
+constexpr uint32_t kRepeatEveryMs = 10000;
+
+// At most one repeat line per event per kRepeatEveryMs, so a long flood shows
+// its length without filling the log. Tracks the last kTracked events; a new
+// one past that replaces the one logged longest ago. Not locked: the platform
+// guards it.
+class RepeatThrottle {
+public:
+    static constexpr uint8_t kTracked = 64;
+    // True when a repeat of eventId at nowMs should be logged (and records it).
+    bool due(uint32_t eventId, uint32_t nowMs);
+    void clear();
+
+private:
+    struct Entry {
+        uint32_t eventId = 0;
+        uint32_t lastMs = 0;
+    };
+    Entry _entries[kTracked];
+};
+
 // --- Records -------------------------------------------------------------
 
-enum class SdRecordKind : uint8_t { Boot = 0, Event = 1, Link = 2, Mode = 3 };
+enum class SdRecordKind : uint8_t { Boot = 0, Event = 1, Link = 2, Mode = 3, Repeat = 4, Evidence = 5 };
+
+// Counts for an Evidence record: the saved window's EvidenceStore counts.
+struct SdEvidenceCounts {
+    uint16_t seen = 0;
+    uint8_t kept = 0;
+    uint16_t dropped = 0;
+    uint8_t truncated = 0;
+    bool collecting = false;
+};
 
 struct SdRecord {
     static constexpr uint8_t kTextSize = 40;
 
     SdRecordKind kind = SdRecordKind::Event;
     uint32_t uptimeMs = 0;
-    MonitorEvent event;              // Event only
+    MonitorEvent event;              // Event and Repeat; Evidence uses eventId only
+    SdEvidenceCounts evidence;       // Evidence only
     char text[kTextSize] = {0};      // Boot: reset reason; Link: connected or
-                                     // disconnected; Mode: the mode name
+                                     // disconnected; Mode: the mode name;
+                                     // Evidence: the pcap's path beside the log
     char peer[MonitorEvent::kSourceIdSize] = {0}; // Link: the watch's address
 };
 

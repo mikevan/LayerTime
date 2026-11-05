@@ -79,6 +79,7 @@
 #include "C5MonitorSource.h"
 #include "C5ReconRadio.h"
 #include "C5SdLog.h"
+#include "CardTransferLogic.h"
 #include "C5StageLog.h"
 #include "TDongleC5Pins.h"
 
@@ -86,6 +87,7 @@
 #include "core/link/LinkEvidence.h"
 #include "core/link/LinkHunt.h"
 #include "core/link/LinkServer.h"
+#include "core/logic/EvidencePcap.h"
 #include "core/logic/EvidenceStore.h"
 #include "core/logic/ReconSelection.h"
 #include "core/logic/ReconStageLog.h"
@@ -96,6 +98,7 @@
 #include <Arduino.h>
 #include <Preferences.h>
 #include <esp_chip_info.h>
+#include <esp_mac.h>
 #include <esp_heap_caps.h>
 #include <esp_idf_version.h>
 #include <esp_random.h>
@@ -233,7 +236,18 @@ SemaphoreHandle_t gEvidenceLock = nullptr;
 recon::ReconScheduler *gEvidenceScheduler = nullptr;
 volatile uint32_t gEvidenceWindows = 0;     // windows opened since boot (read by the loop)
 volatile uint32_t gEvidenceHolds = 0;       // channel holds started by a deauth window
+volatile uint32_t gEvidenceRepeats = 0;     // repeat sightings that pushed a window (and a deauth's hold) out
 uint32_t gEvidenceWindowsReported = 0;
+uint32_t gEvidenceRepeatsReported = 0;
+// The evidence hold in seconds (SetEvidenceHold, Settings.evidenceHoldSec).
+// The loop copies it from core's settings when it changes; the Wi-Fi task
+// reads it here as one byte, so the opener never touches core's settings.
+volatile uint8_t gEvidenceHoldSec = kDefaultEvidenceHoldSec;
+// The SD card copy of each window (2026-11-04): the loop copies a closed window
+// into this PSRAM buffer as a pcap file under the evidence lock, then writes the
+// card without holding it, so the Wi-Fi task never waits on the card.
+uint8_t *gEvidencePcap = nullptr;
+uint32_t gEvidenceRetryAtMs = 0; // after a failed save, wait before the next try
 
 void lockEvidence(void *) { xSemaphoreTake(gEvidenceLock, portMAX_DELAY); }
 void unlockEvidence(void *) { xSemaphoreGive(gEvidenceLock); }
@@ -247,11 +261,15 @@ void evidenceTap(const uint8_t *frame, uint16_t len, int8_t rssi, uint8_t channe
     unlockEvidence(nullptr);
 }
 
-// A new Wi-Fi event opens its window. A deauth also holds the channel for
-// kEvidenceHoldMs (Michael's option 1, 2026-11-04), so the window hears what
-// follows the flood. Called by core from the candidate sink, on the Wi-Fi task,
-// under the event lock; takes only the evidence lock. No Serial here: a print
-// can wait up to kSerialTxTimeoutMs, and this is the radio's task.
+// A new Wi-Fi event opens its window, collecting for the evidence hold (never
+// less than 10 s). A deauth also holds the channel for the evidence hold
+// (Michael's option 1, 2026-11-04), so the window hears what follows the flood.
+// A repeat sighting of the same event pushes its window out again, and a
+// repeat deauth restarts the hold, so the Hunter stays on a sustained flood
+// and resumes the sweep when it stops (2026-11-04). Off (0) never holds.
+// Called by core from the candidate sink, on the Wi-Fi task, under the event
+// lock; takes only the evidence lock. No Serial here: a print can wait up to
+// kSerialTxTimeoutMs, and this is the radio's task.
 class EvidenceOpener : public EventLog {
 public:
     void append(const MonitorEvent &e) override
@@ -260,21 +278,40 @@ public:
         uint8_t mac[6];
         if (!evidence::EvidenceStore::parseMac(e.sourceId, mac)) return;
         const uint32_t now = millis();
+        const uint8_t holdSec = gEvidenceHoldSec;
         lockEvidence(nullptr);
-        const bool opened = gEvidence.openWindow(e.eventId, mac, now);
+        const bool opened = gEvidence.openWindow(e.eventId, mac, now, evidence::EvidenceStore::followMsFor(holdSec));
         unlockEvidence(nullptr);
         if (!opened) return;
         gEvidenceWindows = gEvidenceWindows + 1;
-        if (e.detector == ReconTarget::Deauth && gEvidenceScheduler != nullptr) {
-            gEvidenceScheduler->holdChannel(now, recon::ReconScheduler::kEvidenceHoldMs);
-            gEvidenceHolds = gEvidenceHolds + 1;
-        }
+        if (hold(e, now, holdSec)) gEvidenceHolds = gEvidenceHolds + 1;
+    }
+    void repeated(const MonitorEvent &e) override
+    {
+        if (!gEvidence.attached() || e.sourceKind != SourceKind::Wifi) return;
+        const uint32_t now = millis();
+        const uint8_t holdSec = gEvidenceHoldSec;
+        lockEvidence(nullptr);
+        const bool extended = gEvidence.extendWindow(e.eventId, now, evidence::EvidenceStore::followMsFor(holdSec));
+        unlockEvidence(nullptr);
+        if (!extended) return; // its window was reused for a newer detection
+        gEvidenceRepeats = gEvidenceRepeats + 1;
+        if (hold(e, now, holdSec)) gEvidenceHolds = gEvidenceHolds + 1;
+    }
+
+private:
+    static bool hold(const MonitorEvent &e, uint32_t now, uint8_t holdSec)
+    {
+        if (e.detector != ReconTarget::Deauth || holdSec == 0 || gEvidenceScheduler == nullptr) return false;
+        gEvidenceScheduler->holdChannel(now, static_cast<uint32_t>(holdSec) * 1000u);
+        return true;
     }
 };
 EvidenceOpener gEvidenceOpener;
 
 // Core has one EventLog port; the screen's totals, the SD log, and the
 // evidence store all need every new event, so the port feeds all three.
+// Repeat sightings go to all three too (only the evidence opener uses them).
 class EventLogFanout : public EventLog {
 public:
     EventLogFanout(EventLog &first, EventLog &second, EventLog &third) : _first(first), _second(second), _third(third) {}
@@ -283,6 +320,12 @@ public:
         _first.append(e);
         _second.append(e);
         _third.append(e);
+    }
+    void repeated(const MonitorEvent &e) override
+    {
+        _first.repeated(e);
+        _second.repeated(e);
+        _third.repeated(e);
     }
 
 private:
@@ -424,14 +467,18 @@ public:
         // Read-only open fails until the namespace has been written once.
         if (!prefs.begin("hunter", true)) return;
         const uint32_t mask = prefs.getULong("sensors", kAllSensorsMask);
+        const uint8_t holdSec = prefs.getUChar("evhold", kDefaultEvidenceHoldSec);
         prefs.end();
         if (recon::validSensorMask(mask)) out.sensorMask = mask;
+        // A stored hold above the maximum (corrupt or future) is ignored.
+        if (holdSec <= kMaxEvidenceHoldSec) out.evidenceHoldSec = holdSec;
     }
     void save(const ApplicationSettings &settings) override
     {
         Preferences prefs;
         if (!prefs.begin("hunter", false)) return;
         prefs.putULong("sensors", settings.sensorMask);
+        prefs.putUChar("evhold", settings.evidenceHoldSec);
         prefs.end();
     }
 };
@@ -449,6 +496,238 @@ void saveSensorsIfChanged()
     gCore.saveSettings();
     Serial.printf("sensors 0x%05lX saved at %lu ms\n", static_cast<unsigned long>(mask),
                   static_cast<unsigned long>(millis()));
+}
+
+// SetEvidenceHold the same way: the loop hands the new value to the Wi-Fi
+// task's opener (gEvidenceHoldSec) and writes it to flash, only when it
+// changed. A window already collecting keeps the time it opened with.
+void applyEvidenceHoldIfChanged()
+{
+    const uint8_t holdSec = gCore.settings().evidenceHoldSec;
+    if (holdSec == gEvidenceHoldSec) return;
+    gEvidenceHoldSec = holdSec;
+    gCore.saveSettings();
+    if (holdSec == 0) Serial.printf("evidence hold Off saved at %lu ms\n", static_cast<unsigned long>(millis()));
+    else Serial.printf("evidence hold %u s saved at %lu ms\n", static_cast<unsigned>(holdSec),
+                       static_cast<unsigned long>(millis()));
+}
+
+// Saves the oldest closed evidence window that has not reached the card, one
+// per loop pass, while a log file is open (no card: the windows wait in PSRAM).
+// A failed save waits kEvidenceRetryMs, so a bad card does not flash the LED
+// every pass.
+constexpr uint32_t kEvidenceRetryMs = 10000;
+void applyLed(); // below: card traffic scrambles the LED, so it is resent after a save
+void saveEvidenceIfDue(uint32_t now)
+{
+    if (gEvidencePcap == nullptr || !gSdLog.hasCardLog()) return;
+    if (gEvidenceRetryAtMs != 0 && static_cast<int32_t>(now - gEvidenceRetryAtMs) < 0) return;
+    gEvidenceRetryAtMs = 0;
+    uint32_t eventId = 0;
+    evidence::WindowInfo info;
+    size_t n = 0;
+    lockEvidence(nullptr);
+    if (gEvidence.nextToSave(now, eventId))
+        n = evidence::buildWindowPcap(gEvidence, eventId, now, gEvidencePcap, evidence::kMaxWindowPcapBytes, info);
+    if (eventId != 0 && n == 0) gEvidence.markSaved(eventId, info.seen); // cannot build: never retry it
+    unlockEvidence(nullptr);
+    if (eventId == 0 || n == 0) return;
+    SdEvidenceCounts counts;
+    counts.seen = info.seen;
+    counts.kept = info.retained;
+    counts.dropped = info.dropped;
+    counts.truncated = info.truncated;
+    counts.collecting = info.collecting;
+    bool usedBus = false;
+    const bool saved = gSdLog.saveEvidence(eventId, gEvidencePcap, n, counts, now, gBoot.bootCount(), usedBus);
+    if (usedBus) applyLed();
+    if (saved) {
+        lockEvidence(nullptr);
+        gEvidence.markSaved(eventId, info.seen);
+        unlockEvidence(nullptr);
+    } else {
+        gEvidenceRetryAtMs = now + kEvidenceRetryMs;
+        if (gEvidenceRetryAtMs == 0) gEvidenceRetryAtMs = 1;
+    }
+}
+
+// ---- Pulling card files over USB serial (2026-11-04, CardTransferLogic.h) ----
+// The PC sends "card list" or "card get <name>"; replies are "=== card ..." lines.
+// A file goes out a few lines per loop pass, only as fast as the PC reads, so
+// scanning and the Link keep running. The 10 s report pauses while a file is
+// sent. A PC that stops reading for kCardStallMs ends the send, so the card
+// log is never left closed.
+constexpr uint32_t kCardStallMs = 5000;
+constexpr size_t kCardLinesPerPass = 16;
+char gCardCmd[kCardCommandSize];
+size_t gCardCmdLen = 0;
+bool gCardCmdOverflow = false;
+struct CardSend {
+    bool active = false;
+    char name[kCardNameSize] = {0};
+    uint32_t size = 0;
+    uint32_t sent = 0;
+    uint32_t crc = 0;
+    uint32_t lastProgressMs = 0;
+};
+CardSend gCardSend;
+bool cardLinkActive(); // below: a card read over the Link holds the card's one open file
+
+void cardLine(const char *fmt, ...)
+{
+    char line[kCardLineSize];
+    va_list ap;
+    va_start(ap, fmt);
+    const int n = vsnprintf(line, sizeof(line), fmt, ap);
+    va_end(ap);
+    if (n <= 0) return;
+    const size_t len = static_cast<size_t>(n) < sizeof(line) ? static_cast<size_t>(n) : sizeof(line) - 1;
+    Serial.write(reinterpret_cast<const uint8_t *>(line), len);
+}
+
+void cardListEntry(const char *name, uint32_t size, void *context)
+{
+    ++*static_cast<uint32_t *>(context);
+    cardLine("=== card entry %s %lu\n", name, static_cast<unsigned long>(size));
+}
+
+void finishCardSend(const char *error)
+{
+    bool usedBus = false;
+    gSdLog.endRead(usedBus);
+    if (usedBus) applyLed();
+    if (error != nullptr) cardLine("=== card error %s %s\n", gCardSend.name, error);
+    else cardLine("=== card file end %s %lu crc32 %08lx\n", gCardSend.name, static_cast<unsigned long>(gCardSend.sent),
+                  static_cast<unsigned long>(gCardSend.crc));
+    gCardSend = CardSend{};
+}
+
+void handleCardCommand(const char *line, uint32_t now)
+{
+    char name[kCardNameSize];
+    const CardCommand c = parseCardCommand(line, name, sizeof(name));
+    if (c == CardCommand::None) return;
+    if (gCardSend.active) {
+        cardLine("=== card error - A file is already being sent. Wait for its end line.\n");
+        return;
+    }
+    if (c == CardCommand::Bad) {
+        cardLine("=== card error - That is not a card command, or not a file the Hunter serves.\n");
+        return;
+    }
+    if (cardLinkActive()) {
+        cardLine("=== card error - LayerScope is pulling a file over the Link. Try again when it finishes.\n");
+        if (c == CardCommand::List) cardLine("=== card list end 0\n");
+        return;
+    }
+    bool usedBus = false;
+    if (c == CardCommand::List) {
+        uint32_t count = 0;
+        cardLine("=== card list begin\n");
+        const bool ok = gSdLog.listCard(cardListEntry, &count, usedBus);
+        if (usedBus) applyLed();
+        if (!ok) cardLine("=== card error - No SD card log is open, so the card cannot be listed.\n");
+        cardLine("=== card list end %lu\n", static_cast<unsigned long>(count));
+        return;
+    }
+    uint32_t size = 0;
+    const bool ok = gSdLog.beginRead(name, size, usedBus);
+    if (usedBus) applyLed();
+    if (!ok) {
+        cardLine("=== card error %s The Hunter could not open this file. It may not exist, or no card log is open.\n", name);
+        return;
+    }
+    gCardSend = CardSend{};
+    gCardSend.active = true;
+    strncpy(gCardSend.name, name, sizeof(gCardSend.name) - 1);
+    gCardSend.size = size;
+    gCardSend.lastProgressMs = now;
+    cardLine("=== card file begin %s %lu\n", name, static_cast<unsigned long>(size));
+}
+
+// Numbering at the bench (2026-11-04): "unit get" and "unit set <n>" on USB
+// serial; the flash script keeps the count. A set restarts the Hunter so it
+// advertises under the new name. True when the line was a unit command.
+bool handleUnitCommand(const char *line)
+{
+    uint16_t n = 0;
+    const UnitCommand c = parseUnitCommand(line, n);
+    if (c == UnitCommand::None) return false;
+    uint8_t mac[6] = {};
+    esp_read_mac(mac, ESP_MAC_BT);
+    if (c == UnitCommand::Bad) {
+        Serial.printf("=== unit error Send \"unit get\" or \"unit set <n>\" with n from 1 to %u.\n",
+                      static_cast<unsigned>(kMaxUnitNumber));
+        return true;
+    }
+    if (c == UnitCommand::Get) {
+        Preferences prefs;
+        uint16_t unit = 0;
+        if (prefs.begin("hunter", true)) { unit = prefs.getUShort("unit", 0); prefs.end(); }
+        Serial.printf("=== unit %u name %s mac %02X:%02X:%02X:%02X:%02X:%02X\n", static_cast<unsigned>(unit),
+                      gLink.advertisedName(), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        return true;
+    }
+    Preferences prefs;
+    if (!prefs.begin("hunter", false)) {
+        Serial.println("=== unit error The Hunter could not open its settings to save the number.");
+        return true;
+    }
+    prefs.putUShort("unit", n);
+    prefs.end();
+    Serial.printf("=== unit set %u, restarting\n", static_cast<unsigned>(n));
+    Serial.flush();
+    delay(200);
+    ESP.restart();
+    return true;
+}
+
+void serviceCardSerial(uint32_t now)
+{
+    while (Serial.available() > 0) {
+        const int ch = Serial.read();
+        if (ch < 0) break;
+        if (ch == '\n') {
+            if (!gCardCmdOverflow) {
+                gCardCmd[gCardCmdLen] = '\0';
+                if (!handleUnitCommand(gCardCmd)) handleCardCommand(gCardCmd, now);
+            }
+            gCardCmdLen = 0;
+            gCardCmdOverflow = false;
+        } else if (gCardCmdLen + 1 < sizeof(gCardCmd)) {
+            gCardCmd[gCardCmdLen++] = static_cast<char>(ch);
+        } else {
+            gCardCmdOverflow = true;
+        }
+    }
+    if (!gCardSend.active) return;
+    uint8_t buf[kCardDataBytes];
+    char b64[kCardLineSize];
+    bool usedBus = false;
+    for (size_t i = 0; i < kCardLinesPerPass; ++i) {
+        if (gCardSend.sent >= gCardSend.size) {
+            if (usedBus) applyLed();
+            finishCardSend(nullptr);
+            return;
+        }
+        if (Serial.availableForWrite() < 96) break; // the PC has not read the last lines yet
+        bool bus = false;
+        const size_t n = gSdLog.readChunk(buf, sizeof(buf), bus);
+        usedBus = usedBus || bus;
+        if (n == 0) {
+            if (usedBus) applyLed();
+            finishCardSend("The card stopped returning data before the end of the file.");
+            return;
+        }
+        gCardSend.crc = crc32Update(gCardSend.crc, buf, n);
+        gCardSend.sent += static_cast<uint32_t>(n);
+        gCardSend.lastProgressMs = now;
+        base64Encode(buf, n, b64, sizeof(b64));
+        cardLine("=== card data %s\n", b64);
+    }
+    if (usedBus) applyLed();
+    if (gCardSend.active && now - gCardSend.lastProgressMs > kCardStallMs)
+        finishCardSend("The PC stopped reading, so the send was ended.");
 }
 
 // The 10 s report stops at its first print that cannot get through (2026-10-31). With the
@@ -624,6 +903,10 @@ void printCounters(const char *when)
                   static_cast<unsigned long>(sd.lines), static_cast<unsigned long>(sd.writes),
                   static_cast<unsigned long>(sd.writeErrors), static_cast<unsigned long>(sd.unformatted),
                   static_cast<unsigned long>(sd.heapBeforeMount), static_cast<unsigned long>(sd.heapAfterMount));
+    reportf("[%s] sd evidence files %lu bytes %lu errors %lu | repeats %lu | windows lost unsaved %lu\n", when,
+                  static_cast<unsigned long>(sd.evidenceFiles), static_cast<unsigned long>(sd.evidenceBytes),
+                  static_cast<unsigned long>(sd.evidenceErrors), static_cast<unsigned long>(sd.repeats),
+                  static_cast<unsigned long>(gEvidence.lostUnsaved()));
     const recon::ReconScheduler &sched = gMonitor.scheduler();
     reportf("[%s] plan %u channels | passes %lu last %lu ms | rest jitter %lu ms | channel refusals %lu\n", when,
                   static_cast<unsigned>(sched.planCount()), static_cast<unsigned long>(sched.passes()),
@@ -749,7 +1032,7 @@ void wakeScreen(uint32_t now)
     if (!gDisplayStarted) {
         gDisplayStarted = true;
         gDisplayOk = gDisplay.begin();
-        gDisplay.setLine(0, "Hunter");
+        gDisplay.setLine(0, gLink.advertisedName()[0] != '\0' ? gLink.advertisedName() : "Hunter");
         Serial.printf("Display %s\n", gDisplayOk ? "started" : "FAILED");
     } else {
         gDisplay.setBacklight(true);
@@ -812,9 +1095,146 @@ void finishHunt(uint32_t now, const char *why, uint32_t sightings)
 
 // C5Link hands GET_FRAMES and GET_FRAME_BYTES here, on the loop task, with
 // this connection's notification size and a send that waits for buffers.
+// ---- Card over the Link (2026-11-04, core/link/LinkCard.h) --------------------
+// LayerScope pulls the SD card's files in the field. CARD_LIST answers at once
+// (one short frame per file); CARD_READ starts a stream that serviceCardLink()
+// continues a few frames per loop pass, so the loop never stalls on a large
+// log. One card read at a time, shared with the USB pull.
+link::card::Streamer gCardLink;
+C5Link::EvidenceSend gCardLinkSend = nullptr;
+void *gCardLinkSendContext = nullptr;
+bool gCardLinkUsedBus = false;
+uint32_t gCardLinkFiles = 0;
+
+bool cardLinkActive() { return gCardLink.state() == link::card::Streamer::State::Running; }
+
+void sendCardResult(uint8_t reqId, uint8_t op, CommandResult r, C5Link::EvidenceSend send, void *ctx)
+{
+    uint8_t out[link::kMaxFrame];
+    link::Result res;
+    res.reqId = reqId;
+    res.commandType = op;
+    res.commandResult = static_cast<uint8_t>(r);
+    send(out, link::encodeResult(res, out), ctx);
+}
+
+struct CardListContext {
+    uint8_t reqId;
+    C5Link::EvidenceSend send;
+    void *sendContext;
+    uint8_t count;
+    bool ok;
+};
+void cardListToLink(const char *name, uint32_t size, void *context)
+{
+    CardListContext *c = static_cast<CardListContext *>(context);
+    link::card::FileId id;
+    if (!c->ok || c->count == 255 || !link::card::fileIdFromName(name, id)) return;
+    uint8_t out[link::card::kCardEntrySize];
+    c->ok = c->send(out, link::card::encodeCardEntry(c->reqId, id, size, out), c->sendContext);
+    if (c->ok) ++c->count;
+}
+
+size_t cardLinkRead(uint8_t *out, size_t max, void *)
+{
+    bool bus = false;
+    const size_t n = gSdLog.readChunk(out, max, bus);
+    gCardLinkUsedBus = gCardLinkUsedBus || bus;
+    return n;
+}
+
+void answerCardRequest(const uint8_t *request, size_t len, size_t frameSize, C5Link::EvidenceSend send, void *sendContext)
+{
+    const uint8_t reqId = len >= 2 ? request[1] : 0;
+    const bool busy = gCardSend.active || cardLinkActive() || gSdLog.reading();
+    if (request[0] == link::card::kOpCardList) {
+        if (len != link::card::kCardListSize) {
+            uint8_t out[link::kMaxFrame];
+            link::Error e;
+            e.reqId = reqId;
+            e.status = link::LinkStatus::BadLength;
+            send(out, link::encodeError(e, out), sendContext);
+            return;
+        }
+        if (busy || !gSdLog.hasCardLog()) {
+            sendCardResult(reqId, request[0], CommandResult::NotReady, send, sendContext);
+            return;
+        }
+        CardListContext c{reqId, send, sendContext, 0, true};
+        bool usedBus = false;
+        const bool listed = gSdLog.listCard(cardListToLink, &c, usedBus);
+        if (usedBus) applyLed();
+        if (!listed) {
+            sendCardResult(reqId, request[0], CommandResult::NotReady, send, sendContext);
+            return;
+        }
+        if (!c.ok) return; // the connection went
+        uint8_t out[link::kMaxFrame];
+        link::End e;
+        e.reqId = reqId;
+        e.count = c.count;
+        send(out, link::encodeEnd(e, out), sendContext);
+        return;
+    }
+    link::card::FileId id;
+    uint32_t offset = 0;
+    uint8_t rid = 0;
+    const link::card::ReadCheck check = link::card::decodeCardRead(request, len, rid, id, offset);
+    if (check == link::card::ReadCheck::BadLength) {
+        uint8_t out[link::kMaxFrame];
+        link::Error e;
+        e.reqId = reqId;
+        e.status = link::LinkStatus::BadLength;
+        send(out, link::encodeError(e, out), sendContext);
+        return;
+    }
+    if (check == link::card::ReadCheck::BadFile) {
+        sendCardResult(reqId, request[0], CommandResult::InvalidArgument, send, sendContext);
+        return;
+    }
+    if (busy || !gSdLog.hasCardLog()) {
+        sendCardResult(reqId, request[0], CommandResult::NotReady, send, sendContext);
+        return;
+    }
+    char name[link::card::kCardNameSize];
+    uint32_t size = 0;
+    bool usedBus = false;
+    if (!link::card::fileName(id, name, sizeof(name)) || !gSdLog.beginRead(name, size, usedBus)) {
+        if (usedBus) applyLed();
+        sendCardResult(reqId, request[0], CommandResult::InvalidArgument, send, sendContext);
+        return;
+    }
+    if (usedBus) applyLed();
+    gCardLinkSend = send;
+    gCardLinkSendContext = sendContext;
+    gCardLink.start(reqId, size, offset, frameSize);
+    ++gCardLinkFiles;
+}
+
+// Once per loop pass: the next few frames of a card read, then close the file.
+void serviceCardLink()
+{
+    if (!cardLinkActive()) return;
+    gCardLinkUsedBus = false;
+    const link::card::Streamer::State s = gCardLink.step(cardLinkRead, nullptr, gCardLinkSend, gCardLinkSendContext, 8);
+    if (s != link::card::Streamer::State::Running) {
+        bool bus = false;
+        gSdLog.endRead(bus);
+        gCardLinkUsedBus = gCardLinkUsedBus || bus;
+        if (s == link::card::Streamer::State::Failed)
+            Serial.printf("card read over the Link stopped after %lu bytes (connection gone or card error)\n",
+                          static_cast<unsigned long>(gCardLink.sent()));
+    }
+    if (gCardLinkUsedBus) applyLed();
+}
+
 void answerEvidenceRequest(const uint8_t *request, size_t len, uint32_t nowMs, size_t frameSize,
                            C5Link::EvidenceSend send, void *sendContext, void *)
 {
+    if (link::card::isCardOp(request[0])) {
+        answerCardRequest(request, len, frameSize, send, sendContext);
+        return;
+    }
     const uint32_t id = link::evidence::requestEventId(request, len);
     bool known = false;
     uint8_t kind = 0;
@@ -897,6 +1317,12 @@ void setup()
                       static_cast<unsigned>(evidence::kRingFrames), static_cast<unsigned>(evidence::kMaxFrameBytes));
         gEvidenceScheduler = &gMonitor.scheduler();
         if (ok) gRadio.setFrameTap(evidenceTap, nullptr);
+        // The card copy's buffer: one whole window as a pcap file.
+        if (ok) gEvidencePcap = static_cast<uint8_t *>(
+            heap_caps_malloc(evidence::kMaxWindowPcapBytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        Serial.printf("Evidence to SD card %s: %lu KB buffer, files ev_NNNN/event_EEEEE.pcap beside the log\n",
+                      gEvidencePcap != nullptr ? "ready" : "NOT AVAILABLE",
+                      static_cast<unsigned long>(evidence::kMaxWindowPcapBytes / 1024));
     }
 
     // The LED shares the LCD's SPI bus (C5Led.h): start the bus, then send
@@ -974,6 +1400,9 @@ void setup()
     gSensorMaskSaved = gCore.settings().sensorMask;
     Serial.printf("Sensors 0x%05lX%s\n", static_cast<unsigned long>(gSensorMaskSaved),
                   gSensorMaskSaved == kAllSensorsMask ? " (all on)" : "");
+    gEvidenceHoldSec = gCore.settings().evidenceHoldSec;
+    if (gEvidenceHoldSec == 0) Serial.println("Evidence hold Off");
+    else Serial.printf("Evidence hold %u s\n", static_cast<unsigned>(gEvidenceHoldSec));
     gServer.setLock(lockEvents, unlockEvents, nullptr);
     // No card log until the first look finds one (first loop pass).
     gServer.setMemoryOnly(true);
@@ -986,11 +1415,28 @@ void setup()
     gLink.attachServer(&gServer);
     gLink.attachHunt(answerHuntRequest, nullptr);
     gLink.attachEvidence(answerEvidenceRequest, nullptr);
+    // The unit number given at flash time (unit set <n>), 0 when none.
+    {
+        Preferences prefs;
+        uint16_t unit = 0;
+        if (prefs.begin("hunter", true)) {
+            unit = prefs.getUShort("unit", 0);
+            prefs.end();
+        }
+        gLink.setUnit(unit <= kMaxUnitNumber ? unit : 0);
+    }
     gBleOk = gLink.begin(link::kCapLocalWifiMonitor | link::kCapLocalBleMonitor | link::kCapDisplay |
                          link::kCapLed | link::kCapButton | link::hunt::kCapHunt | link::kCapSensorSet |
-                         (gEvidence.attached() ? link::evidence::kCapRawCapture : 0));
+                         link::card::kCapCardRead |
+                         (gEvidence.attached() ? (link::evidence::kCapRawCapture | link::kCapEvidenceHold) : 0));
     const bool heapAfterBle = heapIntact();
     gHeapOk = gHeapOk && heapAfterBle;
+    {
+        uint8_t mac[6] = {};
+        esp_read_mac(mac, ESP_MAC_BT);
+        Serial.printf("Unit name %s, Bluetooth address %02X:%02X:%02X:%02X:%02X:%02X\n", gLink.advertisedName(),
+                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    }
     Serial.printf("Link %s, advertising as %s, session %04X\n", gBleOk ? "up" : "FAILED", gLink.advertisedName(),
                   static_cast<unsigned>(gLink.sessionId()));
     Serial.printf("Heap after BLE init: %s, free %lu\n", heapAfterBle ? "intact" : "CORRUPT",
@@ -1004,6 +1450,7 @@ void setup()
                   static_cast<unsigned long>(recon::ReconScheduler::kRestJitterMaxMs),
                   static_cast<unsigned long>(recon::ReconScheduler::kPassJitterMaxMs));
     Serial.println("Recon starts stopped; START from LayerScope begins a scan. BOOT button: dump the current run.");
+    Serial.println("Card over USB: send \"card list\" or \"card get <name>\" (read only).");
 
     // Early warning is core's default setting; apply it, and start run 1.
     applyEarlyWarningIfChanged();
@@ -1028,6 +1475,9 @@ void loop()
         if (period > 1000) gStage.record(recon::Stage::PollLate, 0, 0, period);
     }
     gLastLoopMs = now;
+
+    serviceCardSerial(now);
+    serviceCardLink();
 
     const bool pressed = digitalRead(pins::kBootButton) == LOW;
     const ButtonGesture gesture = gButton.update(pressed, now);
@@ -1085,10 +1535,16 @@ void loop()
     // A change to early warning during a hunt is applied when the hunt ends.
     if (!gRadio.hunting()) applyEarlyWarningIfChanged();
     saveSensorsIfChanged();
+    applyEvidenceHoldIfChanged();
     // Evidence windows are opened on the Wi-Fi task, which never prints; report here.
+    // Only a new window prints: a chatty detector repeats several times a second,
+    // so the repeat count rides along on the next window's line.
     if (gEvidenceWindows != gEvidenceWindowsReported) {
         gEvidenceWindowsReported = gEvidenceWindows;
-        Serial.printf("evidence windows %lu, channel holds %lu at %lu ms\n", static_cast<unsigned long>(gEvidenceWindowsReported),
+        gEvidenceRepeatsReported = gEvidenceRepeats;
+        Serial.printf("evidence windows %lu, repeats %lu, channel holds %lu at %lu ms\n",
+                      static_cast<unsigned long>(gEvidenceWindowsReported),
+                      static_cast<unsigned long>(gEvidenceRepeatsReported),
                       static_cast<unsigned long>(gEvidenceHolds), static_cast<unsigned long>(millis()));
     }
     gServer.refresh();
@@ -1113,6 +1569,7 @@ void loop()
     if (gSdLog.service(now, gBoot.bootCount(), C5BootRecord::reasonName(gBoot.reason()), linkChanged)) {
         applyLed();
     }
+    saveEvidenceIfDue(now);
     gServer.setMemoryOnly(!gSdLog.hasCardLog());
 
     const AcquisitionStatus acq = gMonitor.acquisition();
@@ -1165,7 +1622,10 @@ void loop()
         gLastReportMs = now;
         gHeapOk = gHeapOk && heapIntact();
         recordHeap();
-        if (Serial.availableForWrite() >= kSerialDrainedBytes) {
+        if (gCardSend.active) {
+            // A card file is going out: the report waits so it cannot land in the file's lines.
+            touchBootState();
+        } else if (Serial.availableForWrite() >= kSerialDrainedBytes) {
             if (gReportsSkipped > 0 || gReportsCut > 0) {
                 Serial.printf("serial: %lu reports skipped and %lu cut short while nothing read the port\n",
                               static_cast<unsigned long>(gReportsSkipped), static_cast<unsigned long>(gReportsCut));

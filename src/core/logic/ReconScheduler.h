@@ -142,16 +142,18 @@ public:
 
     // Holds the current channel until `now + ms`, or keeps a longer hold
     // already running (a short interest hold never cuts a long one short).
-    // The Hunter calls this with kEvidenceHoldMs when a deauth detection opens
-    // an evidence window (slice 2, 2026-11-04, Michael's option 1), so the
-    // window catches what follows the flood: a clone, a handshake, or the
-    // client still talking. The sweep resumes when the hold ends.
+    // The Hunter calls this with the evidence hold (Settings.evidenceHoldSec,
+    // default kEvidenceHoldMs) when a deauth detection opens an evidence
+    // window, and again on each repeat sighting of that deauth (slice 2,
+    // 2026-11-04, Michael's option 1), so the window catches what follows the
+    // flood: a clone, a handshake, or the client still talking. A sustained
+    // flood keeps the channel; the sweep resumes when the hold ends.
     void holdChannel(uint32_t now, uint32_t ms)
     {
         const uint32_t until = now + ms;
         if (_interestHoldUntilMs == 0 || (int32_t)(until - _interestHoldUntilMs) > 0) _interestHoldUntilMs = until;
     }
-    static constexpr uint32_t kEvidenceHoldMs = 10000;
+    static constexpr uint32_t kEvidenceHoldMs = static_cast<uint32_t>(kDefaultEvidenceHoldSec) * 1000u;
 
     const AcquisitionStatus &status() const { return _status; }
     // True while the early-warning Wi-Fi sweep is the reason the radio is

@@ -20,6 +20,7 @@
 #if defined(LAYERTIME_TARGET_TDONGLE_C5)
 
 #include "C5SdLog.h"
+#include "CardTransferLogic.h"
 #include "TDongleC5Pins.h"
 
 #include "core/logic/ReconSelection.h"
@@ -122,6 +123,176 @@ void C5SdLog::append(const MonitorEvent &event)
     push(r);
 }
 
+void C5SdLog::repeated(const MonitorEvent &event)
+{
+    const uint32_t now = millis();
+    portENTER_CRITICAL(&_lock);
+    const bool due = _repeats.due(event.eventId, now);
+    portEXIT_CRITICAL(&_lock);
+    if (!due) return;
+    SdRecord r;
+    r.kind = SdRecordKind::Repeat;
+    r.uptimeMs = now;
+    r.event = event;
+    if (push(r)) ++_c.repeats;
+}
+
+bool C5SdLog::saveEvidence(uint32_t eventId, const uint8_t *pcap, size_t length, const SdEvidenceCounts &counts,
+                           uint32_t nowMs, uint32_t bootCount, bool &usedBus)
+{
+    usedBus = false;
+    if (!_c.fileOpen || _reading || pcap == nullptr || length == 0) return false;
+    const uint16_t serial = logFileSerial(_c.fileName);
+    char folder[kEvidenceFolderSize + 1] = "/";
+    char path[kEvidencePathSize + 1] = "/";
+    if (!evidenceFolderName(serial, folder + 1, sizeof(folder) - 1) ||
+        !evidencePath(serial, eventId, path + 1, sizeof(path) - 1)) {
+        ++_c.evidenceErrors;
+        return false;
+    }
+    usedBus = true;
+    startBus();
+    // One open file at a time (SD.begin with max_files 1): close the log,
+    // write the window, then reopen the log to append.
+    _file.flush();
+    _file.close();
+    bool ok = SD.exists(folder) || SD.mkdir(folder);
+    if (ok) {
+        fs::File f = SD.open(path, FILE_WRITE); // replaces an earlier save of this window
+        ok = f && f.write(pcap, length) == length;
+        if (f) f.close();
+    }
+    if (!reopenLog()) {
+        // The log cannot be reopened: the card is treated as failed; the next
+        // write looks for it again and opens a new log file.
+        ++_c.evidenceErrors;
+        return false;
+    }
+    if (!ok) {
+        ++_c.evidenceErrors;
+        return false;
+    }
+    ++_c.evidenceFiles;
+    _c.evidenceBytes += static_cast<uint32_t>(length);
+
+    SdRecord r;
+    r.kind = SdRecordKind::Evidence;
+    r.uptimeMs = nowMs;
+    r.event.eventId = eventId;
+    r.evidence = counts;
+    copyText(r.text, sizeof(r.text), path + 1);
+    char line[kLineSize];
+    const size_t n = formatSdRecord(r, bootCount, "", line, sizeof(line));
+    if (n == 0) ++_c.unformatted;
+    else if (!writeLine(line, n)) {
+        closeAndUnmount();
+        return true; // the pcap is on the card; only its log line was lost
+    }
+    _file.flush();
+    return true;
+}
+
+bool C5SdLog::reopenLog()
+{
+    char logPath[kLogFileNameSize + 1] = "/";
+    copyText(logPath + 1, sizeof(logPath) - 1, _c.fileName);
+    _file = SD.open(logPath, FILE_APPEND);
+    if (_file) return true;
+    _c.fileOpen = false;
+    closeAndUnmount();
+    return false;
+}
+
+bool C5SdLog::listCard(void (*entry)(const char *name, uint32_t size, void *context), void *context, bool &usedBus)
+{
+    usedBus = false;
+    if (!_c.fileOpen || _reading || entry == nullptr) return false;
+    usedBus = true;
+    startBus();
+    _file.flush();
+    _file.close();
+    char folders[16][kEvidenceFolderSize] = {{0}};
+    uint8_t folderCount = 0;
+    fs::File root = SD.open("/");
+    if (root) {
+        for (fs::File f = root.openNextFile(); f; f = root.openNextFile()) {
+            const char *n = f.name();
+            if (n != nullptr && n[0] == '/') ++n;
+            if (!f.isDirectory() && cardNameServed(n)) entry(n, static_cast<uint32_t>(f.size()), context);
+            else if (f.isDirectory() && n != nullptr && strlen(n) == 7 && strncmp(n, "ev_", 3) == 0 &&
+                     folderCount < 16) {
+                copyText(folders[folderCount++], kEvidenceFolderSize, n);
+            }
+            f.close();
+        }
+        root.close();
+    }
+    // A run with more than 16 evidence folders lists the first 16 the card returns;
+    // the rest are reached by a later list after older ones are copied off.
+    for (uint8_t i = 0; i < folderCount; ++i) {
+        char dirPath[kEvidenceFolderSize + 1] = "/";
+        copyText(dirPath + 1, sizeof(dirPath) - 1, folders[i]);
+        fs::File dir = SD.open(dirPath);
+        if (!dir) continue;
+        for (fs::File f = dir.openNextFile(); f; f = dir.openNextFile()) {
+            const char *n = f.name();
+            if (n != nullptr) {
+                const char *slash = strrchr(n, '/');
+                if (slash != nullptr) n = slash + 1;
+                char full[kCardNameSize];
+                snprintf(full, sizeof(full), "%s/%s", folders[i], n);
+                if (!f.isDirectory() && cardNameServed(full)) entry(full, static_cast<uint32_t>(f.size()), context);
+            }
+            f.close();
+        }
+        dir.close();
+    }
+    return reopenLog();
+}
+
+bool C5SdLog::beginRead(const char *name, uint32_t &size, bool &usedBus)
+{
+    usedBus = false;
+    size = 0;
+    if (!_c.fileOpen || _reading || !cardNameServed(name)) return false;
+    usedBus = true;
+    startBus();
+    _file.flush();
+    _file.close();
+    char path[kCardNameSize + 1] = "/";
+    copyText(path + 1, sizeof(path) - 1, name);
+    _readFile = SD.open(path, FILE_READ);
+    if (!_readFile || _readFile.isDirectory()) {
+        if (_readFile) _readFile.close();
+        reopenLog();
+        return false;
+    }
+    size = static_cast<uint32_t>(_readFile.size());
+    _reading = true;
+    return true;
+}
+
+size_t C5SdLog::readChunk(uint8_t *out, size_t max, bool &usedBus)
+{
+    usedBus = false;
+    if (!_reading || out == nullptr || max == 0) return 0;
+    usedBus = true;
+    startBus();
+    const int n = _readFile.read(out, max);
+    return n > 0 ? static_cast<size_t>(n) : 0;
+}
+
+void C5SdLog::endRead(bool &usedBus)
+{
+    usedBus = false;
+    if (!_reading) return;
+    usedBus = true;
+    startBus();
+    _readFile.close();
+    _reading = false;
+    reopenLog();
+}
+
 void C5SdLog::noteLink(bool connected, const char *peer, uint32_t nowMs)
 {
     SdRecord r;
@@ -143,6 +314,8 @@ void C5SdLog::noteMode(const char *mode, uint32_t nowMs)
 
 bool C5SdLog::service(uint32_t nowMs, uint32_t bootCount, const char *resetReason, bool linkChanged)
 {
+    // A USB pull holds the card's one open file; records keep queuing in the ring.
+    if (_reading) return false;
     bool due;
     if (!_bootLookDone) {
         _bootLookDone = true; // once, right after boot: find the card

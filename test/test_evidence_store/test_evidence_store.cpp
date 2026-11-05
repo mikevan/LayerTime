@@ -177,6 +177,128 @@ void the_window_stops_collecting_after_ten_seconds()
     CHECK_INT(before, w.retained);
 }
 
+// Evidence hold (2026-11-04): a 30 s hold collects for 30 s; Off and 5 s
+// still collect for kFollowMs, because collecting costs no radio time.
+void the_window_collects_for_the_evidence_hold_but_never_less_than_ten_seconds()
+{
+    CHECK_INT(kFollowMs, EvidenceStore::followMsFor(0));
+    CHECK_INT(kFollowMs, EvidenceStore::followMsFor(5));
+    CHECK_INT(10000, EvidenceStore::followMsFor(10));
+    CHECK_INT(20000, EvidenceStore::followMsFor(20));
+    CHECK_INT(30000, EvidenceStore::followMsFor(30));
+    CHECK_INT(255000, EvidenceStore::followMsFor(255)); // no overflow at the type's limit
+
+    Rig r;
+    prelude(r);
+    r.hear(deauth(AP, BCAST, 3000), -72, 50);
+    CHECK_TRUE(r.store.openWindow(7, AP, r.now, EvidenceStore::followMsFor(30)));
+    WindowInfo w;
+    r.hear(deauth(AP, BCAST, 3001), -72, 25000);   // 25 s in: still collecting
+    CHECK_TRUE(r.store.info(7, r.now, w));
+    CHECK_TRUE(w.collecting);
+    const uint8_t at25 = w.retained;
+    r.hear(deauth(AP, BCAST, 3002), -72, 5001);    // just past 30 s: stopped
+    CHECK_TRUE(r.store.info(7, r.now, w));
+    CHECK_FALSE(w.collecting);
+    CHECK_INT(at25, w.retained);
+}
+
+// A repeat sighting pushes the deadline out, and revives a window whose
+// deadline had passed, so a sustained flood stays in one window.
+void a_repeat_sighting_extends_or_reopens_the_window()
+{
+    Rig r;
+    prelude(r);
+    r.hear(deauth(AP, BCAST, 3000), -72, 50);
+    CHECK_TRUE(r.store.openWindow(7, AP, r.now, kFollowMs));
+    WindowInfo w;
+    r.hear(deauth(AP, BCAST, 3001), -72, 8000);
+    CHECK_TRUE(r.store.extendWindow(7, r.now, kFollowMs)); // 8 s in: until 18 s
+    r.hear(deauth(AP, BCAST, 3002), -72, 9000);            // 17 s: kept
+    CHECK_TRUE(r.store.info(7, r.now, w));
+    CHECK_TRUE(w.collecting);
+    const uint8_t at17 = w.retained;
+    // A shorter extension never pulls the deadline in.
+    CHECK_TRUE(r.store.extendWindow(7, r.now, 100));
+    r.hear(deauth(AP, BCAST, 3003), -72, 500);             // 17.5 s: still kept
+    CHECK_TRUE(r.store.info(7, r.now, w));
+    CHECK_INT(at17 + 1, w.retained);
+    // Let it lapse, then a repeat 15 s later (the deauth cooldown) revives it.
+    r.hear(deauth(AP, BCAST, 3004), -72, 15000);
+    CHECK_TRUE(r.store.info(7, r.now, w));
+    CHECK_FALSE(w.collecting);
+    const uint8_t lapsed = w.retained;
+    CHECK_TRUE(r.store.extendWindow(7, r.now, kFollowMs));
+    r.hear(deauth(AP, BCAST, 3005), -72, 1000);
+    CHECK_TRUE(r.store.info(7, r.now, w));
+    CHECK_TRUE(w.collecting);
+    CHECK_INT(lapsed + 1, w.retained);
+    // No such window: refused, nothing opened.
+    CHECK_FALSE(r.store.extendWindow(99, r.now, kFollowMs));
+    CHECK_FALSE(r.store.info(99, r.now, w));
+    CHECK_FALSE(r.store.extendWindow(0, r.now, kFollowMs));
+}
+
+// Saving to the card (2026-11-04): a window is due once it stops collecting,
+// again only if a revival heard more, and a window reused unsaved is counted.
+void a_closed_window_is_due_for_saving_once_and_again_after_it_hears_more()
+{
+    Rig r;
+    prelude(r);
+    r.hear(deauth(AP, BCAST, 3000), -72, 50);
+    CHECK_TRUE(r.store.openWindow(7, AP, r.now, kFollowMs));
+    uint32_t ev = 0;
+    CHECK_FALSE(r.store.nextToSave(r.now, ev));          // still collecting
+    r.hear(deauth(AP, BCAST, 3001), -72, kFollowMs + 1);  // closed
+    CHECK_TRUE(r.store.nextToSave(r.now, ev));
+    CHECK_INT(7, ev);
+    WindowInfo w;
+    CHECK_TRUE(r.store.info(7, r.now, w));
+    r.store.markSaved(7, w.seen);
+    CHECK_FALSE(r.store.nextToSave(r.now, ev));          // saved as it stands
+    // Marked with an older count (a frame came in after the copy): due again.
+    r.store.markSaved(7, static_cast<uint16_t>(w.seen - 1));
+    CHECK_TRUE(r.store.nextToSave(r.now, ev));
+    r.store.markSaved(7, w.seen);
+    // Revived, but nothing new heard: no rewrite.
+    CHECK_TRUE(r.store.extendWindow(7, r.now, kFollowMs));
+    r.hear(beacon(OTHER, "Neighbor", 9), -80, kFollowMs + 1);
+    CHECK_FALSE(r.store.nextToSave(r.now, ev));
+    // Revived and heard more: due again once it closes.
+    CHECK_TRUE(r.store.extendWindow(7, r.now, kFollowMs));
+    r.hear(deauth(AP, BCAST, 3002), -72, 100);
+    CHECK_FALSE(r.store.nextToSave(r.now, ev));          // collecting
+    r.hear(beacon(OTHER, "Neighbor", 10), -80, kFollowMs);
+    CHECK_TRUE(r.store.nextToSave(r.now, ev));
+    CHECK_INT(7, ev);
+    r.store.markSaved(99, 0);                            // no such window: harmless
+    CHECK_INT(0, r.store.lostUnsaved());
+}
+
+void the_oldest_closed_window_saves_first_and_an_unsaved_reuse_is_counted()
+{
+    Rig r;
+    r.hear(deauth(AP, BCAST, 1), -72, 10);
+    CHECK_TRUE(r.store.openWindow(1, AP, r.now, kFollowMs));
+    r.hear(deauth(AP, BCAST, 2), -72, 10);
+    CHECK_TRUE(r.store.openWindow(2, AP, r.now, kFollowMs));
+    r.hear(deauth(AP, BCAST, 3), -72, kFollowMs + 100);
+    uint32_t ev = 0;
+    CHECK_TRUE(r.store.nextToSave(r.now, ev));
+    CHECK_INT(1, ev);
+    WindowInfo w1;
+    CHECK_TRUE(r.store.info(1, r.now, w1));
+    r.store.markSaved(1, w1.seen);
+    CHECK_TRUE(r.store.nextToSave(r.now, ev));
+    CHECK_INT(2, ev);
+    // Fill every window; the reuse of saved window 1 is not a loss, of unsaved 2 is.
+    for (uint32_t id = 10; id < 10 + kWindows; ++id) {
+        r.hear(deauth(AP, BCAST, static_cast<uint16_t>(id)), -72, 1);
+        CHECK_TRUE(r.store.openWindow(id, AP, r.now, kFollowMs));
+    }
+    CHECK_INT(1, r.store.lostUnsaved());
+}
+
 void a_full_window_counts_what_it_dropped()
 {
     Rig r;
@@ -255,6 +377,10 @@ int main(int argc, char **argv)
     CASE(a_window_starts_with_recent_beacons_then_the_trigger);
     CASE(the_flood_the_clone_and_the_handshake_follow_into_the_window);
     CASE(the_window_stops_collecting_after_ten_seconds);
+    CASE(the_window_collects_for_the_evidence_hold_but_never_less_than_ten_seconds);
+    CASE(a_repeat_sighting_extends_or_reopens_the_window);
+    CASE(a_closed_window_is_due_for_saving_once_and_again_after_it_hears_more);
+    CASE(the_oldest_closed_window_saves_first_and_an_unsaved_reuse_is_counted);
     CASE(a_full_window_counts_what_it_dropped);
     CASE(a_long_frame_is_cut_and_flagged);
     CASE(bytes_read_back_exactly_in_any_chunk_size);

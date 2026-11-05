@@ -36,6 +36,7 @@
 #include <stdint.h>
 
 #include "core/link/LinkCodec.h"
+#include "core/link/LinkCard.h"
 #include "core/link/LinkEvidence.h"
 #include "core/link/LinkHunt.h"
 #include "core/link/LinkPipe.h"
@@ -78,6 +79,7 @@ public:
     // handler with this connection's notification size and a send function
     // that waits for NimBLE buffers (as BULK does), because one GET_FRAME_BYTES
     // streams a whole window, far more than the 48-frame reply pipe holds.
+    // The card ops (CARD_LIST, CARD_READ; 2026-11-04) go to the same handler.
     using EvidenceSend = bool (*)(const uint8_t *frame, size_t len, void *context);
     using EvidenceHandler = void (*)(const uint8_t *request, size_t len, uint32_t nowMs, size_t frameSize,
                                      EvidenceSend send, void *sendContext, void *context);
@@ -113,6 +115,9 @@ public:
     // "aa:bb:cc:dd:ee:ff" of the connected central, or "" when none.
     const char *peerAddress() const { return _peer; }
     const char *advertisedName() const { return _name; }
+    // The unit number (1 to kMaxUnitNumber, 0 for none) the name is built from:
+    // "Hunter-C5-001", or "Hunter-C5-3FA2" without one. Set before begin().
+    void setUnit(uint16_t unit) { _unit = unit; }
     // Recon Node counters: requests answered by the loop, ERROR Busy
     // replies, reply frames sent, notify calls NimBLE refused (retried on the
     // next pass), reply frames dropped because the queue was full, and Status
@@ -187,6 +192,7 @@ private:
     bool _connected = false;
     char _peer[18] = "";
     char _name[link::kMaxFrame] = "";
+    uint16_t _unit = 0;
     uint32_t _lastBeatMs = 0;
     uint32_t _pings = 0;
     uint32_t _lastToken = 0;

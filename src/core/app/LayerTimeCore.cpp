@@ -123,6 +123,14 @@ CommandResult LayerTimeCore::execute(const LayerTimeCommand &command)
         _settings.sensorMask = command.sensors.mask;
         return CommandResult::Ok;
 
+    case CommandType::SetEvidenceHold:
+        // Stored only. The platform that keeps evidence frames reads it when
+        // a window opens and when it holds the channel.
+        if (!_ports.monitor) return CommandResult::Unsupported;
+        if (command.evidenceHold.seconds > kMaxEvidenceHoldSec) return CommandResult::InvalidArgument;
+        _settings.evidenceHoldSec = command.evidenceHold.seconds;
+        return CommandResult::Ok;
+
     case CommandType::MeshSetAdvertising:
         if (!meshTransport(command.setting.network)) return CommandResult::Unsupported;
         _settings.meshAdvertising[static_cast<uint8_t>(command.setting.network)] = command.setting.enabled;

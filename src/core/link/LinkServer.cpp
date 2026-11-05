@@ -71,6 +71,7 @@ bool commandLength(uint8_t commandType, size_t &length)
     case CommandType::ReconStart:
     case CommandType::SetSleepMode:
     case CommandType::SetEarlyWarning:
+    case CommandType::SetEvidenceHold:
         length = kCommandMinSize + 1;
         return true;
     case CommandType::ReconStop:
@@ -227,6 +228,14 @@ void LinkServer::handleCommand(const uint8_t *request, size_t len, FrameSink sin
         break;
     case CommandType::ReconClearEvents:
     case CommandType::ReconAcknowledgeAlert:
+        lock();
+        result = _core.execute(cmd);
+        unlock();
+        break;
+    case CommandType::SetEvidenceHold:
+        // Under the lock: the Hunter reads the setting on the Wi-Fi task when
+        // a detection opens a window. Core refuses a value above the maximum.
+        cmd.evidenceHold.seconds = c.argument;
         lock();
         result = _core.execute(cmd);
         unlock();

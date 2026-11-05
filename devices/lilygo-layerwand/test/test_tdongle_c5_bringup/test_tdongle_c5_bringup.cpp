@@ -11,6 +11,7 @@
 #include <cstring>
 
 #include "BringUpLogic.h"
+#include "CardTransferLogic.h"
 #include "SdLogLogic.h"
 
 using namespace layertime::tdongle_c5;
@@ -180,22 +181,63 @@ void gestures_survive_millis_wraparound()
     CHECK_INT(kLong, g(b, true, nearWrap + ButtonGestures::kLongPressMs)); // wraps past zero
 }
 
-void the_test_name_uses_the_last_two_mac_bytes_in_upper_case_hex()
+// Unit names (2026-11-04): every unit says what it is.
+void a_numbered_unit_is_kind_chip_and_three_digits()
 {
     const uint8_t mac[6] = {0x7C, 0xDF, 0xA1, 0x00, 0x3F, 0xA2};
-    char name[kAdvertisedNameSize];
-    formatAdvertisedName(mac, name);
-    CHECK_STR("LT-C5-3FA2", name);
-    CHECK_INT(10, static_cast<int>(strlen(name)));
-    CHECK_INT(11, kAdvertisedNameSize);
+    char chip[8];
+    chipShortName("ESP32-C5", chip, sizeof(chip));
+    CHECK_STR("C5", chip);
+    char name[kUnitNameSize];
+    CHECK_TRUE(formatUnitName("Hunter", chip, 1, mac, name, sizeof(name)));
+    CHECK_STR("Hunter-C5-001", name);
+    CHECK_TRUE(formatUnitName("Hunter", chip, 999, mac, name, sizeof(name)));
+    CHECK_STR("Hunter-C5-999", name);
+    CHECK_TRUE(formatUnitName("Vixen", chip, 42, mac, name, sizeof(name)));
+    CHECK_STR("Vixen-C5-042", name);
+    chipShortName("ESP32-S3", chip, sizeof(chip));
+    CHECK_TRUE(formatUnitName("Hunter", chip, 7, mac, name, sizeof(name)));
+    CHECK_STR("Hunter-S3-007", name);
 }
 
-void the_test_name_keeps_leading_zeros()
+void an_unnumbered_unit_shows_its_address_digits_and_still_says_what_it_is()
 {
     const uint8_t mac[6] = {0, 0, 0, 0, 0x00, 0x0B};
-    char name[kAdvertisedNameSize];
-    formatAdvertisedName(mac, name);
-    CHECK_STR("LT-C5-000B", name);
+    char name[kUnitNameSize];
+    CHECK_TRUE(formatUnitName("Hunter", "C5", 0, mac, name, sizeof(name)));
+    CHECK_STR("Hunter-C5-000B", name);
+    CHECK_TRUE(formatUnitName("Hunter", "C5", 1000, mac, name, sizeof(name))); // out of range: address
+    CHECK_STR("Hunter-C5-000B", name);
+    char chip[8];
+    chipShortName(nullptr, chip, sizeof(chip));
+    CHECK_STR("ESP32", chip);
+    chipShortName("", chip, sizeof(chip));
+    CHECK_STR("ESP32", chip);
+    chipShortName("ESP32", chip, sizeof(chip));
+    CHECK_STR("ESP32", chip);
+    // The longest name fits the Link's 20-byte buffer.
+    CHECK_TRUE(formatUnitName("Hunter", "ESP32", 0, mac, name, sizeof(name)));
+    CHECK_TRUE(strlen(name) < kUnitNameSize);
+    char tiny[8];
+    CHECK_FALSE(formatUnitName("Hunter", "C5", 1, mac, tiny, sizeof(tiny)));
+    CHECK_STR("", tiny);
+}
+
+void unit_commands_parse_strictly()
+{
+    uint16_t n = 77;
+    CHECK_INT(static_cast<int>(UnitCommand::Get), static_cast<int>(parseUnitCommand("unit get\r", n)));
+    CHECK_INT(0, n);
+    CHECK_INT(static_cast<int>(UnitCommand::Set), static_cast<int>(parseUnitCommand("unit set 12", n)));
+    CHECK_INT(12, n);
+    CHECK_INT(static_cast<int>(UnitCommand::Set), static_cast<int>(parseUnitCommand("unit set 999", n)));
+    CHECK_INT(999, n);
+    CHECK_INT(static_cast<int>(UnitCommand::Bad), static_cast<int>(parseUnitCommand("unit set 0", n)));
+    CHECK_INT(static_cast<int>(UnitCommand::Bad), static_cast<int>(parseUnitCommand("unit set 1000", n)));
+    CHECK_INT(static_cast<int>(UnitCommand::Bad), static_cast<int>(parseUnitCommand("unit set -1", n)));
+    CHECK_INT(static_cast<int>(UnitCommand::Bad), static_cast<int>(parseUnitCommand("unit set", n)));
+    CHECK_INT(static_cast<int>(UnitCommand::Bad), static_cast<int>(parseUnitCommand("unit wipe", n)));
+    CHECK_INT(static_cast<int>(UnitCommand::None), static_cast<int>(parseUnitCommand("card list", n)));
 }
 
 // --- Units ---------------------------------------------------------------
@@ -615,6 +657,158 @@ void every_line_has_the_headers_column_count()
     CHECK_INT(want, commas(line));
 }
 
+// 2026-11-04: repeat and evidence lines, the repeat throttle, and evidence paths.
+void repeat_and_evidence_lines_fill_their_columns()
+{
+    SdRecord r;
+    r.kind = SdRecordKind::Repeat;
+    r.uptimeMs = 30000;
+    r.event.eventId = 17;
+    r.event.confidence = layertime::Confidence::High;
+    r.event.sourceKind = SourceKind::Wifi;
+    strcpy(r.event.sourceId, "AA:BB:CC:DD:EE:FF");
+    strcpy(r.event.detail, "Deauth flood");
+    r.event.rssi = -55;
+    r.event.channel = 6;
+    r.event.band = Band::Band2_4GHz;
+    r.event.count = 9;
+    char line[256];
+    formatSdRecord(r, 2, "DEAUTH", line, sizeof(line));
+    CHECK_STR("2,30000,\"repeat\",17,\"DEAUTH\",\"high\",\"wifi\",\"AA:BB:CC:DD:EE:FF\","
+              "\"Deauth flood\",-55,6,\"2.4GHz\",9\r\n",
+              line);
+    SdRecord e;
+    e.kind = SdRecordKind::Evidence;
+    e.uptimeMs = 41000;
+    e.event.eventId = 17;
+    strcpy(e.text, "ev_0007/event_00017.pcap");
+    e.evidence.kept = 49;
+    e.evidence.seen = 51;
+    e.evidence.dropped = 2;
+    formatSdRecord(e, 2, "", line, sizeof(line));
+    CHECK_STR("2,41000,\"evidence\",17,,,,,\"ev_0007/event_00017.pcap kept=49 seen=51 dropped=2 truncated=0 collecting=0\",,,,49\r\n",
+              line);
+}
+
+void repeat_and_evidence_lines_have_the_headers_column_count()
+{
+    auto commas = [](const char *s) {
+        int n = 0;
+        bool quoted = false;
+        for (; *s; ++s) {
+            if (*s == '"') quoted = !quoted;
+            else if (*s == ',' && !quoted) ++n;
+        }
+        return n;
+    };
+    char line[256];
+    SdRecord r;
+    r.kind = SdRecordKind::Repeat;
+    formatSdRecord(r, 1, "X", line, sizeof(line));
+    CHECK_INT(12, commas(line));
+    r.kind = SdRecordKind::Evidence;
+    strcpy(r.text, "ev_0001/event_00001.pcap");
+    formatSdRecord(r, 1, "", line, sizeof(line));
+    CHECK_INT(12, commas(line));
+}
+
+void evidence_paths_sit_beside_their_log()
+{
+    char out[kEvidencePathSize];
+    CHECK_TRUE(evidenceFolderName(7, out, sizeof(out)));
+    CHECK_STR("ev_0007", out);
+    CHECK_TRUE(evidencePath(7, 42, out, sizeof(out)));
+    CHECK_STR("ev_0007/event_00042.pcap", out);
+    CHECK_TRUE(evidencePath(9999, 4294967295u, out, sizeof(out)));
+    CHECK_STR("ev_9999/event_4294967295.pcap", out);
+    CHECK_FALSE(evidencePath(0, 1, out, sizeof(out)));
+    CHECK_FALSE(evidencePath(10000, 1, out, sizeof(out)));
+    CHECK_FALSE(evidencePath(1, 0, out, sizeof(out)));
+    CHECK_FALSE(evidencePath(1, 1, out, 10));
+    CHECK_FALSE(evidenceFolderName(0, out, sizeof(out)));
+}
+
+void a_repeat_is_logged_at_most_every_ten_seconds_per_event()
+{
+    RepeatThrottle t;
+    CHECK_TRUE(t.due(5, 1000));       // the first repeat
+    CHECK_FALSE(t.due(5, 5000));
+    CHECK_FALSE(t.due(5, 10999));
+    CHECK_TRUE(t.due(5, 11000));      // 10 s after the last logged one
+    CHECK_TRUE(t.due(6, 11001));      // another event is separate
+    CHECK_FALSE(t.due(0, 20000));     // no event id
+    // Past kTracked events, the one logged longest ago is replaced.
+    RepeatThrottle full;
+    for (uint32_t id = 1; id <= RepeatThrottle::kTracked; ++id) CHECK_TRUE(full.due(id, id * 10));
+    CHECK_TRUE(full.due(1000, 2000)); // replaces event 1 (logged at 10 ms)
+    CHECK_TRUE(full.due(1, 2001));    // event 1 is new again
+    CHECK_FALSE(full.due(1000, 2002));
+    // Survives millis wraparound.
+    RepeatThrottle w;
+    CHECK_TRUE(w.due(9, 0xFFFFF000u));
+    CHECK_FALSE(w.due(9, 0x00000100u));
+    CHECK_TRUE(w.due(9, 0x00002000u));
+    w.clear();
+    CHECK_TRUE(w.due(9, 0x00002001u));
+}
+
+// 2026-11-04: pulling the card's files over USB serial.
+void only_the_hunters_own_file_names_are_served()
+{
+    CHECK_TRUE(cardNameServed("layerwand_0007.log"));
+    CHECK_TRUE(cardNameServed("ev_0007/event_00042.pcap"));
+    CHECK_TRUE(cardNameServed("ev_9999/event_4294967295.pcap"));
+    CHECK_FALSE(cardNameServed("layerwand_0000.log"));       // serial 0 is never written
+    CHECK_FALSE(cardNameServed("LAYERWAND_0007.LOG"));
+    CHECK_FALSE(cardNameServed("/layerwand_0007.log"));
+    CHECK_FALSE(cardNameServed("ev_0007/../secrets.txt"));
+    CHECK_FALSE(cardNameServed("ev_0007/event_0042.pcap"));  // 4 digits: never written
+    CHECK_FALSE(cardNameServed("ev_0007/event_00042.pcap.txt"));
+    CHECK_FALSE(cardNameServed("ev_007/event_00042.pcap"));
+    CHECK_FALSE(cardNameServed("ev_0007\\event_00042.pcap"));
+    CHECK_FALSE(cardNameServed("System Volume Information"));
+    CHECK_FALSE(cardNameServed(""));
+    CHECK_FALSE(cardNameServed(nullptr));
+}
+
+void card_commands_parse_strictly()
+{
+    char name[kCardNameSize];
+    CHECK_INT(static_cast<int>(CardCommand::List), static_cast<int>(parseCardCommand("card list\r", name, sizeof(name))));
+    CHECK_INT(static_cast<int>(CardCommand::Get), static_cast<int>(parseCardCommand("card get ev_0007/event_00042.pcap", name, sizeof(name))));
+    CHECK_STR("ev_0007/event_00042.pcap", name);
+    CHECK_INT(static_cast<int>(CardCommand::Bad), static_cast<int>(parseCardCommand("card get ../boot.txt", name, sizeof(name))));
+    CHECK_STR("", name);
+    CHECK_INT(static_cast<int>(CardCommand::Bad), static_cast<int>(parseCardCommand("card delete layerwand_0001.log", name, sizeof(name))));
+    CHECK_INT(static_cast<int>(CardCommand::Bad), static_cast<int>(parseCardCommand("card", name, sizeof(name))));
+    CHECK_INT(static_cast<int>(CardCommand::None), static_cast<int>(parseCardCommand("hello", name, sizeof(name))));
+    CHECK_INT(static_cast<int>(CardCommand::None), static_cast<int>(parseCardCommand("", name, sizeof(name))));
+    char tiny[8];
+    CHECK_INT(static_cast<int>(CardCommand::Bad), static_cast<int>(parseCardCommand("card get layerwand_0001.log", tiny, sizeof(tiny))));
+}
+
+void base64_and_crc32_match_the_standards()
+{
+    char out[16];
+    const uint8_t f[] = {'f', 'o', 'o', 'b', 'a', 'r'};
+    CHECK_INT(0, static_cast<int>(base64Encode(f, 0, out, sizeof(out))));
+    CHECK_STR("", out);
+    base64Encode(f, 1, out, sizeof(out)); CHECK_STR("Zg==", out);
+    base64Encode(f, 2, out, sizeof(out)); CHECK_STR("Zm8=", out);
+    base64Encode(f, 3, out, sizeof(out)); CHECK_STR("Zm9v", out);
+    base64Encode(f, 6, out, sizeof(out)); CHECK_STR("Zm9vYmFy", out);
+    CHECK_INT(0, static_cast<int>(base64Encode(f, 6, out, 8)));  // no room for the terminator
+    char line[kCardLineSize];
+    uint8_t full[kCardDataBytes];
+    for (size_t i = 0; i < sizeof(full); ++i) full[i] = static_cast<uint8_t>(0xFF - i);
+    CHECK_INT(64, static_cast<int>(base64Encode(full, sizeof(full), line, sizeof(line))));
+    // CRC-32 check value of "123456789" is CBF43926; chunked gives the same.
+    const uint8_t nine[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    CHECK_INT(static_cast<int>(0xCBF43926u), static_cast<int>(crc32Update(0, nine, 9)));
+    CHECK_INT(static_cast<int>(0xCBF43926u), static_cast<int>(crc32Update(crc32Update(0, nine, 4), nine + 4, 5)));
+    CHECK_INT(0, static_cast<int>(crc32Update(0, nine, 0)));
+}
+
 void a_line_that_does_not_fit_is_refused_whole()
 {
     SdRecord r;
@@ -639,8 +833,16 @@ int main(int argc, char **argv)
     CASE(a_bounce_shorter_than_the_debounce_time_is_not_a_press);
     CASE(a_release_bounce_does_not_end_the_press);
     CASE(gestures_survive_millis_wraparound);
-    CASE(the_test_name_uses_the_last_two_mac_bytes_in_upper_case_hex);
-    CASE(the_test_name_keeps_leading_zeros);
+    CASE(repeat_and_evidence_lines_fill_their_columns);
+    CASE(repeat_and_evidence_lines_have_the_headers_column_count);
+    CASE(evidence_paths_sit_beside_their_log);
+    CASE(a_repeat_is_logged_at_most_every_ten_seconds_per_event);
+    CASE(only_the_hunters_own_file_names_are_served);
+    CASE(card_commands_parse_strictly);
+    CASE(base64_and_crc32_match_the_standards);
+    CASE(a_numbered_unit_is_kind_chip_and_three_digits);
+    CASE(an_unnumbered_unit_shows_its_address_digits_and_still_says_what_it_is);
+    CASE(unit_commands_parse_strictly);
     CASE(whole_mib_rounds_down);
     CASE(the_eye_follows_the_link_and_the_cheek_the_mesh);
     CASE(only_the_owls_green_counts_as_green);

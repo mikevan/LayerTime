@@ -39,6 +39,7 @@ void MonitorEventLog::add(const Candidate &c)
             existing.confidence = outcome.confidence;
             if (outcome.raiseAlert) _alertPending = true;
             ++existing.count;
+            if (_recorder != nullptr) _recorder->repeated(existing);
             return;
         }
     }

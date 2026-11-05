@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import com.projectrevivesolutions.layertime.controller.ui.theme.ConsoleFonts
 import com.projectrevivesolutions.layertime.controller.ui.theme.LtColors
 import com.projectrevivesolutions.layertime.controller.ui.theme.glowText
+import com.projectrevivesolutions.layertime.controller.wireshark.FrameFacts
+import com.projectrevivesolutions.layertime.controller.wireshark.FrameGlossary
 import com.projectrevivesolutions.layertime.controller.wireshark.PcapImport
 import com.projectrevivesolutions.layertime.controller.wireshark.WiresharkFilter
 
@@ -108,8 +110,13 @@ fun WiresharkScreen(onBack: () -> Unit) {
                 }
             }
             items(shown, key = { it.number }) { f ->
-                FrameCard(f, capture.expanded[f.number] == true) {
-                    capture.expanded[f.number] = !(capture.expanded[f.number] ?: false)
+                // What this frame type means, above every card (Michael, 2026-11-04).
+                val meaning = remember(f) { FrameGlossary.explain(FrameFacts.of(f)) }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(meaning, color = LtColors.Cyan, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp))
+                    FrameCard(f, capture.expanded[f.number] == true) {
+                        capture.expanded[f.number] = !(capture.expanded[f.number] ?: false)
+                    }
                 }
             }
         }

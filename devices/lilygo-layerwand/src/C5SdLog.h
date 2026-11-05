@@ -74,6 +74,10 @@ public:
         uint32_t unformatted = 0; // records too long to format (expected 0)
         uint32_t heapBeforeMount = 0;
         uint32_t heapAfterMount = 0;
+        uint32_t repeats = 0;        // repeat sightings queued (throttled, RepeatThrottle)
+        uint32_t evidenceFiles = 0;  // evidence windows written as pcap files
+        uint32_t evidenceBytes = 0;
+        uint32_t evidenceErrors = 0; // failed folder, open, write, or log reopen
     };
 
     // Holds GPIO 23 (the card's CS) high. Call first thing in setup().
@@ -84,6 +88,18 @@ public:
     bool begin();
 
     void append(const MonitorEvent &event) override;
+    // A repeat sighting: a `repeat` line, at most once per kRepeatEveryMs per
+    // event (2026-11-04). Same task and lock rules as append.
+    void repeated(const MonitorEvent &event) override;
+
+    // Loop task. Writes one evidence window (a whole pcap file, built by the
+    // caller) to ev_NNNN/event_EEEEE.pcap beside the open log, and logs an
+    // `evidence` line for it in the same card access. Only while a log file is
+    // open: with no card it does nothing and returns false, so the window
+    // waits in PSRAM. `usedBus` says the card was touched (resend the LED).
+    // True when the file was written.
+    bool saveEvidence(uint32_t eventId, const uint8_t *pcap, size_t length, const SdEvidenceCounts &counts,
+                      uint32_t nowMs, uint32_t bootCount, bool &usedBus);
 
     // Loop task.
     void noteLink(bool connected, const char *peer, uint32_t nowMs);
@@ -92,6 +108,20 @@ public:
     // the card is touched only when a write is due. linkChanged: the watch
     // connected or disconnected on this pass. True if it used the SPI bus.
     bool service(uint32_t nowMs, uint32_t bootCount, const char *resetReason, bool linkChanged);
+    // Pulling files over USB serial (2026-11-04, CardTransferLogic.h). Loop
+    // task only. Read only: nothing on the card is written or deleted.
+    //   listCard: calls `entry` for every file the Hunter serves (the logs at
+    //     the top, the pcaps in each ev_NNNN folder). False with no card.
+    //   beginRead / readChunk / endRead: one file at a time. While a file is
+    //     open for reading the log file is closed (the card takes one open file),
+    //     so records wait in the ring and window saves wait; endRead reopens the
+    //     log. `usedBus` in each: the card was touched (resend the LED).
+    bool listCard(void (*entry)(const char *name, uint32_t size, void *context), void *context, bool &usedBus);
+    bool beginRead(const char *name, uint32_t &size, bool &usedBus);
+    size_t readChunk(uint8_t *out, size_t max, bool &usedBus);
+    void endRead(bool &usedBus);
+    bool reading() const { return _reading; }
+
     // True while every record reaches a file on the card.
     bool hasCardLog() const { return _c.fileOpen; }
 
@@ -112,6 +142,10 @@ private:
     portMUX_TYPE _lock = portMUX_INITIALIZER_UNLOCKED;
     SdRecordRing _ring;
     SdWritePolicy _policy{kRingCapacity};
+    RepeatThrottle _repeats; // under _lock
+    bool _reading = false;   // a card file is open for a USB pull; the log is closed
+    fs::File _readFile;
+    bool reopenLog();
     bool _bootLookDone = false;
     fs::File _file;
     Counters _c;

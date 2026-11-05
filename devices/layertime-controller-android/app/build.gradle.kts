@@ -22,8 +22,8 @@ android {
         applicationId = "com.projectrevivesolutions.layerscope"
         minSdk = 26          // Android 8.0. Covers the TCL K24 and most Android-watch OSes.
         targetSdk = 36
-        versionCode = 89
-        versionName = "0.1.88" // build 89: Link 0.2 evidence (slice 2) - pull a Wi-Fi detection's frames from the Hunter (GET_FRAMES/GET_FRAME_BYTES, MTU 247), import them, run the triage; protected-network flood now LIKELY ATTACK with a note
+        versionCode = 92
+        versionName = "0.1.91" // build 92: PULL FROM THE HUNTER (the SD card over the Link, CARD_LIST/CARD_READ, CRC-checked) on HUNTER CARD; Hunters named Hunter-C5-001. build 91: IMPORT HUNTER CARD on EVENTS (the Hunter SD log with repeat and evidence lines, saved frames open in Wireshark). build 90: MISSION evidence hold (SetEvidenceHold, Off/5/10/20/30 s; the Hunter re-holds on a sustained deauth flood); Wireshark window explains every frame type above its card. build 89: Link 0.2 evidence (slice 2) - pull a Wi-Fi detection's frames from the Hunter (GET_FRAMES/GET_FRAME_BYTES, MTU 247), import them, run the triage; protected-network flood now LIKELY ATTACK with a note
         // build 88: analytic pipeline slice 1 - workflow wiring files (deauth triage shipped), engine, seven checks + verdict, frame fabricator fixtures, read-only Builder viewer, TRIAGE on event detail
         // build 87: MISSION wired to the Hunter (SetSensors allow-list), presets check their sensors, sensors grouped, EAPOL listed; OPS "Select Sensors" (All Sensors / Only Deauth) is a shortcut into MISSION
         // build 86: watch to cool steel, teal ground, toward the OPS comp; six destinations (OPS, EVENTS, TOOLS, BUILDER, MISSION, SYSTEM)

@@ -83,7 +83,8 @@
     "SetEarlyWarning": 12,
     "MeshSetAdvertising": 13,
     "MeshSetOwnName": 14,
-    "SetSensors": 15
+    "SetSensors": 15,
+    "SetEvidenceHold": 16
   },
   "CommandResult": {
     "Ok": 0,

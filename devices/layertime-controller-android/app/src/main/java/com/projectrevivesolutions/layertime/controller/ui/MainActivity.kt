@@ -94,6 +94,7 @@ import com.projectrevivesolutions.layertime.controller.diag.EventsExporter
 import com.projectrevivesolutions.layertime.controller.diag.Exporter
 import com.projectrevivesolutions.layertime.controller.hunt.HuntSession
 import com.projectrevivesolutions.layertime.controller.link.LinkClient
+import com.projectrevivesolutions.layertime.controller.mission.EvidenceHold
 import com.projectrevivesolutions.layertime.controller.mission.SensorSelection
 import com.projectrevivesolutions.layertime.controller.link.LinkConstants
 import com.projectrevivesolutions.layertime.controller.link.LinkMeasure
@@ -219,6 +220,12 @@ internal object MissionPrefs {
     fun writeSensors(ctx: Context, on: Set<Int>) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putStringSet("sensors", on.map { it.toString() }.toSet()).putBoolean(V2, true).apply()
+    }
+    // The evidence hold in seconds (SetEvidenceHold, 2026-11-04). 10 until the operator picks one.
+    fun readEvidenceHold(ctx: Context): Int = EvidenceHold.normalize(
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("evidence_hold", EvidenceHold.DEFAULT_SEC))
+    fun writeEvidenceHold(ctx: Context, sec: Int) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("evidence_hold", EvidenceHold.normalize(sec)).apply()
     }
 }
 
@@ -373,6 +380,20 @@ private fun ControllerScreen() {
         LinkForegroundService.active?.sensorsChanged()
     }
     // A QUICK START pick while scanning stops the scan: the operator presses START to run the new list.
+    // MISSION's evidence hold (2026-11-04): saved here, sent to the Hunter that takes it.
+    var evidenceHold by remember { mutableIntStateOf(MissionPrefs.readEvidenceHold(context)) }
+    val evidenceHoldApplied by repo.evidenceHoldApplied.collectAsState()
+    val evidenceLink = when {
+        !active -> EvidenceHold.Link.OFFLINE
+        ((server?.capabilities ?: 0) and LinkConstants.Capability.EVIDENCE_HOLD) == 0 -> EvidenceHold.Link.OLD_FIRMWARE
+        evidenceHoldApplied == evidenceHold -> EvidenceHold.Link.APPLIED
+        else -> EvidenceHold.Link.SENDING
+    }
+    val setEvidenceHold: (Int) -> Unit = { sec ->
+        evidenceHold = EvidenceHold.normalize(sec)
+        MissionPrefs.writeEvidenceHold(context, evidenceHold)
+        LinkForegroundService.active?.evidenceHoldChanged()
+    }
     val quickPick: (Set<Int>) -> Unit = { selection ->
         if (scanning) LinkForegroundService.active?.reconStop()
         setMission(selection)
@@ -498,7 +519,8 @@ private fun ControllerScreen() {
                 when (page) {
                     "config" -> {
                         if (!onHull) {
-                            MissionScreen(selected = missionSelection, link = missionLink, onSelectionChange = setMission)
+                            MissionScreen(selected = missionSelection, link = missionLink, onSelectionChange = setMission,
+                                evidenceHold = evidenceHold, evidenceLink = evidenceLink, onEvidenceHoldChange = setEvidenceHold)
                         } else {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             item {
@@ -562,6 +584,30 @@ private fun ControllerScreen() {
                                         fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp)
                                 }
                             }
+                            // The evidence hold (2026-11-04), the same setting as the phone page's EVIDENCE HOLD.
+                            item { Text("EVIDENCE HOLD", color = LtColors.ConsoleEdge, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 2.sp) }
+                            item {
+                                Text("${EvidenceHold.meaning(evidenceHold)} ${EvidenceHold.status(evidenceLink)}",
+                                    color = if (evidenceLink == EvidenceHold.Link.APPLIED) LtColors.Green else LtColors.Amber, fontSize = 12.sp)
+                            }
+                            items(EvidenceHold.PRESETS) { sec ->
+                                val picked = sec == evidenceHold
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp)
+                                        .hudPanel(edge = if (picked) LtColors.Green else LtColors.ConsoleEdge, radius = 16.dp, elevation = if (picked) 4.dp else 1.dp, halo = picked)
+                                        .clip(ConsoleShape).padding(horizontal = 19.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    androidx.compose.material3.RadioButton(
+                                        selected = picked, onClick = { setEvidenceHold(sec) },
+                                        colors = androidx.compose.material3.RadioButtonDefaults.colors(
+                                            selectedColor = LtColors.Green, unselectedColor = LtColors.Grey,
+                                        ),
+                                    )
+                                    Text(EvidenceHold.label(sec), color = if (picked) LtColors.Green else LtColors.Ivory,
+                                        fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp)
+                                }
+                            }
                         }
                         }
                     }
@@ -570,7 +616,8 @@ private fun ControllerScreen() {
                         if (!onHull) {
                             EventsScreen(events, emptyEventsMessage(active, status),
                                 onImport = { page = "capture" },
-                                onOpen = { selectedEvent = it; detailFrom = "attacks"; page = "detail" })
+                                onOpen = { selectedEvent = it; detailFrom = "attacks"; page = "detail" },
+                                onImportCard = { page = "card" })
                         } else {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             item {
@@ -612,6 +659,7 @@ private fun ControllerScreen() {
                     "capture" -> CaptureOnlyScreen(onBack = { page = "attacks" }, onOpenWireshark = { page = "wireshark" })
 
                     "wireshark" -> WiresharkScreen { page = "tools" }
+                    "card" -> HunterCardScreen(onBack = { page = "attacks" }, onOpenWireshark = { page = "wireshark" })
 
                     "timeline" -> AttackTimelineScreen { page = "tools" }
 
@@ -1195,7 +1243,7 @@ private fun pageFor(d: Destination): String = when (d) {
 /** Which destination a page belongs to, so the nav highlights the right tab (and sub-pages
  *  like capture and detail stay under EVENTS). */
 private fun destForPage(page: String): Destination = when (page) {
-    "attacks", "capture", "detail" -> Destination.EVENTS
+    "attacks", "capture", "detail", "card" -> Destination.EVENTS
     "tools", "wireshark", "timeline" -> Destination.TOOLS
     "builder" -> Destination.BUILDER
     "config" -> Destination.MISSION

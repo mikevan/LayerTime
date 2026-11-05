@@ -100,6 +100,9 @@ constexpr uint16_t kCapButton = 0x0010;
 // Bits 5 and 6 belong to Link 0.2 (5 reserved, 6 is HUNT, LinkHunt.h).
 // Bit 7: the Node takes COMMAND SetSensors, the sensor allow-list (2026-11-04).
 constexpr uint16_t kCapSensorSet = 0x0080;
+// Bit 8: the Node takes COMMAND SetEvidenceHold (2026-11-04). Set only by a
+// Node that keeps evidence frames (it also sets bit 5, raw capture).
+constexpr uint16_t kCapEvidenceHold = 0x0100;
 
 // Request and reply sizes on the wire.
 constexpr size_t kHelloSize = 4;

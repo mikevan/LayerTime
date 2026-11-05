@@ -43,7 +43,7 @@ private val EventsGreen=Color(0xFF91E833)
 private val EventsType=TextStyle(fontFamily=FontFamily.SansSerif,fontSize=11.sp,lineHeight=14.sp)
 
 @Composable
-fun EventsScreen(events:List<EventRow>,emptyMessage:String,onImport:()->Unit,onOpen:(EventRow)->Unit) {
+fun EventsScreen(events:List<EventRow>,emptyMessage:String,onImport:()->Unit,onOpen:(EventRow)->Unit,onImportCard:(()->Unit)?=null) {
     var filter by rememberSaveable {mutableStateOf("ALL")}
     val shown=remember(events,filter) {events.filter {filter=="ALL" || it.sourceKind==if(filter=="BLE")2 else 1}}
     OpsTelemetryHousing(Modifier.fillMaxSize()) {
@@ -56,15 +56,20 @@ fun EventsScreen(events:List<EventRow>,emptyMessage:String,onImport:()->Unit,onO
                 Text("///",color=EventsCyan.copy(alpha=.6f),style=EventsType.copy(letterSpacing=1.sp))
             }
             EventsRule()
-            val flash=rememberPressFlash()
             val pill=RoundedCornerShape(12.dp)
-            Row(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF123A48),Color(0xFF061B28))),pill)
-                .border(.7.dp,EventsCyan.copy(alpha=.7f),pill).clip(pill)
-                .clickable(role=Role.Button) {flash.fire();onImport()}.semantics(mergeDescendants=true) {}
-                .pressFlash(flash,false,EventsCyan).padding(horizontal=11.dp,vertical=6.dp),
-                verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Outlined.FileDownload,null,tint=EventsInk,modifier=Modifier.size(15.dp))
-                Text("IMPORT CAPTURE",color=EventsInk,style=EventsType.copy(fontSize=10.sp,lineHeight=12.sp,fontWeight=FontWeight.Medium))
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                // IMPORT HUNTER CARD (2026-11-04): the Hunter's SD card log and its saved frames.
+                for((label,action) in listOfNotNull("IMPORT CAPTURE" to onImport,onImportCard?.let {"IMPORT HUNTER CARD" to it})) {
+                    val flash=rememberPressFlash()
+                    Row(Modifier.background(Brush.verticalGradient(listOf(Color(0xFF123A48),Color(0xFF061B28))),pill)
+                        .border(.7.dp,EventsCyan.copy(alpha=.7f),pill).clip(pill)
+                        .clickable(role=Role.Button) {flash.fire();action()}.semantics(mergeDescendants=true) {}
+                        .pressFlash(flash,false,EventsCyan).padding(horizontal=11.dp,vertical=6.dp),
+                        verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.Outlined.FileDownload,null,tint=EventsInk,modifier=Modifier.size(15.dp))
+                        Text(label,color=EventsInk,style=EventsType.copy(fontSize=10.sp,lineHeight=12.sp,fontWeight=FontWeight.Medium))
+                    }
+                }
             }
             EventsRule()
             Row(Modifier.fillMaxWidth().selectableGroup(),horizontalArrangement=Arrangement.spacedBy(7.dp)) {

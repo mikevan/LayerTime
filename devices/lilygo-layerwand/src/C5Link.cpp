@@ -117,7 +117,10 @@ bool C5Link::begin(uint16_t capabilities)
 
     uint8_t mac[6] = {};
     esp_read_mac(mac, ESP_MAC_BT);
-    formatAdvertisedName(mac, _name);
+    // Every unit says what it is (Michael, 2026-11-04): Hunter, the chip, its number.
+    char chip[8];
+    chipShortName(ESP.getChipModel(), chip, sizeof(chip));
+    if (!formatUnitName("Hunter", chip, _unit, mac, _name, sizeof(_name))) snprintf(_name, sizeof(_name), "Hunter");
 
     if (!NimBLEDevice::init(_name)) return false;
     // The frame ceiling is 20 bytes by contract; a larger MTU only matters
@@ -241,7 +244,7 @@ void C5Link::serviceRequests(uint32_t nowMs)
             return;
         }
 #endif
-        if (_evidence != nullptr && link::evidence::isEvidenceOp(request[0])) {
+        if (_evidence != nullptr && (link::evidence::isEvidenceOp(request[0]) || link::card::isCardOp(request[0]))) {
             // Streamed straight to NimBLE at this connection's size, not through
             // the reply pipe; the pipe is empty here (one request at a time).
             _evidence(request, n, nowMs, link::evidence::frameSizeForMtu(_mtu), sendEvidenceFrame, this, _evidenceContext);
@@ -329,7 +332,9 @@ void C5Link::onControlWritten(const uint8_t *data, size_t len)
                               // Slice 2: GET_FRAMES and GET_FRAME_BYTES wait for the loop,
                               // which streams the answer (serviceRequests). Without this they
                               // fell through to dispatch() and got ERROR UnknownOp.
-                              (_evidence != nullptr && link::evidence::isEvidenceOp(op))
+                              (_evidence != nullptr && link::evidence::isEvidenceOp(op)) ||
+                              // Card ops (2026-11-04) go the same way.
+                              (_evidence != nullptr && link::card::isCardOp(op))
 #if defined(LAYERTIME_MEASURE)
                               || op == link::measure::kOpBulk
 #endif

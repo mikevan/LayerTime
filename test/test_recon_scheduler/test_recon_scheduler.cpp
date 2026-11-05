@@ -659,6 +659,28 @@ void an_evidence_hold_keeps_the_channel_ten_seconds_and_a_short_hold_never_cuts_
     CHECK_INT(2, r.hops());
 }
 
+// A sustained flood: the Hunter re-holds on each repeat sighting (about
+// every 15 s, the deauth cooldown). With a 20 s hold the channel never hops
+// while the flood lasts, and the sweep resumes 20 s after the last sighting.
+void repeat_sightings_keep_a_flood_s_channel_and_the_sweep_resumes_after()
+{
+    CHECK_INT(10000, ReconScheduler::kEvidenceHoldMs); // the default, 10 s
+    Rig r;
+    r.s.start(ReconTarget::Deauth);
+    r.after(100);
+    const uint32_t holdMs = 20000;
+    r.s.holdChannel(g_now, holdMs);                    // the detection
+    for (int sighting = 0; sighting < 4; ++sighting) { // 60 s of flood
+        for (int i = 0; i < 30; ++i) r.after(500);
+        r.s.holdChannel(g_now, holdMs);                // a repeat sighting
+    }
+    CHECK_INT(0, r.hops());
+    for (int i = 0; i < 39; ++i) r.after(500);         // 19.5 s after the last
+    CHECK_INT(0, r.hops());
+    r.after(600);                                       // past 20 s
+    CHECK_INT(1, r.hops());
+}
+
 void an_evidence_hold_in_a_full_pass_holds_off_the_ble_burst()
 {
     Rig r;
@@ -682,6 +704,7 @@ int main(int argc, char **argv)
     CASE(an_interesting_detection_holds_the_channel_about_1500_ms);
     CASE(an_evidence_hold_keeps_the_channel_ten_seconds_and_a_short_hold_never_cuts_it);
     CASE(an_evidence_hold_in_a_full_pass_holds_off_the_ble_burst);
+    CASE(repeat_sightings_keep_a_flood_s_channel_and_the_sweep_resumes_after);
     CASE(the_hop_cursor_wraps_from_11_to_1);
     CASE(a_late_poll_hops_once_not_several_times);
     CASE(ble_only_detector_scans_at_once_and_rescans_5_s_after_the_last_start);

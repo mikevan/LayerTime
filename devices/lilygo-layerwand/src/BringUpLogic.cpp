@@ -22,6 +22,7 @@
 
 #include "BringUpLogic.h"
 
+#include <stdio.h>
 #include <string.h>
 
 namespace layertime {
@@ -93,17 +94,50 @@ ButtonGesture ButtonGestures::update(bool pressed, uint32_t nowMs)
     return ButtonGesture::None;
 }
 
-void formatAdvertisedName(const uint8_t mac[6], char out[kAdvertisedNameSize])
+void chipShortName(const char *model, char *out, size_t size)
 {
-    static const char kHex[] = "0123456789ABCDEF";
-    const char prefix[] = "LT-C5-";
-    size_t n = 0;
-    for (; prefix[n] != '\0'; ++n) out[n] = prefix[n];
-    out[n++] = kHex[mac[4] >> 4];
-    out[n++] = kHex[mac[4] & 0x0F];
-    out[n++] = kHex[mac[5] >> 4];
-    out[n++] = kHex[mac[5] & 0x0F];
-    out[n] = '\0';
+    if (out == nullptr || size == 0) return;
+    const char *m = (model == nullptr || model[0] == '\0') ? "ESP32" : model;
+    if (strncmp(m, "ESP32-", 6) == 0 && m[6] != '\0') m += 6;
+    snprintf(out, size, "%s", m);
+}
+
+bool formatUnitName(const char *kind, const char *chip, uint16_t unit, const uint8_t mac[6], char *out, size_t size)
+{
+    if (out == nullptr || size == 0) return false;
+    out[0] = '\0';
+    if (kind == nullptr || chip == nullptr || mac == nullptr) return false;
+    int n;
+    if (unit >= 1 && unit <= kMaxUnitNumber)
+        n = snprintf(out, size, "%s-%s-%03u", kind, chip, static_cast<unsigned>(unit));
+    else
+        n = snprintf(out, size, "%s-%s-%02X%02X", kind, chip, mac[4], mac[5]);
+    if (n < 0 || static_cast<size_t>(n) >= size) {
+        out[0] = '\0';
+        return false;
+    }
+    return true;
+}
+
+UnitCommand parseUnitCommand(const char *line, uint16_t &number)
+{
+    number = 0;
+    if (line == nullptr) return UnitCommand::None;
+    size_t len = strlen(line);
+    while (len > 0 && (line[len - 1] == '\r' || line[len - 1] == '\n' || line[len - 1] == ' ')) --len;
+    if (len < 4 || strncmp(line, "unit", 4) != 0) return UnitCommand::None;
+    if (len == 8 && strncmp(line, "unit get", 8) == 0) return UnitCommand::Get;
+    if (len > 9 && len <= 12 && strncmp(line, "unit set ", 9) == 0) {
+        uint32_t v = 0;
+        for (size_t i = 9; i < len; ++i) {
+            if (line[i] < '0' || line[i] > '9') return UnitCommand::Bad;
+            v = v * 10 + static_cast<uint32_t>(line[i] - '0');
+        }
+        if (v < 1 || v > kMaxUnitNumber) return UnitCommand::Bad;
+        number = static_cast<uint16_t>(v);
+        return UnitCommand::Set;
+    }
+    return UnitCommand::Bad;
 }
 
 uint32_t wholeMiB(uint32_t bytes)

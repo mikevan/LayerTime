@@ -100,12 +100,30 @@ private:
     bool _longSent = false;
 };
 
-// --- BLE test name -------------------------------------------------------
+// --- Unit names (Michael, 2026-11-04) --------------------------------------
 //
-// "LT-C5-" followed by the last two bytes of the Bluetooth MAC in upper-case
-// hex, for example "LT-C5-3FA2". out must hold kAdvertisedNameSize bytes.
-constexpr size_t kAdvertisedNameSize = 11; // 10 characters + terminator
-void formatAdvertisedName(const uint8_t mac[6], char out[kAdvertisedNameSize]);
+// Every unit says what it is: "Hunter-C5-001", "Vixen-C5-001". The middle is
+// the chip (ESP32-C5 gives "C5", so an S3 build says "S3" with no change);
+// the number is the unit's own, 1 to 999, given when it is flashed (the flash
+// script keeps the count, keyed by Bluetooth address) and kept in flash. A
+// unit with no number shows the last two bytes of its Bluetooth address
+// instead, "Hunter-C5-3FA2", so it still says what it is and stays unique.
+constexpr uint16_t kMaxUnitNumber = 999;
+constexpr size_t kUnitNameSize = 20; // fits the Link's 20-byte name buffer; longest is 19 + terminator
+
+// "C5" from "ESP32-C5"; a model without the "ESP32-" prefix is used whole;
+// null or empty gives "ESP32". Truncated to fit.
+void chipShortName(const char *model, char *out, size_t size);
+
+// "<kind>-<chip>-NNN" for unit 1 to kMaxUnitNumber, else "<kind>-<chip>-XXXX"
+// from mac[4] and mac[5]. False (and out empty) if it does not fit.
+bool formatUnitName(const char *kind, const char *chip, uint16_t unit, const uint8_t mac[6], char *out, size_t size);
+
+// Serial commands for numbering at the bench (one line each):
+//   unit get        the unit's number, name, and Bluetooth address
+//   unit set <n>    store n (1 to kMaxUnitNumber) and restart under the new name
+enum class UnitCommand : uint8_t { None = 0, Get = 1, Set = 2, Bad = 3 };
+UnitCommand parseUnitCommand(const char *line, uint16_t &number);
 
 // --- Units ---------------------------------------------------------------
 //

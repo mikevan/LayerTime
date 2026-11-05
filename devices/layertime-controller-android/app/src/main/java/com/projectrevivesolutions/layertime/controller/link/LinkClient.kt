@@ -184,7 +184,7 @@ class LinkClient(private val appContext: Context) {
         stopScan()
         gatt?.let { g -> g.disconnect(); g.close() }
         gatt = null; control = null; statusCh = null; dataCh = null
-        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence()
+        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard()
         linkQueue.clear(); gattOps.clear(); textTargets.clear(); summaries.clear(); textFrags.clear()
         repo.setConn(ConnState.IDLE)
     }
@@ -220,7 +220,7 @@ class LinkClient(private val appContext: Context) {
         repo.log(LogEntry.Category.ERROR, "link lost: no Status for ${silenceMs / 1000} s; dropping and reconnecting")
         gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
         gatt = null; control = null; statusCh = null; dataCh = null
-        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence()
+        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard()
         linkQueue.clear(); gattOps.clear(); textTargets.clear()
         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
         repo.noteBackgroundDisconnect()
@@ -240,7 +240,7 @@ class LinkClient(private val appContext: Context) {
         reconnectPending = Runnable {
             gatt?.let { g -> runCatching { g.close() } }
             gatt = null; control = null; statusCh = null; dataCh = null
-            handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence()
+            handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard()
             linkQueue.clear(); gattOps.clear(); textTargets.clear()
             start(autoStartTarget)
         }.also { handler.postDelayed(it, delay) }
@@ -293,7 +293,7 @@ class LinkClient(private val appContext: Context) {
                         if (pingBurstLeft > 0) { pingBurstLeft = 0; LinkMeasure.addLine("PING burst stopped: the link dropped.") }
                         bulkRun?.let { reportBulk(it, null, "the link dropped.") }
                         LinkMeasure.setMtu(23)
-                        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence()
+                        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard()
                         huntPollOutstanding = false
                         if (huntWanted) HuntSession.setProblem("The link to the Hunter dropped. Reconnecting.")
                         linkQueue.clear(); gattOps.clear(); textTargets.clear()
@@ -447,6 +447,7 @@ class LinkClient(private val appContext: Context) {
                 if (kind == LinkMeasure.OP_BULK) bulkRun?.let { reportBulk(it, null, "timed out") }
                 if (kind == LinkHunt.OP_GET_HUNT) huntPollOutstanding = false
                 if (LinkEvidence.isEvidenceOp(kind) && evidence != null) failEvidence("The Hunter stopped sending frames (no reply for ${REQUEST_TIMEOUT_MS / 1000} s).")
+                if (LinkCard.isCardOp(kind) && card != null) onCardStall()
             }
         }.also { handler.postDelayed(it, REQUEST_TIMEOUT_MS) }
     }
@@ -492,6 +493,25 @@ class LinkClient(private val appContext: Context) {
         if (handshakeDone && sensorSetSupported) sendSensors()
     }
 
+    // ---- SetEvidenceHold: MISSION's evidence hold (2026-11-04) ----
+
+    private var evidenceHoldSupported = false
+    private var sentEvidenceHold: Int? = null
+
+    /** Sends the saved hold. Only a Hunter with Capability.EVIDENCE_HOLD takes it. */
+    private fun sendEvidenceHold() {
+        val sec = MissionPrefs.readEvidenceHold(appContext)
+        sentEvidenceHold = sec
+        val id = nextReqId(); submit(LinkConstants.Op.COMMAND, LinkCodec.setEvidenceHold(id, sec))
+        repo.log(LogEntry.Category.COMMAND, "SetEvidenceHold ${sec}s #$id")
+    }
+
+    /** MISSION's hold changed; the new value is already saved. Sent now when the Hunter is up and takes it. */
+    fun evidenceHoldChanged() = handler.post {
+        repo.setEvidenceHoldApplied(null)
+        if (handshakeDone && evidenceHoldSupported) sendEvidenceHold()
+    }
+
     fun clearEvents() {
         val id = nextReqId(); submit(LinkConstants.Op.COMMAND, LinkCodec.reconClearEvents(id))
         repo.log(LogEntry.Category.COMMAND, "ReconClearEvents #$id")
@@ -533,6 +553,7 @@ class LinkClient(private val appContext: Context) {
         if (LinkMeasure.isBulk(value) && bulkRun != null) { onBulkFrame(value); return }
         if (LinkHunt.isReading(value)) { onHuntReading(value); return }
         if (LinkEvidence.isEvidenceFrame(value)) { onEvidenceFrame(value); return }
+        if (LinkCard.isCardFrame(value)) { onCardFrame(value); return }
         when (val f = LinkCodec.decodeFrame(value)) {
             is Frame.HelloAck -> {
                 repo.onServerInfo(f)
@@ -548,10 +569,14 @@ class LinkClient(private val appContext: Context) {
                     // a sensor the operator switched off, not even for one frame.
                     sensorSetSupported = f.capabilities and LinkConstants.Capability.SENSOR_SET != 0
                     if (sensorSetSupported) sendSensors()
+                    // The evidence hold goes before any start too, so the first deauth holds as set.
+                    evidenceHoldSupported = f.capabilities and LinkConstants.Capability.EVIDENCE_HOLD != 0
+                    if (evidenceHoldSupported) sendEvidenceHold()
                     // Evidence (slice 2): a Hunter that keeps frames streams them at the
                     // connection's packet size, so ask for the large one (Phase 0 M5:
                     // 56 KB/s at MTU 247 against 15 KB/s at the default 23).
                     rawCapture = f.capabilities and LinkEvidence.CAP_RAW_CAPTURE != 0
+                    cardSupported = f.capabilities and LinkCard.CAP_CARD_READ != 0
                     if (rawCapture && LinkMeasure.state.value.mtu < LinkMeasure.MTU_REQUEST) requestLargeMtu()
                     autoStartTarget?.let { reconStart(it) }
                     // A hunt that was running when the link dropped picks up again.
@@ -571,12 +596,23 @@ class LinkClient(private val appContext: Context) {
             is Frame.Result -> {
                 if (f.commandType == LinkHunt.OP_HUNT_START || f.commandType == LinkHunt.OP_HUNT_STOP) {
                     onHuntResult(f.commandType, f.commandResult)
+                } else if (LinkCard.isCardOp(f.commandType) && card != null) {
+                    failCard(when (f.commandResult) {
+                        LinkConstants.CommandResult.NOT_READY -> "The Hunter has no SD card log open, or it is already sending a file. Try again in a moment."
+                        LinkConstants.CommandResult.INVALID_ARGUMENT -> "The Hunter no longer has that file."
+                        else -> "The Hunter answered ${LinkConstants.CommandResult.name(f.commandResult)}."
+                    })
                 } else if (LinkEvidence.isEvidenceOp(f.commandType) && evidence != null) {
                     failEvidence(when (f.commandResult) {
                         LinkConstants.CommandResult.NOT_READY -> "The Hunter kept no frames for this detection. Its window was reused by newer detections, or the detection was not on Wi-Fi."
                         LinkConstants.CommandResult.INVALID_ARGUMENT -> "The Hunter no longer holds this detection."
                         else -> "The Hunter answered ${LinkConstants.CommandResult.name(f.commandResult)}."
                     })
+                } else if (f.commandType == LinkConstants.CommandType.SET_EVIDENCE_HOLD) {
+                    val ok = f.commandResult == LinkConstants.CommandResult.OK
+                    repo.setEvidenceHoldApplied(if (ok) sentEvidenceHold else null)
+                    repo.log(if (ok) LogEntry.Category.COMMAND else LogEntry.Category.ERROR,
+                        "RESULT SetEvidenceHold ${sentEvidenceHold ?: 0}s => ${LinkConstants.CommandResult.name(f.commandResult)}")
                 } else if (f.commandType == LinkConstants.CommandType.SET_SENSORS) {
                     val ok = f.commandResult == LinkConstants.CommandResult.OK
                     repo.setSensorsApplied(if (ok) sentSensorMask else null)
@@ -600,6 +636,10 @@ class LinkClient(private val appContext: Context) {
                 val kind = pending!!.kind
                 finishLink()
                 onEvidenceEnd(kind)
+            } else if (pending?.kind?.let { LinkCard.isCardOp(it) } == true) {
+                val kind = pending!!.kind
+                finishLink()
+                onCardEnd(kind, f.count)
             } else {
                 if (pending?.kind == LinkConstants.Op.GET_TEXT) {
                     val ordered = textFrags.sortedBy { it.index }
@@ -615,6 +655,9 @@ class LinkClient(private val appContext: Context) {
             is Frame.Error -> {
                 repo.log(LogEntry.Category.ERROR, "ERROR linkStatus=${LinkConstants.LinkStatus.name(f.linkStatus)} reqId=${f.reqId}")
                 val wasBulk = pending?.kind == LinkMeasure.OP_BULK
+                if (pending?.kind?.let { LinkCard.isCardOp(it) } == true && card != null) failCard(
+                    if (f.linkStatus == LinkConstants.LinkStatus.UNKNOWN_OP) "This Hunter's firmware cannot send its card. Flash firmware build 93 or later."
+                    else "The Hunter refused the card request (${LinkConstants.LinkStatus.name(f.linkStatus)}).")
                 if (pending?.kind?.let { LinkEvidence.isEvidenceOp(it) } == true && evidence != null) failEvidence(
                     if (f.linkStatus == LinkConstants.LinkStatus.UNKNOWN_OP) "This Hunter's firmware does not keep frames. Flash the evidence firmware."
                     else "The Hunter refused the request (${LinkConstants.LinkStatus.name(f.linkStatus)}).")
@@ -714,6 +757,124 @@ class LinkClient(private val appContext: Context) {
         evidence = null
         repo.log(LogEntry.Category.ERROR, "evidence event #${a.eventId}: $message")
         EvidencePull.set(EvidencePull.State.Failed(a.eventId, message))
+    }
+
+    // ---- Link 0.2 card ops: the Hunter's SD card files, in the field (2026-11-04) ----
+
+    private var cardSupported = false
+    /** Whether the connected Hunter serves its card (HELLO_ACK capability bit 9). */
+    val servesCard: Boolean get() = handshakeDone && cardSupported
+
+    private class CardRun(val dest: java.io.File) {
+        val listed = ArrayList<LinkCard.Entry>()
+        var queue: List<LinkCard.Entry> = emptyList()
+        var index = 0
+        var file: LinkCard.Assembler? = null
+        var resumes = 0
+        var upToDate = 0
+        var pulled = 0
+        val failed = ArrayList<String>()
+        val startedMs = android.os.SystemClock.elapsedRealtime()
+    }
+    private var card: CardRun? = null
+
+    /**
+     * Pulls every card file that is new or has changed size into [dest] (kept as
+     * layerwand_NNNN.log and ev_NNNN/event_EEEEE.pcap), checking each against the
+     * Hunter's CRC-32. CardPull reports progress. Read only on the Hunter.
+     */
+    fun pullCard(dest: java.io.File) = handler.post {
+        if (card != null) return@post
+        if (!handshakeDone) { CardPull.set(CardPull.State.Failed("The Hunter is not connected.")); return@post }
+        if (!cardSupported) { CardPull.set(CardPull.State.Failed("This Hunter's firmware cannot send its card. Flash firmware build 93 or later.")); return@post }
+        if (evidence != null) { CardPull.set(CardPull.State.Failed("A frame pull is running. Try again when it finishes.")); return@post }
+        card = CardRun(dest.apply { mkdirs() })
+        CardPull.set(CardPull.State.Listing())
+        if (rawCapture && LinkMeasure.state.value.mtu < LinkMeasure.MTU_REQUEST) requestLargeMtu()
+        val id = nextReqId(); submit(LinkCard.OP_CARD_LIST, LinkCard.cardList(id))
+        repo.log(LogEntry.Category.COMMAND, "CARD_LIST #$id")
+    }
+
+    private fun onCardFrame(value: ByteArray) {
+        val r = card ?: return
+        when (value[0].toInt() and 0xFF) {
+            LinkCard.TYPE_CARD_ENTRY -> LinkCard.decodeEntry(value)?.takeIf { it.id.valid }?.let { r.listed += it }
+            LinkCard.TYPE_CARD_BYTES -> LinkCard.decodeBytes(value)?.let { (offset, bytes) -> r.file?.onBytes(offset, bytes) }
+            LinkCard.TYPE_CARD_DONE -> LinkCard.decodeDone(value)?.let { r.file?.onDone(it) }
+        }
+        pending?.let { armRequestTimeout(it.reqId, it.kind) }
+        r.file?.let { f -> CardPull.set(CardPull.State.Pulling(r.index + 1, r.queue.size, f.id.name, f.received, f.expectedSize)) }
+    }
+
+    private fun localFile(r: CardRun, e: LinkCard.Entry) = java.io.File(r.dest, e.id.name)
+
+    private fun onCardEnd(kind: Int, count: Int) {
+        val r = card ?: return
+        if (kind == LinkCard.OP_CARD_LIST) {
+            if (count != r.listed.size) repo.log(LogEntry.Category.LINK, "CARD_LIST: END says $count, received ${r.listed.size}")
+            r.queue = r.listed.filter { e -> localFile(r, e).let { !it.exists() || it.length() != e.size } }
+            r.upToDate = r.listed.size - r.queue.size
+            return nextCardFile()
+        }
+        val f = r.file ?: return nextCardFile()
+        val problem = f.problem()
+        if (problem == null) {
+            val target = java.io.File(r.dest, f.id.name)
+            target.parentFile?.mkdirs()
+            val part = java.io.File(target.path + ".part")
+            part.writeBytes(f.bytes())
+            if (!part.renameTo(target)) { target.delete(); part.renameTo(target) }
+            r.pulled++
+            r.index++
+            return nextCardFile()
+        }
+        if (f.done == null && f.received < f.expectedSize && r.resumes < 2) {
+            r.resumes++
+            repo.log(LogEntry.Category.LINK, "CARD_READ ${f.id.name} incomplete at ${f.received} bytes; resuming")
+            val id = nextReqId(); submit(LinkCard.OP_CARD_READ, LinkCard.cardRead(id, f.id, f.received))
+            return
+        }
+        r.failed += problem
+        r.index++
+        nextCardFile()
+    }
+
+    private fun nextCardFile() {
+        val r = card ?: return
+        if (r.index >= r.queue.size) {
+            card = null
+            val ms = android.os.SystemClock.elapsedRealtime() - r.startedMs
+            repo.log(LogEntry.Category.LINK, "card pull: ${r.pulled} pulled, ${r.upToDate} up to date, ${r.failed.size} failed in $ms ms")
+            CardPull.set(CardPull.State.Done(r.pulled, r.upToDate, r.failed.toList(), ms))
+            return
+        }
+        val e = r.queue[r.index]
+        r.file = LinkCard.Assembler(e.id, e.size)
+        r.resumes = 0
+        CardPull.set(CardPull.State.Pulling(r.index + 1, r.queue.size, e.id.name, 0, e.size))
+        val id = nextReqId(); submit(LinkCard.OP_CARD_READ, LinkCard.cardRead(id, e.id, 0))
+        repo.log(LogEntry.Category.COMMAND, "CARD_READ ${e.id.name} #$id")
+    }
+
+    /** No frame for REQUEST_TIMEOUT_MS: resume the file if it was moving, else fail it. */
+    private fun onCardStall() {
+        val r = card ?: return
+        val f = r.file
+        if (f != null && f.received < f.expectedSize && r.resumes < 2) {
+            r.resumes++
+            val id = nextReqId(); submit(LinkCard.OP_CARD_READ, LinkCard.cardRead(id, f.id, f.received))
+            return
+        }
+        failCard("The Hunter stopped sending (no reply for ${REQUEST_TIMEOUT_MS / 1000} s).")
+    }
+
+    private fun dropCard() { if (card != null) failCard("The connection dropped during the card pull. Pull again to continue; finished files are kept.") }
+
+    private fun failCard(message: String) {
+        val r = card ?: return
+        card = null
+        repo.log(LogEntry.Category.ERROR, "card pull: $message")
+        CardPull.set(CardPull.State.Failed(message + if (r.pulled > 0) " ${r.pulled} files were saved before it stopped." else ""))
     }
 
     // ---- Link 0.2 Phase 0 measurement (the LINK MEASURE panel) ----

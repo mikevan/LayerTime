@@ -39,6 +39,7 @@
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
+#include <Preferences.h>
 #include <esp_mac.h>
 #include <stdio.h>
 
@@ -76,7 +77,17 @@ bool startBeacon()
 {
     uint8_t mac[6] = {};
     esp_read_mac(mac, ESP_MAC_BT);
-    snprintf(gName, sizeof(gName), "LT-VIXEN-%02X%02X", mac[4], mac[5]);
+    // Every unit says what it is (Michael, 2026-11-04): "Vixen-C5-001", its
+    // number given at flash time ("unit set <n>"), or "Vixen-C5-3FA2" without one.
+    uint16_t unit = 0;
+    {
+        Preferences prefs;
+        if (prefs.begin("vixen", true)) { unit = prefs.getUShort("unit", 0); prefs.end(); }
+    }
+    char chip[8];
+    chipShortName(ESP.getChipModel(), chip, sizeof(chip));
+    if (!formatUnitName("Vixen", chip, unit <= kMaxUnitNumber ? unit : 0, mac, gName, sizeof(gName)))
+        snprintf(gName, sizeof(gName), "Vixen");
     if (!NimBLEDevice::init(gName)) return false;
     NimBLEDevice::setPower(kTxPowerDbm);
 
@@ -101,7 +112,7 @@ void showStatus(uint32_t now)
 {
     char line[32];
     gDisplay.setLine(0, "Vixen");
-    gDisplay.setLine(1, gName + 3); // "VIXEN-xxxx"
+    gDisplay.setLine(1, gName); // "Vixen-C5-001"
     snprintf(line, sizeof(line), "%s", gAdvertising ? "BEACON ON" : "BEACON OFF");
     gDisplay.setLine(2, line);
     snprintf(line, sizeof(line), "POWER: %d dBm", static_cast<int>(kTxPowerDbm));
@@ -123,6 +134,51 @@ void wakeScreen(uint32_t now)
     showStatus(now);
     gScreenAwake = true;
     gScreenWokeMs = now;
+}
+
+// Numbering at the bench (2026-11-04): "unit get" and "unit set <n>" on USB
+// serial, the same commands the Hunter takes. A set restarts the Vixen.
+char gUnitCmd[32];
+size_t gUnitCmdLen = 0;
+void serviceUnitSerial()
+{
+    while (Serial.available() > 0) {
+        const int ch = Serial.read();
+        if (ch < 0) break;
+        if (ch != '\n') {
+            if (gUnitCmdLen + 1 < sizeof(gUnitCmd)) gUnitCmd[gUnitCmdLen++] = static_cast<char>(ch);
+            continue;
+        }
+        gUnitCmd[gUnitCmdLen] = '\0';
+        gUnitCmdLen = 0;
+        uint16_t n = 0;
+        const UnitCommand c = parseUnitCommand(gUnitCmd, n);
+        if (c == UnitCommand::None) continue;
+        uint8_t mac[6] = {};
+        esp_read_mac(mac, ESP_MAC_BT);
+        if (c == UnitCommand::Bad) {
+            Serial.printf("=== unit error Send \"unit get\" or \"unit set <n>\" with n from 1 to %u.\n",
+                          static_cast<unsigned>(kMaxUnitNumber));
+        } else if (c == UnitCommand::Get) {
+            Preferences prefs;
+            uint16_t unit = 0;
+            if (prefs.begin("vixen", true)) { unit = prefs.getUShort("unit", 0); prefs.end(); }
+            Serial.printf("=== unit %u name %s mac %02X:%02X:%02X:%02X:%02X:%02X\n", static_cast<unsigned>(unit), gName,
+                          mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        } else {
+            Preferences prefs;
+            if (!prefs.begin("vixen", false)) {
+                Serial.println("=== unit error The Vixen could not open its settings to save the number.");
+                continue;
+            }
+            prefs.putUShort("unit", n);
+            prefs.end();
+            Serial.printf("=== unit set %u, restarting\n", static_cast<unsigned>(n));
+            Serial.flush();
+            delay(200);
+            ESP.restart();
+        }
+    }
 }
 
 } // namespace
@@ -147,11 +203,13 @@ void setup()
                   link::hunt::kVixenServiceUuid, static_cast<unsigned>(kAdvertisingInterval * 5 / 8),
                   static_cast<int>(kTxPowerDbm));
     Serial.println("Display: dark until a short BOOT press.");
+    Serial.printf("Unit name %s. Numbering over USB: \"unit get\", \"unit set <n>\".\n", gName);
 }
 
 void loop()
 {
     const uint32_t now = millis();
+    serviceUnitSerial();
     const bool pressed = digitalRead(pins::kBootButton) == LOW;
     if (gButton.update(pressed, now) == ButtonGesture::Short) wakeScreen(now);
     if (gScreenAwake && now - gScreenWokeMs >= kScreenWakeMs) {

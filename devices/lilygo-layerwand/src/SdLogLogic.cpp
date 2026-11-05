@@ -70,6 +70,49 @@ bool logFileName(uint16_t serial, char *out, size_t size)
     return true;
 }
 
+bool evidenceFolderName(uint16_t logSerial, char *out, size_t size)
+{
+    if (logSerial == 0 || logSerial > kMaxLogSerial || out == nullptr || size < kEvidenceFolderSize) return false;
+    snprintf(out, size, "ev_%04u", static_cast<unsigned>(logSerial));
+    return true;
+}
+
+bool evidencePath(uint16_t logSerial, uint32_t eventId, char *out, size_t size)
+{
+    if (logSerial == 0 || logSerial > kMaxLogSerial || eventId == 0 || out == nullptr || size < kEvidencePathSize)
+        return false;
+    snprintf(out, size, "ev_%04u/event_%05lu.pcap", static_cast<unsigned>(logSerial),
+             static_cast<unsigned long>(eventId));
+    return true;
+}
+
+// --- Repeat sightings ----------------------------------------------------
+
+bool RepeatThrottle::due(uint32_t eventId, uint32_t nowMs)
+{
+    if (eventId == 0) return false;
+    Entry *oldest = &_entries[0];
+    for (uint8_t i = 0; i < kTracked; ++i) {
+        Entry &e = _entries[i];
+        if (e.eventId == eventId) {
+            if (nowMs - e.lastMs < kRepeatEveryMs) return false;
+            e.lastMs = nowMs;
+            return true;
+        }
+        if (e.eventId == 0) { oldest = &e; break; }
+        if (static_cast<int32_t>(e.lastMs - oldest->lastMs) < 0) oldest = &e;
+    }
+    // Not tracked: a first repeat is always logged.
+    oldest->eventId = eventId;
+    oldest->lastMs = nowMs;
+    return true;
+}
+
+void RepeatThrottle::clear()
+{
+    for (uint8_t i = 0; i < kTracked; ++i) _entries[i] = Entry{};
+}
+
 // --- Records -------------------------------------------------------------
 
 void SdRecordRing::attach(SdRecord *storage, uint16_t capacity)
@@ -150,6 +193,8 @@ const char *recordName(SdRecordKind k)
     case SdRecordKind::Boot: return "boot";
     case SdRecordKind::Link: return "link";
     case SdRecordKind::Mode: return "mode";
+    case SdRecordKind::Repeat: return "repeat";
+    case SdRecordKind::Evidence: return "evidence";
     default: return "event";
     }
 }
@@ -214,7 +259,19 @@ size_t formatSdRecord(const SdRecord &r, uint32_t bootCount, const char *detecto
              static_cast<unsigned long>(r.uptimeMs));
     bool ok = append(out, size, &n, num) && appendQuoted(out, size, &n, recordName(r.kind));
 
-    if (r.kind == SdRecordKind::Event) {
+    if (r.kind == SdRecordKind::Evidence) {
+        // event_id; detector, confidence, source, and source_id empty; detail
+        // is the pcap's path and the window's counts; count is frames kept.
+        char detail[kEvidencePathSize + 80];
+        snprintf(detail, sizeof(detail), "%s kept=%u seen=%u dropped=%u truncated=%u collecting=%u", r.text,
+                 static_cast<unsigned>(r.evidence.kept), static_cast<unsigned>(r.evidence.seen),
+                 static_cast<unsigned>(r.evidence.dropped), static_cast<unsigned>(r.evidence.truncated),
+                 r.evidence.collecting ? 1u : 0u);
+        snprintf(num, sizeof(num), ",%lu,,,,,", static_cast<unsigned long>(r.event.eventId));
+        ok = ok && append(out, size, &n, num) && appendQuoted(out, size, &n, detail);
+        snprintf(num, sizeof(num), ",,,,%u\r\n", static_cast<unsigned>(r.evidence.kept));
+        ok = ok && append(out, size, &n, num);
+    } else if (r.kind == SdRecordKind::Event || r.kind == SdRecordKind::Repeat) {
         const MonitorEvent &e = r.event;
         snprintf(num, sizeof(num), ",%lu,", static_cast<unsigned long>(e.eventId));
         ok = ok && append(out, size, &n, num) && appendQuoted(out, size, &n, detectorName) &&

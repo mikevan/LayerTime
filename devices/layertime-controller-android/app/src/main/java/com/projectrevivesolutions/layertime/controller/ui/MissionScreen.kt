@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.selection.triStateToggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.projectrevivesolutions.layertime.controller.link.LinkConstants
+import com.projectrevivesolutions.layertime.controller.mission.EvidenceHold
 import com.projectrevivesolutions.layertime.controller.mission.SensorSelection
 
 private val MissionInk=Color(0xFFE6EEF2)
@@ -62,7 +64,9 @@ internal fun missionNote(link: MissionLink, selected: Set<Int>): Pair<String, St
  * clears them when all are already on. The sensors are listed in the three groups.
  */
 @Composable
-fun MissionScreen(selected:Set<Int>,link:MissionLink,onSelectionChange:(Set<Int>)->Unit) {
+fun MissionScreen(selected:Set<Int>,link:MissionLink,onSelectionChange:(Set<Int>)->Unit,
+                  evidenceHold:Int=EvidenceHold.DEFAULT_SEC,evidenceLink:EvidenceHold.Link=EvidenceHold.Link.OFFLINE,
+                  onEvidenceHoldChange:(Int)->Unit={}) {
     fun toggle(id:Int) {onSelectionChange(if(id in selected)selected-id else selected+id)}
     OpsTelemetryHousing(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(start=18.dp,end=18.dp,top=20.dp,bottom=24.dp),
@@ -108,6 +112,32 @@ fun MissionScreen(selected:Set<Int>,link:MissionLink,onSelectionChange:(Set<Int>
                             }
                         }
                     }
+                }
+                // EVIDENCE HOLD (2026-11-04): how long the Hunter stays on a deauth's channel.
+                item {MissionSectionHeading("EVIDENCE HOLD")}
+                item {
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                        for(sec in EvidenceHold.PRESETS) {
+                            val picked=sec==evidenceHold
+                            val flash=rememberPressFlash()
+                            val shape=RoundedCornerShape(5.dp)
+                            Box(Modifier.weight(1f).heightIn(min=32.dp)
+                                .background(Brush.verticalGradient(if(picked)listOf(Color(0xFF1D3E18),Color(0xFF0B1F16)) else listOf(Color(0xFF142D38),Color(0xFF081A25))),shape)
+                                .border(.7.dp,if(picked)MissionGreen else MissionCyan.copy(alpha=.45f),shape)
+                                .clip(shape).selectable(selected=picked,role=Role.RadioButton,
+                                    onClick={flash.fire();onEvidenceHoldChange(sec)})
+                                .pressFlash(flash,false,MissionGreen)
+                                .padding(horizontal=4.dp,vertical=6.dp),contentAlignment=Alignment.Center) {
+                                Text(EvidenceHold.label(sec),color=if(picked)MissionGreen else MissionInk,
+                                    style=MissionType.copy(fontSize=9.5.sp,lineHeight=12.sp,fontWeight=FontWeight.Medium,letterSpacing=.5.sp))
+                            }
+                        }
+                    }
+                }
+                item {
+                    val tone=if(evidenceLink==EvidenceHold.Link.APPLIED)MissionGreen else MissionGold
+                    Text("${EvidenceHold.meaning(evidenceHold)} ${EvidenceHold.status(evidenceLink)}",color=tone.copy(alpha=.9f),
+                        style=MissionType.copy(fontSize=10.sp,lineHeight=13.sp),modifier=Modifier.padding(horizontal=2.dp))
                 }
                 item {
                     Row(Modifier.fillMaxWidth().padding(top=7.dp),verticalAlignment=Alignment.CenterVertically,

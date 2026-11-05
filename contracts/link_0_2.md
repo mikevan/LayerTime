@@ -70,6 +70,7 @@ All new ops reply on Data. Every frame stays 20 bytes or less unless the interfa
 |---|---|---|
 | 5 | rawCapture | The Node keeps evidence windows and answers GET_FRAMES and GET_FRAME_BYTES |
 | 6 | hunt | The Node answers HUNT_START, HUNT_STOP, and GET_HUNT |
+| 9 | cardRead | The Node answers CARD_LIST and CARD_READ (2026-11-04) |
 
 ### Status
 
@@ -106,6 +107,27 @@ All new ops reply on Data. Every frame stays 20 bytes or less unless the interfa
   - Wi-Fi stays on the target's channel instead of hopping.
   - Bluetooth scanning runs continuously.
   - The address byte-order defect must be fixed in the same change, or Bluetooth hunts would never lock.
+
+### Card ops (2026-11-04)
+
+The phone pulls the Hunter's SD card files over the Link, so field analysis needs no
+computer. Read only. Code: `src/core/link/LinkCard.h`; tests: `test/test_link_card`.
+
+- **CARD_LIST** (op `0x0B`, 2 bytes: op, reqId) answers one **CARD_ENTRY** (type `0x8B`,
+  13 bytes: type, reqId, kind, serial u16, eventId u32, size u32) per file, then END.
+- **CARD_READ** (op `0x0C`, 13 bytes: op, reqId, kind, serial u16, eventId u32, offset u32)
+  answers **CARD_BYTES** (type `0x8C`: type, reqId, offset u32, bytes) from the offset to
+  the end of the file at the connection's size, then **CARD_DONE** (type `0x8D`, 10 bytes:
+  type, reqId, size u32, crc32 u32 of the whole file), then END. A dropped connection
+  resumes from the last offset received.
+- A file is a code, never text: kind 0 is `layerwand_NNNN.log` (serial N, eventId 0); kind
+  1 is `ev_NNNN/event_EEEEE.pcap` (serial N, event E). Only the Hunter's own files can be
+  named.
+- No card: RESULT NotReady. No such file, or a bad code: RESULT InvalidArgument. Wrong
+  length: ERROR BadLength.
+- HELLO_ACK capability bit 9 (`0x0200`): the Node serves its card.
+- The Hunter sends a few frames per loop pass, so scanning and the Link keep running. One
+  card read at a time, shared with the USB serial pull.
 
 ### Larger frames (Android only)
 

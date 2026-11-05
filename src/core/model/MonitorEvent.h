@@ -76,6 +76,15 @@ enum class ReconTarget : uint8_t {
 constexpr uint32_t kAllSensorsMask =
     (((1u << 17) - 1u) & ~((1u << 5) - 1u)) | (1u << 18); // bits 5 to 16, and 18
 
+// Evidence hold (Set Evidence Hold, 2026-11-04): how long, in whole seconds,
+// a Node that keeps evidence frames stays on the channel after a deauth
+// detection, and how long that detection's evidence window keeps collecting.
+// 0 is Off: the window still opens but the channel is never held. The upper
+// bound keeps one hold from blinding the sweep for long; a sustained flood
+// re-holds on each repeat sighting instead.
+constexpr uint8_t kDefaultEvidenceHoldSec = 10;
+constexpr uint8_t kMaxEvidenceHoldSec = 30;
+
 // Confidence, SourceKind, and Band are the sensor library's types, used
 // unchanged so a candidate needs no conversion. Their numbers are part of
 // LayerTime's contracts (the link records, the stage log), so they are

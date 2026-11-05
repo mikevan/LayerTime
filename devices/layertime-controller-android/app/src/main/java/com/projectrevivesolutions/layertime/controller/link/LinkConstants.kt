@@ -26,10 +26,11 @@ object LinkConstants {
     const val PROBE_UUID = "8ac600f0-a08b-4851-b89f-e6b39081268e"   // notify, test builds only
     const val CCCD_UUID = "00002902-0000-1000-8000-00805f9b34fb"    // Client Characteristic Configuration (0x2902)
 
-    // The Node advertises its complete local name as LT-C5-xxxx in the scan
-    // response, but discovery is BY SERVICE UUID, not by name
+    // The Node advertises its complete local name in the scan response as
+    // Hunter-C5-001 (or Hunter-C5-xxxx before it is numbered; LT-C5-xxxx before
+    // 2026-11-04), but discovery is BY SERVICE UUID, not by name
     // (contracts/link.md "Advertising").
-    const val NAME_PREFIX = "LT-C5-"
+    const val NAME_PREFIX = "Hunter-"
 
     const val MAX_FRAME = 20          // every frame is 20 bytes or less
     const val STATUS_SIZE = 18        // the Status snapshot is exactly 18 bytes
@@ -95,6 +96,8 @@ object LinkConstants {
         const val BUTTON = 0x10
         // Bit 7: the Node takes COMMAND SetSensors, the sensor allow-list (2026-11-04).
         const val SENSOR_SET = 0x80
+        // Bit 8: the Node takes COMMAND SetEvidenceHold (2026-11-04). Only a Hunter that keeps frames sets it.
+        const val EVIDENCE_HOLD = 0x100
         fun describe(mask: Int): List<String> = buildList {
             if (mask and LOCAL_WIFI_MONITOR != 0) add("wifi")
             if (mask and LOCAL_BLE_MONITOR != 0) add("ble")
@@ -102,6 +105,7 @@ object LinkConstants {
             if (mask and LED != 0) add("led")
             if (mask and BUTTON != 0) add("button")
             if (mask and SENSOR_SET != 0) add("sensorSet")
+            if (mask and EVIDENCE_HOLD != 0) add("evidenceHold")
         }
     }
 
@@ -116,6 +120,7 @@ object LinkConstants {
         const val SET_SLEEP_MODE = 11      // arg: enabled u8 (0/1)
         const val SET_EARLY_WARNING = 12   // arg: enabled u8 (0/1)
         const val SET_SENSORS = 15         // arg: mask u32 little-endian (7-byte frame); needs Capability.SENSOR_SET
+        const val SET_EVIDENCE_HOLD = 16   // arg: seconds u8, 0 (Off) to 30; needs Capability.EVIDENCE_HOLD
     }
 
     object CommandResult {

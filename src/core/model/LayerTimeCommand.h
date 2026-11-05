@@ -54,6 +54,7 @@ enum class CommandType : uint8_t {
     MeshSetAdvertising = 13,    // args: setting.network, setting.enabled
     MeshSetOwnName = 14,        // args: setting.network, setting.name. Meshtastic only.
     SetSensors = 15,            // args: sensors.mask (kAllSensorsMask bits only)
+    SetEvidenceHold = 16,       // args: evidenceHold.seconds (0 to kMaxEvidenceHoldSec)
 };
 
 // Every command gets exactly one of these back. Nothing is silently ignored.
@@ -72,6 +73,11 @@ struct ReconStartArgs {
 // SetSensors: one bit per sensor at its ReconTarget value (kAllSensorsMask).
 struct SensorSetArgs {
     uint32_t mask = kAllSensorsMask;
+};
+
+// SetEvidenceHold: whole seconds, 0 (Off) to kMaxEvidenceHoldSec.
+struct EvidenceHoldArgs {
+    uint8_t seconds = kDefaultEvidenceHoldSec;
 };
 
 struct MeshSendTextArgs {
@@ -122,6 +128,7 @@ struct LayerTimeCommand {
     MeshChannelArgs meshChannel;
     SettingArgs setting;
     SensorSetArgs sensors;
+    EvidenceHoldArgs evidenceHold;
 };
 
 } // namespace layertime

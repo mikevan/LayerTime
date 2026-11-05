@@ -215,3 +215,20 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_evidence
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_evidence test_link_evidence/test_link_evidence.cpp ../src/core/link/LinkEvidence.cpp ../src/core/link/LinkCodec.cpp ../src/core/logic/EvidenceStore.cpp
 ./tests_link_evidence
 ```
+
+`test_evidence_pcap` covers `src/core/logic/EvidencePcap`: a window as the pcap
+file the Hunter writes to its SD card (2026-11-04), byte for byte the radiotap
+LayerScope writes.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_evidence_pcap test_evidence_pcap/test_evidence_pcap.cpp ../src/core/logic/EvidencePcap.cpp ../src/core/logic/EvidenceStore.cpp
+./tests_evidence_pcap
+```
+
+`test_link_card` covers `src/core/link/LinkCard`: the Link 0.2 card ops
+(2026-11-04) that let LayerScope pull the Hunter's SD card files over the Link.
+
+```
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_card test_link_card/test_link_card.cpp ../src/core/link/LinkCard.cpp ../src/core/link/LinkCodec.cpp
+./tests_link_card
+```

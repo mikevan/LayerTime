@@ -50,7 +50,15 @@ Files are named `layerwand_0001.log`, `layerwand_0002.log`, and so on, after
 the highest one already on the card. Records are held in PSRAM until a write, so up to 512
 records are lost if power is cut. Each file is CSV with a header
 line, then a `boot` line (boot count and reset reason), then `event`, `link`,
-and `mode` lines. Text fields are quoted; a quote is doubled, and a backslash
+`mode`, `repeat`, and `evidence` lines. A `repeat` line (2026-11-04) is an
+event seen again: its count, signal, and last seen, at most once every 10 s per
+event. An `evidence` line is a detection's evidence window saved as a pcap file
+beside the log: the windows from `layerwand_0007.log` go in `ev_0007/`, one
+file per detection, `event_00042.pcap` for event id 42 (802.11 with radiotap,
+no FCS, times since boot). A window is saved once it stops collecting, and
+saved again if a repeat sighting revived it and it heard more. Its line gives
+the path and the counts kept, seen, dropped, and truncated. Without a card the
+windows stay in PSRAM only, and the newest 32 are kept. Text fields are quoted; a quote is doubled, and a backslash
 or control byte is written as `\\` or `\xNN`. The `[periodic] ... sd` line
 in the serial report shows the card, the file, and the counters. The rules
 are in `src/SdLogLogic.h` (host-tested); the card handling is in
@@ -61,7 +69,7 @@ are in `src/SdLogLogic.h` (host-tested); the card handling is in
 Run from `devices/lilygo-layerwand/test/`:
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../../../sensors/src -I../src -o tests_tdongle_c5_bringup test_tdongle_c5_bringup/test_tdongle_c5_bringup.cpp ../src/BringUpLogic.cpp ../src/SdLogLogic.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../../../sensors/src -I../src -o tests_tdongle_c5_bringup test_tdongle_c5_bringup/test_tdongle_c5_bringup.cpp ../src/BringUpLogic.cpp ../src/SdLogLogic.cpp ../src/CardTransferLogic.cpp ../../../src/core/link/LinkCard.cpp ../../../src/core/link/LinkCodec.cpp
 ./tests_tdongle_c5_bringup
 ```
 

@@ -224,8 +224,8 @@ void enum_values_match_vectors()
         M(CommandType, MeshSetChannel), M(CommandType, MeshRemoveChannel),
         M(CommandType, SetClockFormat), M(CommandType, SetUnits), M(CommandType, SetSleepMode),
         M(CommandType, SetEarlyWarning), M(CommandType, MeshSetAdvertising),
-        M(CommandType, MeshSetOwnName), M(CommandType, SetSensors)};
-    checkEnum(j, "CommandType", cmd, 16);
+        M(CommandType, MeshSetOwnName), M(CommandType, SetSensors), M(CommandType, SetEvidenceHold)};
+    checkEnum(j, "CommandType", cmd, 17);
 
     const EnumMember res[] = {M(CommandResult, Ok), M(CommandResult, Unsupported),
                               M(CommandResult, InvalidArgument), M(CommandResult, NotReady),

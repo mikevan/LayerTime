@@ -28,6 +28,7 @@ The set is exactly what the T-Ultra screens do today, plus
 | MeshSetAdvertising | network, enabled | Announce this node on a mesh | Settings MESHCORE ADVERTISE and MESHTASTIC ADVERTISE rows |
 | MeshSetOwnName | network, name (up to 19 characters) | Name this node on a mesh. Empty lets the platform generate one. | Settings MESHTASTIC NAME page |
 | SetSensors | mask (one bit per sensor at its ReconTarget value) | Choose which sensors may report at all, over every selection. Every sensor is on until this is sent. | None. Added 2026-11-04 for the LayerScope MISSION page. |
+| SetEvidenceHold | seconds (0 to 30) | How long to stay on the channel after a deauth detection, and how long its evidence window collects. 10 seconds until this is sent. | None. Added 2026-11-04 for the LayerScope MISSION page. |
 
 For the two send commands, `network` selects the mesh and `destination` is a
 node or a channel on that mesh (see `MeshDestination` in `models.md`). A

@@ -96,6 +96,13 @@ object LinkCodec {
         return b
     }
 
+    /** COMMAND SetEvidenceHold: op | reqId | 16 | seconds u8 (4 bytes). 0 is Off; the Hunter refuses above 30. */
+    fun setEvidenceHold(reqId: Int, seconds: Int): ByteArray {
+        require(seconds in 0..255) { "seconds must fit one byte" }
+        return byteArrayOf(LinkConstants.Op.COMMAND.toByte(), reqId.toByte(),
+            LinkConstants.CommandType.SET_EVIDENCE_HOLD.toByte(), seconds.toByte())
+    }
+
     /** GET_CHANGED: op | reqId | sinceChangeSeq u32 (6 bytes). */
     fun getChanged(reqId: Int, sinceChangeSeq: Long): ByteArray {
         val b = ByteArray(6)

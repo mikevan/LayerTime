@@ -30,6 +30,13 @@ public:
     // Called once per newly created event, never for a repeat sighting. May
     // be called from a radio callback task.
     virtual void append(const MonitorEvent &event) = 0;
+
+    // Called for each repeat sighting of an existing event, after the record
+    // is updated (count, signal, last seen). Optional: the default does
+    // nothing, so a log that only persists new events is unchanged. Added
+    // 2026-11-04 so the Hunter can stay on a sustained deauth flood. Same
+    // task and lock as append.
+    virtual void repeated(const MonitorEvent &event) { (void)event; }
 };
 
 } // namespace layertime

@@ -372,6 +372,32 @@ void set_sensors_takes_a_four_byte_mask_under_the_lock()
     CHECK_INT(kCapSensorSet, 0x0080);
 }
 
+// SetEvidenceHold (16): seconds u8, 0 to 30 (2026-11-04).
+void set_evidence_hold_takes_one_byte_of_seconds_under_the_lock()
+{
+    Rig r;
+    CHECK_INT(10, r.core.settings().evidenceHoldSec);  // the default
+    r.sendHex("03701014");
+    CHECK_STR("8370001000", r.frames.hex[0].c_str()); // 20 s: Ok
+    CHECK_INT(20, r.core.settings().evidenceHoldSec);
+    CHECK_TRUE(g_locks > 0);
+    r.sendHex("03711000");
+    CHECK_STR("8371001000", r.frames.hex[0].c_str()); // 0, Off: Ok
+    CHECK_INT(0, r.core.settings().evidenceHoldSec);
+    r.sendHex("0372101E");
+    CHECK_STR("8372001000", r.frames.hex[0].c_str()); // 30, the maximum: Ok
+    CHECK_INT(30, r.core.settings().evidenceHoldSec);
+    r.sendHex("0373101F");
+    CHECK_STR("8373001002", r.frames.hex[0].c_str()); // 31: InvalidArgument
+    CHECK_INT(30, r.core.settings().evidenceHoldSec);  // unchanged
+    r.sendHex("037410");
+    CHECK_STR("8F7402", r.frames.hex[0].c_str());     // no seconds byte
+    r.sendHex("0375100A00");
+    CHECK_STR("8F7502", r.frames.hex[0].c_str());     // two bytes
+    CHECK_INT(kCapEvidenceHold, 0x0100);
+    CHECK_TRUE(r.monitor.calls.empty());              // radios untouched
+}
+
 void command_lengths_and_unknown_commands()
 {
     Rig r;
@@ -689,6 +715,7 @@ int main(int argc, char **argv)
     CASE(stop_clear_acknowledge_and_the_two_settings);
     CASE(command_lengths_and_unknown_commands);
     CASE(set_sensors_takes_a_four_byte_mask_under_the_lock);
+    CASE(set_evidence_hold_takes_one_byte_of_seconds_under_the_lock);
     CASE(hello_and_ping_still_go_to_dispatch);
     CASE(get_changed_from_zero_returns_every_event_oldest_first_then_end);
     CASE(get_changed_since_returns_only_what_changed);

@@ -51,6 +51,10 @@ struct ApplicationSettings {
     // clear never becomes an event. Default: every sensor on.
     uint32_t sensorMask = kAllSensorsMask;
 
+    // Evidence hold in whole seconds, 0 to kMaxEvidenceHoldSec (Set Evidence
+    // Hold). Read by a platform that keeps evidence frames; others ignore it.
+    uint8_t evidenceHoldSec = kDefaultEvidenceHoldSec;
+
     // Announce this node on each mesh network. Indexed by MeshNetwork value.
     bool meshAdvertising[kMeshNetworkCount] = {false, false};
 

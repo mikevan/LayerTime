@@ -22,6 +22,14 @@ struct Recorder : EventLog {
     void append(const MonitorEvent &e) override { rows.push_back(e); }
 };
 
+// Records repeat sightings too (the Hunter's evidence hold, 2026-11-04).
+struct RepeatRecorder : EventLog {
+    std::vector<MonitorEvent> rows;
+    std::vector<MonitorEvent> repeats;
+    void append(const MonitorEvent &e) override { rows.push_back(e); }
+    void repeated(const MonitorEvent &e) override { repeats.push_back(e); }
+};
+
 Candidate cand(ReconTarget d, const char *addr, Confidence conf = Confidence::High,
                int8_t rssi = -60, uint8_t ch = 6, uint32_t at = 1000, const char *detail = "d")
 {
@@ -262,6 +270,34 @@ void the_recorder_sees_new_records_only()
     CHECK_INT(2, r.rows[1].eventId);
 }
 
+void the_recorder_hears_each_repeat_after_the_record_is_updated()
+{
+    MonitorEventLog log;
+    RepeatRecorder r;
+    log.setRecorder(&r);
+    log.add(cand(ReconTarget::Deauth, kA, Confidence::High, -70, 6, 1000));
+    CHECK_INT(1, r.rows.size());
+    CHECK_INT(0, r.repeats.size());              // a new record is not a repeat
+    log.add(cand(ReconTarget::Deauth, kA, Confidence::High, -55, 6, 16000));
+    log.add(cand(ReconTarget::Deauth, kB, Confidence::High, -60, 6, 17000)); // new
+    log.add(cand(ReconTarget::Deauth, kA, Confidence::High, -50, 6, 31000));
+    CHECK_INT(2, r.rows.size());
+    CHECK_INT(2, r.repeats.size());
+    CHECK_INT(1, r.repeats[0].eventId);          // the same record, same id
+    CHECK_INT(2, r.repeats[0].count);            // already updated
+    CHECK_INT(-55, r.repeats[0].rssi);
+    CHECK_INT(16000, r.repeats[0].lastSeen.uptimeMs);
+    CHECK_INT(3, r.repeats[1].count);
+    CHECK_INT(static_cast<int>(ReconTarget::Deauth), static_cast<int>(r.repeats[1].detector));
+    // A log that only overrides append is unchanged (the default does nothing).
+    MonitorEventLog plain;
+    Recorder only;
+    plain.setRecorder(&only);
+    plain.add(cand(ReconTarget::Tile, kA));
+    plain.add(cand(ReconTarget::Tile, kA));
+    CHECK_INT(1, only.rows.size());
+}
+
 void the_recorder_is_called_after_the_alert_decision()
 {
     struct Probe : EventLog {
@@ -295,6 +331,7 @@ int main(int argc, char **argv)
     CASE(acknowledge_keeps_the_history);
     CASE(clear_empties_history_and_drops_the_alert_but_keeps_the_serial);
     CASE(the_recorder_sees_new_records_only);
+    CASE(the_recorder_hears_each_repeat_after_the_record_is_updated);
     CASE(the_recorder_is_called_after_the_alert_decision);
     CHECK_SUMMARY();
 }

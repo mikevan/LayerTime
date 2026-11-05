@@ -44,6 +44,10 @@ object ControllerRepository {
     private val _sensorsApplied = MutableStateFlow<Long?>(null)
     val sensorsApplied: StateFlow<Long?> = _sensorsApplied.asStateFlow()
     fun setSensorsApplied(mask: Long?) { _sensorsApplied.value = mask }
+    // The evidence hold the Hunter last confirmed (SetEvidenceHold, 2026-11-04); null until it does.
+    private val _evidenceHoldApplied = MutableStateFlow<Int?>(null)
+    val evidenceHoldApplied: StateFlow<Int?> = _evidenceHoldApplied.asStateFlow()
+    fun setEvidenceHoldApplied(sec: Int?) { _evidenceHoldApplied.value = sec }
 
     private val _events = MutableStateFlow<List<EventRow>>(emptyList())
     val events: StateFlow<List<EventRow>> = _events.asStateFlow()
@@ -83,7 +87,7 @@ object ControllerRepository {
     }
 
     fun setConn(state: ConnState, detail: String? = null) {
-        if (state != ConnState.CONNECTED) _sensorsApplied.value = null
+        if (state != ConnState.CONNECTED) { _sensorsApplied.value = null; _evidenceHoldApplied.value = null }
         _connDetail.value = detail
         _conn.value = state
         log(LogEntry.Category.CONNECTION, "state=$state" + (detail?.let { " ($it)" } ?: ""))

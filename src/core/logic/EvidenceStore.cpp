@@ -105,7 +105,26 @@ bool EvidenceStore::parseMac(const char *text, uint8_t out[6])
 
 bool EvidenceStore::collecting(const Window &w, uint32_t nowMs) const
 {
-    return w.eventId != 0 && static_cast<uint32_t>(nowMs - w.openMs) < kFollowMs;
+    return w.eventId != 0 && static_cast<int32_t>(w.untilMs - nowMs) > 0;
+}
+
+uint32_t EvidenceStore::followMsFor(uint8_t holdSec)
+{
+    const uint32_t holdMs = static_cast<uint32_t>(holdSec) * 1000u;
+    return holdMs > kFollowMs ? holdMs : kFollowMs;
+}
+
+bool EvidenceStore::extendWindow(uint32_t eventId, uint32_t nowMs, uint32_t followMs)
+{
+    if (_windows == nullptr || eventId == 0) return false;
+    for (uint8_t i = 0; i < kWindows; ++i) {
+        Window &w = _windows[i];
+        if (w.eventId != eventId) continue;
+        const uint32_t until = nowMs + followMs;
+        if (static_cast<int32_t>(until - w.untilMs) > 0) w.untilMs = until;
+        return true;
+    }
+    return false;
 }
 
 const EvidenceStore::Window *EvidenceStore::find(uint32_t eventId) const
@@ -213,7 +232,7 @@ void EvidenceStore::noteFrame(const uint8_t *frame, uint16_t len, int8_t rssi, u
     }
 }
 
-bool EvidenceStore::openWindow(uint32_t eventId, const uint8_t subject[6], uint32_t nowMs)
+bool EvidenceStore::openWindow(uint32_t eventId, const uint8_t subject[6], uint32_t nowMs, uint32_t followMs)
 {
     if (_slots == nullptr || _ringCount == 0 || eventId == 0) return false;
     // A free window, else the oldest.
@@ -227,9 +246,11 @@ bool EvidenceStore::openWindow(uint32_t eventId, const uint8_t subject[6], uint3
             if (static_cast<int32_t>(_windows[i].openMs - _windows[wi].openMs) < 0) wi = i;
     }
     Window &w = _windows[wi];
+    if (w.eventId != 0 && w.retained > 0 && !w.saved) ++_lostUnsaved;
     w = Window{};
     w.eventId = eventId;
     w.openMs = nowMs;
+    w.untilMs = nowMs + followMs;
     memcpy(w.subject, subject, 6);
 
     const uint16_t newest = static_cast<uint16_t>((_ringNext + kRingFrames - 1) % kRingFrames);
@@ -275,6 +296,33 @@ bool EvidenceStore::openWindow(uint32_t eventId, const uint8_t subject[6], uint3
     }
     append(wi, trig, kFlagTrigger);
     return true;
+}
+
+bool EvidenceStore::nextToSave(uint32_t nowMs, uint32_t &eventId) const
+{
+    if (_windows == nullptr) return false;
+    const Window *best = nullptr;
+    for (uint8_t i = 0; i < kWindows; ++i) {
+        const Window &w = _windows[i];
+        if (w.eventId == 0 || collecting(w, nowMs)) continue;
+        if (w.saved && w.seen == w.savedSeen) continue;
+        if (best == nullptr || static_cast<int32_t>(w.openMs - best->openMs) < 0) best = &w;
+    }
+    if (best == nullptr) return false;
+    eventId = best->eventId;
+    return true;
+}
+
+void EvidenceStore::markSaved(uint32_t eventId, uint16_t seen)
+{
+    if (_windows == nullptr || eventId == 0) return;
+    for (uint8_t i = 0; i < kWindows; ++i) {
+        Window &w = _windows[i];
+        if (w.eventId != eventId) continue;
+        w.saved = true;
+        w.savedSeen = seen;
+        return;
+    }
 }
 
 bool EvidenceStore::info(uint32_t eventId, uint32_t nowMs, WindowInfo &out) const
