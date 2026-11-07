@@ -41,7 +41,7 @@ class DeauthTriageTest {
     @Test fun everyStepRunsAndEveryFeatureHasASentence() {
         for (s in Fixtures.all()) {
             val r = run(s)
-            assertEquals(s.name, 10, r.steps.size)
+            assertEquals(s.name, 9, r.steps.size)
             assertTrue(s.name, r.steps.all { it.error == null })
             for (f in r.finding!!.features + r.finding!!.couldNotRun) assertTrue("${s.name} ${f.step}", f.reason.endsWith("."))
             assertTrue(s.name, r.finding!!.summary.endsWith("."))

@@ -64,14 +64,14 @@ footer{border-top:2px solid var(--amber);margin-top:64px;padding-top:18px;font-f
     <span>USB-C DATA CABLE</span>
   </div>
 
-  <p style="margin-top:28px">You need two T-Dongle-C5 boards. One becomes the <b>Vixen</b>, the dongle you hunt. It's a small Bluetooth beacon that sits in a hiding spot and does nothing else. The other becomes the <b>Hunter</b>. It runs LayerWand, listens for the Vixen, and reports how strong its signal is. The Hunter talks to <b>LayerScope</b>, an Android app that turns that signal into a radar, a tone, and a step trail. Vixen is one game you can play with it. Bring two power banks: one for each dongle.</p>
+  <p style="margin-top:28px">You need two T-Dongle-C5 boards. One becomes the <b>Vixen</b>, the dongle you hunt. It's a small Bluetooth beacon that sits in a hiding spot and does nothing else. The other becomes the <b>Hunter</b>. It runs the Hunter firmware, listens for the Vixen, and reports how strong its signal is. The Hunter talks to <b>LayerScope</b>, an Android app that turns that signal into a radar, a tone, and a step trail. Vixen is one game you can play with it. Bring two power banks: one for each dongle.</p>
 
   <div class="note nowebserial" id="nowebserial">
     <b>This browser can't flash.</b> Flashing over USB needs Web Serial, and only Chrome and Edge on a desktop have it. Firefox, Safari, and every browser on a phone do not. Open this page in Chrome or Edge on a computer. You can still download LayerScope in step 3 from here.
   </div>
 
   <div class="note">
-    <b>Flashing erases the dongle.</b> Whatever was on it before, including a LayerWand's settings, is gone. Label your dongles so the Vixen doesn't end up hunting itself.
+    <b>Flashing erases the dongle.</b> Whatever was on it before, including a Hunter's settings, is gone. Label your dongles so the Vixen doesn't end up hunting itself.
   </div>
 
   <h2><span class="num">1</span>Flash the Vixen</h2>
@@ -90,11 +90,11 @@ footer{border-top:2px solid var(--amber);margin-top:64px;padding-top:18px;font-f
   <p>Unplug the Vixen. Plug in the second dongle, then click the button and pick its port.</p>
   <div class="flashbox flash">
     <esp-web-install-button manifest="hunter.json">
-      <button slot="activate" class="btn">Install LayerWand</button>
+      <button slot="activate" class="btn">Install the Hunter</button>
       <span slot="unsupported"></span>
       <span slot="not-allowed"></span>
     </esp-web-install-button>
-    <p>When it finishes, the screen says LayerWand. That dongle is now the Hunter.</p>
+    <p>When it finishes, the screen shows the Hunter's name, such as Hunter-C5-BSV72. That dongle is now the Hunter.</p>
   </div>
 
   <h2><span class="num">3</span>Install LayerScope</h2>

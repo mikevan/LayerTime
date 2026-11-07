@@ -93,7 +93,8 @@ class LinkForegroundService : LifecycleService() {
         when (intent?.action) {
             ACTION_START -> {
                 val target = intent.getIntExtra(EXTRA_TARGET, -1).takeIf { it >= 0 }
-                client.start(autoStart = target)
+                // HUNTER ACTIONS (2026-11-06): Connect on a row names its Hunter.
+                client.start(autoStart = target, address = intent.getStringExtra(EXTRA_ADDRESS), name = intent.getStringExtra(EXTRA_NAME))
             }
             ACTION_STOP -> {
                 client.stop()
@@ -173,7 +174,9 @@ class LinkForegroundService : LifecycleService() {
 
         /** SWIPE AWAY DISCONNECTS: off by default, so a stray swipe never drops the link. */
         fun swipeDisconnects(ctx: Context): Boolean =
-            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SWIPE, false)
+            // Only the LOKMAT watch uses this setting (2026-11-06); elsewhere it is greyed out and off.
+            com.projectrevivesolutions.layertime.controller.DeviceKind.isLokmatWatch &&
+                ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SWIPE, false)
         fun setSwipeDisconnects(ctx: Context, on: Boolean) {
             ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SWIPE, on).apply()
         }
@@ -183,10 +186,14 @@ class LinkForegroundService : LifecycleService() {
         const val ACTION_START = "com.projectrevivesolutions.layertime.controller.START"
         const val ACTION_STOP = "com.projectrevivesolutions.layertime.controller.STOP"
         const val EXTRA_TARGET = "target"
+        const val EXTRA_ADDRESS = "hunter_address"
+        const val EXTRA_NAME = "hunter_name"
 
-        fun start(context: Context, target: Int?) {
+        fun start(context: Context, target: Int?, address: String? = null, name: String? = null) {
             val i = Intent(context, LinkForegroundService::class.java).setAction(ACTION_START)
             if (target != null) i.putExtra(EXTRA_TARGET, target)
+            if (address != null) i.putExtra(EXTRA_ADDRESS, address)
+            if (name != null) i.putExtra(EXTRA_NAME, name)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(i)
             else context.startService(i)
         }

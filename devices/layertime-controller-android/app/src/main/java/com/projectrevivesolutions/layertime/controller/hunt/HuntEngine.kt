@@ -4,7 +4,7 @@ package com.projectrevivesolutions.layertime.controller.hunt
  * HUNT v1, the watch's hunt math (claude/hunt_v1_layervixen_plan.md). Pure Kotlin:
  * no Android, no clock; every call takes the time. Unit-tested (HuntEngineTest).
  *
- * The LayerWand answers GET_HUNT with the LayerVixen's signal since the last poll.
+ * The Hunter answers GET_HUNT with the LayerVixen's signal since the last poll.
  * This turns those readings into what the hunt screen shows: a smoothed signal,
  * its color band, CLOSING or OPENING, the step trail, and FOUND.
  */
@@ -22,7 +22,7 @@ data class HuntBands(
     val foundDbm: Int = -50,
     val foundHoldMs: Long = 2_000,
     /**
-     * The smoothed signal is the mean of the readings in this window. 2 s: the LayerWand
+     * The smoothed signal is the mean of the readings in this window. 2 s: the Hunter
      * reports the LayerVixen about twice a second (one short scan each), so a 1 s window
      * would hold only one or two readings.
      */
@@ -30,7 +30,7 @@ data class HuntBands(
     /** CLOSING or OPENING: the smoothed signal now against trendMs ago. */
     val trendMs: Long = 3_000,
     val trendDb: Int = 3,
-    /** No sighting for this long: TARGET LOST (the LayerWand says the same after 5 s). */
+    /** No sighting for this long: TARGET LOST (the Hunter says the same after 5 s). */
     val lostMs: Long = 5_000,
     /** Below this the tone is at its slowest and lowest. */
     val toneFloorDbm: Int = -95,
@@ -42,7 +42,7 @@ enum class SignalBand { NONE, RED, YELLOW, GREEN }
 enum class Trend { NONE, CLOSING, STEADY, OPENING }
 
 enum class HuntPhase {
-    /** Waiting for the LayerWand to confirm the hunt. */
+    /** Waiting for the Hunter to confirm the hunt. */
     STARTING,
     /** Hunting, and the LayerVixen has not been heard yet: acquiring the signal. */
     SEARCHING,

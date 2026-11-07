@@ -117,7 +117,7 @@ that command line.
 `ReconService` and the suites above are the Ultra's own Recon path. The Recon
 schedule `ReconService` runs was expressed in core as
 `src/core/logic/ReconScheduler` behind the `src/core/ports/ReconRadio` port,
-and the C5 (`devices/lilygo-layerwand/src`) is its consumer.
+and the C5 (`devices/lilygo-hunter/src`) is its consumer.
 `test_recon_scheduler` below pins that schedule on its own;
 `test_recon` still characterizes the T-Ultra's original.
 

@@ -4,7 +4,7 @@
 // Since layout step 4 (2026-10-07) src/ holds only core, and the T-Watch
 // Ultra's platform code is its own folder, devices/lilygo-tultra/src/. The
 // rules are the same seven; "platform code" now means that folder, and
-// main.cpp is the one inside it. The LayerWand and the S3 Plus check their
+// main.cpp is the one inside it. The Hunter and the S3 Plus check their
 // own boundaries in their own test folders.
 //
 // Every #include under src/ and devices/lilygo-tultra/src/ is resolved the
@@ -233,7 +233,7 @@ void one_target_never_reaches_into_another()
 
 // Device folders whose code must reach the sensors only through core.
 const char *const kDeviceSrcs[] = {"../devices/lilygo-tultra/src", "../devices/lilygo-s3plus/src",
-                                   "../devices/lilygo-layerwand/src"};
+                                   "../devices/lilygo-hunter/src"};
 
 // Every include in `root` that names the sensor library, however spelled:
 // <lts/...>, or any path through sensors/src.

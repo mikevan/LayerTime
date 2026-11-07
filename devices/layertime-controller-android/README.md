@@ -2,7 +2,7 @@
 
 An Android client for the LayerTime ecosystem. It is a LayerTime Link 0.1
 **interface** (a "controller"), the same role the Garmin tactix plays: it
-connects to a LayerWand (the ESP32-C5 Node) over BLE, pulls real detection
+connects to a Hunter (the ESP32-C5 Node) over BLE, pulls real detection
 events, and records them. It is passive. It never transmits attacks and holds
 no offensive RF capability, consistent with LT-ARCH-001 sections 2.6, 14, and
 16.7.
@@ -19,7 +19,7 @@ for a single wand.
 
 The first milestone was platform validation on one phone, and it still defines
 the diagnostic core. That scope was: report device model, Android version and
-API level, and BLE capability; discover and connect to a LayerWand by service
+API level, and BLE capability; discover and connect to a Hunter by service
 UUID; display real incoming detection events; record connection changes and
 timestamped events; support a screen-off reception test; and export the
 results. That core is implemented and, except where noted under Validation
@@ -69,13 +69,13 @@ earlier builds (see Validation).
 The following are **proposed, not implemented**. See
 `FRAME_EVIDENCE_PROPOSAL.md` in this folder.
 
-- Raw-frame retention on the LayerWand.
+- Raw-frame retention on the Hunter.
 - Evidence transfer over the link (a backward-compatible Link 0.2 op).
 - Wireshark decoding of captured frames on Android.
 - PCAP or PCAPNG export.
 - Multiple-wand correlation.
 
-The blocker is verified in `devices/lilygo-layerwand/src/C5ReconRadio.cpp`
+The blocker is verified in `devices/lilygo-hunter/src/C5ReconRadio.cpp`
 (`promiscuousThunk`, lines 231 to 253): the wand receives the raw 802.11 frame
 and the receiver metadata, classifies them, and discards the bytes. It retains
 no frames, and Link 0.1 carries only the normalized `EVENT_SUMMARY`. Android

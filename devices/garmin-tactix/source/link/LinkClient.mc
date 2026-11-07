@@ -25,7 +25,7 @@ import Toybox.WatchUi;
 // The LayerTime Link client: discovers a Node by service UUID, pairs,
 // registers the profile, enables notifications, says HELLO, watches the
 // Status heartbeat, answers the wearer's PINGs with a round-trip time, and
-// reconnects when the link drops. Detects a new Node session (a LayerWand
+// reconnects when the link drops. Detects a new Node session (a Hunter
 // power cycle) through sessionId.
 //
 // Recon integration (Increment 2B): keeps the ReconMirror in step with the

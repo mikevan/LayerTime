@@ -384,7 +384,7 @@ void restarting_wifi_restarts_the_hop_clock_from_the_radio_clock()
     CHECK_INT(19, r.hops());
 }
 
-// ------------------------------------------------------------ LayerWand plan, FullPass, random rest
+// ------------------------------------------------------------ Hunter plan, FullPass, random rest
 
 uint32_t g_randomValue = 0;
 uint32_t fixedRandom() { return g_randomValue; }
@@ -570,7 +570,7 @@ void full_pass_all_with_a_random_source_dwells_longer_on_the_last_channel()
     CHECK_STR("ble-start 1 1800", q.last().c_str());
 }
 
-// Two LayerWands booted at the same moment. Without a random source their
+// Two Hunters booted at the same moment. Without a random source their
 // BLE scans start at the same offset every cycle forever; with one, the
 // offset keeps changing, so one is not stuck listening while the other is
 // busy on Wi-Fi.

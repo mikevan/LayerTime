@@ -6,7 +6,7 @@
 #
 # It waits for a NEW serial port to appear, so it only ever talks to the
 # board you plug in during the run. It never opens, resets, or probes any
-# port that was already connected (a LayerWand that is logging, or the
+# port that was already connected (a Hunter that is logging, or the
 # T-Watch Ultra). On the new port it reads the chip MAC with esptool,
 # confirms the chip is an ESP32-S3, and records "<MAC> <USB serial number>"
 # in %USERPROFILE%\.layertime\s3plus_allowed_boards.txt, the file the upload

@@ -39,8 +39,8 @@ fun ToolsScreen(onWireshark:()->Unit,onTimeline:()->Unit) {
     OpsTelemetryHousing(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize().padding(start=16.dp,end=16.dp,top=18.dp,bottom=24.dp),
             verticalArrangement=Arrangement.spacedBy(0.dp)) {
-            item {ToolCard("WIRESHARK","Decode a capture file.",true,onWireshark)}
-            item {ToolCard("ATTACK TIMELINE","Inspect frames by transmitter.",false,onTimeline)}
+            item {ToolCard(LayerTool.WIRESHARK,onWireshark)}
+            item {ToolCard(LayerTool.ATTACK_TIMELINE,onTimeline)}
             item {
                 val shape=RoundedCornerShape(6.dp)
                 Row(Modifier.fillMaxWidth().padding(horizontal=5.dp,vertical=8.dp)
@@ -60,20 +60,12 @@ fun ToolsScreen(onWireshark:()->Unit,onTimeline:()->Unit) {
 }
 
 @Composable
-private fun ToolCard(title:String,description:String,wireshark:Boolean,onOpen:()->Unit) {
+private fun ToolCard(tool:LayerTool,onOpen:()->Unit) {
+    val title=tool.title; val description=tool.description
     OpsConnectionHousing(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(start=20.dp,end=18.dp,top=20.dp,bottom=23.dp),
             verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-            if(wireshark) Canvas(Modifier.size(28.dp)) {
-                val fin=Path().apply {
-                    moveTo(size.width*.08f,size.height*.84f)
-                    cubicTo(size.width*.12f,size.height*.48f,size.width*.42f,size.height*.16f,size.width*.8f,size.height*.13f)
-                    cubicTo(size.width*.59f,size.height*.41f,size.width*.60f,size.height*.66f,size.width*.87f,size.height*.84f)
-                    close()
-                }
-                drawPath(fin,ToolCyan.copy(alpha=.09f))
-                drawPath(fin,ToolCyan,style=Stroke(1.2.dp.toPx()))
-            } else Icon(Icons.Outlined.Layers,null,tint=ToolCyan,modifier=Modifier.size(28.dp))
+            ToolIcon(tool,28.dp,ToolCyan)
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                 Text(title,color=ToolInk,style=ToolType.copy(fontSize=12.sp,lineHeight=15.sp,fontWeight=FontWeight.Medium,letterSpacing=.5.sp))
                 Text(description,color=ToolMuted,style=ToolType.copy(fontSize=10.sp,lineHeight=13.sp))

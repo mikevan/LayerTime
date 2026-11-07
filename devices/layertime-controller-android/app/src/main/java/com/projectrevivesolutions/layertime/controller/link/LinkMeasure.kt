@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * Link 0.2 Phase 0 measurement, the watch side (claude/link_0_2_phase0_plan.md,
  * M5): a PING burst for the request round trip, which sets the fastest HUNT poll
  * rate, and the test-only BULK op for throughput at 20 bytes and at a larger
- * MTU. Only a LayerWand running the measurement firmware (tdongle_c5_measure)
+ * MTU. Only a Hunter running the measurement firmware (tdongle_c5_measure)
  * answers BULK; any other Node answers ERROR UnknownOp, which the panel reports.
  *
  * The frame layout matches src/core/link/LinkMeasure.h on the Node. The pure

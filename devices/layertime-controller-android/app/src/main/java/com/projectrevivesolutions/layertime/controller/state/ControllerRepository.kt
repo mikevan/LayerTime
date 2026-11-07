@@ -60,7 +60,7 @@ object ControllerRepository {
 
     @Volatile var deviceReport: DeviceReport? = null
 
-    /** True after a link to a LayerWand was lost, until it is back or the operator disconnects. */
+    /** True after a link to a Hunter was lost, until it is back or the operator disconnects. */
     private val _reconnecting = MutableStateFlow(false)
     val reconnecting: StateFlow<Boolean> = _reconnecting.asStateFlow()
     fun setReconnecting(on: Boolean) { _reconnecting.value = on }
@@ -84,6 +84,9 @@ object ControllerRepository {
 
     fun log(category: LogEntry.Category, message: String) {
         _log.update { it + LogEntry(now(), category, message) }
+        // Also to logcat (tag LayerScope), so a capture on the bench computer shows the app's own
+        // view of the link next to Android's Bluetooth log (2026-11-06 diagnostics).
+        runCatching { android.util.Log.i("LayerScope", "[$category] $message") }
     }
 
     fun setConn(state: ConnState, detail: String? = null) {
@@ -97,9 +100,9 @@ object ControllerRepository {
 
     fun onServerInfo(ack: Frame.HelloAck) {
         _server.value = ack
-        // HELLO_ACK carries the session id, and the LayerWand can send events before its
+        // HELLO_ACK carries the session id, and the Hunter can send events before its
         // first STATUS. Take the session from here so no event is filed under session -1
-        // (an unknown session broke detection-alert de-duplication across LayerWand restarts).
+        // (an unknown session broke detection-alert de-duplication across Hunter restarts).
         if (ack.sessionId != currentSession) {
             if (currentSession != -1) log(LogEntry.Category.LINK,
                 "new session ${ack.sessionId} from HELLO_ACK (was $currentSession): clearing event mirror")
@@ -225,6 +228,12 @@ object ControllerRepository {
                 done
             } else bt
         }
+    }
+
+    /** The Hunter cleared its detections (ReconClearEvents answered OK): the same session, an empty list. */
+    fun clearEventList() {
+        synchronized(mirrorLock) { mirror.clear() }
+        _events.value = emptyList()
     }
 
     fun reset() {

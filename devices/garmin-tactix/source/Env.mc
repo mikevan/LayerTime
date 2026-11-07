@@ -20,12 +20,12 @@ import Toybox.Lang;
 import Toybox.Position;
 import Toybox.Weather;
 
-// Where the watch app gets what it did not compute itself: the LayerWand
+// Where the watch app gets what it did not compute itself: the Hunter
 // link's lifecycle, the watch's weather, and its GPS. The release and test
 // builds use the (:nopreview) functions, which read the real sources. The
 // preview build (preview.jungle) excludes them and uses the (:preview)
 // versions in Preview.mc, which serve fixed scenarios so every home-screen
-// state can be shown in the simulator without a LayerWand, weather, or GPS.
+// state can be shown in the simulator without a Hunter, weather, or GPS.
 module Env {
 
     (:nopreview)

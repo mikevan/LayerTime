@@ -36,6 +36,15 @@ object SensorSelection {
     /** Every sensor, grouped, in display order. */
     val ALL_SENSORS: List<Int> = GROUPS.flatMap { it.members }
 
+    /**
+     * The sensors that start on (Michael, 2026-11-06, after a field test): every sensor except
+     * the trackers. With the trackers on, their flood hid everything else; they stay off until
+     * the other sensors are verified, and the operator turns them on in Mission when looking
+     * for a tracker. Quick Start's All Sensors picks this set too, so one tap in the field
+     * cannot bring the flood back.
+     */
+    val DEFAULT_SENSORS: Set<Int> = (ALL_SENSORS - group(TRACKERS)!!.members.toSet()).toSet()
+
     /** kAllSensorsMask in src/core/model/MonitorEvent.h: bits 5 to 16, and 18. */
     const val ALL_MASK: Long = 0x5FFE0L
 
@@ -73,15 +82,18 @@ object SensorSelection {
     /**
      * The one-time move from the old local-only checklist. Before 2026-11-04 the
      * selection was never sent anywhere, so an empty or missing one meant nothing,
-     * and the Hunter was running every sensor. Starting it as "every sensor on"
-     * keeps the Hunter doing exactly what it did; switching the list off silently
-     * on first connect would blind it. Anything else the operator checked is kept,
-     * with presets expanded.
+     * and the Hunter was running every sensor. An empty or missing one now starts as
+     * [DEFAULT_SENSORS], every sensor but the trackers (2026-11-06), never as nothing:
+     * switching the list off silently on first connect would blind the Hunter.
+     * Anything else the operator checked is kept, with presets expanded.
      */
     fun migrate(oldStored: Set<Int>?): Set<Int> {
         val kept = normalize(oldStored ?: emptySet())
-        return if (kept.isEmpty()) ALL_SENSORS.toSet() else kept
+        return if (kept.isEmpty()) DEFAULT_SENSORS else kept
     }
+
+    /** The selection with the four trackers unchecked (the one-time switch-off, 2026-11-06). */
+    fun withoutTrackers(selected: Set<Int>): Set<Int> = normalize(selected) - group(TRACKERS)!!.members.toSet()
 
     /** The SetSensors mask for a selection. */
     fun mask(selected: Set<Int>): Long =

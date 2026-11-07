@@ -1,5 +1,5 @@
 // HUNT v1 (src/core/link/LinkHunt): the HUNT_START, HUNT_STOP and GET_HUNT
-// codec, HuntTracker's readings, and the answers the LayerWand gives. Also
+// codec, HuntTracker's readings, and the answers the Hunter gives. Also
 // proves the Node dispatcher without HUNT still answers the HUNT ops with
 // ERROR UnknownOp, so a Node that never bound them says so.
 //

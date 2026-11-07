@@ -63,7 +63,7 @@ void names_and_codes_round_trip_strictly()
     log.kind = kKindLog;
     log.serial = 7;
     CHECK_TRUE(fileName(log, name, sizeof(name)));
-    CHECK_STR("layerwand_0007.log", name);
+    CHECK_STR("hunter_0007.log", name);
     FileId pcap;
     pcap.kind = kKindPcap;
     pcap.serial = 7;
@@ -79,16 +79,16 @@ void names_and_codes_round_trip_strictly()
     CHECK_INT(kKindPcap, back.kind);
     CHECK_INT(7, back.serial);
     CHECK_INT(42, back.eventId);
-    CHECK_TRUE(fileIdFromName("layerwand_9999.log", back));
+    CHECK_TRUE(fileIdFromName("hunter_9999.log", back));
     CHECK_INT(kKindLog, back.kind);
     CHECK_INT(9999, back.serial);
-    CHECK_FALSE(fileIdFromName("layerwand_0000.log", back));
+    CHECK_FALSE(fileIdFromName("hunter_0000.log", back));
     CHECK_FALSE(fileIdFromName("ev_0007/event_0042.pcap", back));    // 4 digits: never written
     CHECK_FALSE(fileIdFromName("ev_0007/event_000042.pcap", back));  // padded past 5: not the Hunter's spelling
     CHECK_FALSE(fileIdFromName("ev_0007/event_00000.pcap", back));   // event 0 does not exist
     CHECK_FALSE(fileIdFromName("ev_0007/event_9999999999.pcap", back)); // past u32
-    CHECK_FALSE(fileIdFromName("../layerwand_0001.log", back));
-    CHECK_FALSE(fileIdFromName("LAYERWAND_0001.LOG", back));
+    CHECK_FALSE(fileIdFromName("../hunter_0001.log", back));
+    CHECK_FALSE(fileIdFromName("HUNTER_0001.LOG", back));
     CHECK_FALSE(fileIdFromName(nullptr, back));
 
     FileId bad;
@@ -144,6 +144,15 @@ void request_and_reply_frames_have_their_documented_bytes()
     CHECK_INT(1000, size);
     CHECK_INT(static_cast<int>(0xCBF43926u), static_cast<int>(crc));
     CHECK_TRUE(isCardOp(0x0B) && isCardOp(0x0C) && !isCardOp(0x07));
+    // Clear Card (2026-11-06): op 0x0D, two bytes, capability bit 10, and no
+    // clash with any other op or capability.
+    CHECK_TRUE(isCardOp(0x0D) && !isCardOp(0x0E));
+    uint8_t c[4] = {0};
+    CHECK_INT(2, encodeCardClear(0x44, c));
+    CHECK_INT(0x0D, c[0]);
+    CHECK_INT(0x44, c[1]);
+    CHECK_INT(0x0400, kCapCardClear);
+    CHECK_TRUE((kCapCardClear & (kCapCardRead | 0x01FF)) == 0);
     CHECK_INT(0x0200, kCapCardRead);
 }
 

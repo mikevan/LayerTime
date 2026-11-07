@@ -27,8 +27,8 @@ object LinkConstants {
     const val CCCD_UUID = "00002902-0000-1000-8000-00805f9b34fb"    // Client Characteristic Configuration (0x2902)
 
     // The Node advertises its complete local name in the scan response as
-    // Hunter-C5-001 (or Hunter-C5-xxxx before it is numbered; LT-C5-xxxx before
-    // 2026-11-04), but discovery is BY SERVICE UUID, not by name
+    // Hunter-C5-BSV72 (five base-32 characters from its own address, 2026-11-05;
+    // Hunter-C5-001 before that, LT-C5-xxxx before 2026-11-04), but discovery is BY SERVICE UUID, not by name
     // (contracts/link.md "Advertising").
     const val NAME_PREFIX = "Hunter-"
 

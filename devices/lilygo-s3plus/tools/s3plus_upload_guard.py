@@ -4,7 +4,7 @@
 # "post:tools/s3plus_upload_guard.py".
 # It refuses to write firmware to any board that is not a registered
 # T-Watch S3 Plus, so S3 Plus firmware can never reach the T-Watch Ultra,
-# a LayerWand, or any other ESP32 on the desk.
+# a Hunter, or any other ESP32 on the desk.
 #
 # How it decides, before anything is written:
 #   1. Registered boards are read from
@@ -16,7 +16,7 @@
 #   2. The upload port must be a USB serial port whose USB serial number is a
 #      registered one. If upload_port is not set, the guard selects that port
 #      itself; it never runs esptool against an unregistered port, so it
-#      cannot reset a LayerWand or the Ultra by probing it.
+#      cannot reset a Hunter or the Ultra by probing it.
 #   3. esptool read-mac on that port must return the registered MAC for that
 #      serial number. Only then does the normal upload run.
 #

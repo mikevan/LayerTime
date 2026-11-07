@@ -44,7 +44,7 @@ import kotlinx.coroutines.withContext
  *    CARD_READ), into this app's own storage. The field path: no computer, no cable.
  *  - A picked folder: the card in a USB card reader, or a folder it was copied to. The
  *    grant is kept, so it is picked once.
- * Either way LayerScope lists the layerwand_NNNN.log files, reads one (HunterCardLog), and
+ * Either way LayerScope lists the hunter_NNNN.log files, reads one (HunterCardLog), and
  * opens a detection's saved frames (ev_NNNN/event_EEEEE.pcap) in the Wireshark window.
  */
 @Composable
@@ -58,9 +58,16 @@ fun HunterCardScreen(onBack: () -> Unit, onOpenWireshark: () -> Unit) {
     val pull by CardPull.state.collectAsState()
     // The Link client is not observable, so whether it serves the card is checked each second.
     var servesCard by remember { mutableStateOf(false) }
+    var noSdLog by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(Unit) {
-        while (true) { servesCard = LinkForegroundService.active?.servesCard == true; kotlinx.coroutines.delay(1000) }
+        while (true) {
+            val client = LinkForegroundService.active
+            servesCard = client?.servesCard == true
+            noSdLog = client?.lastNoSdLog
+            kotlinx.coroutines.delay(1000)
+        }
     }
+    val offer = CardPull.offer(servesCard, noSdLog)
     var logs by remember { mutableStateOf<List<CardFile>>(emptyList()) }
     var chosen by remember { mutableStateOf<CardFile?>(null) }
     var parsed by remember { mutableStateOf<HunterCardLog.Log?>(null) }
@@ -85,7 +92,7 @@ fun HunterCardScreen(onBack: () -> Unit, onOpenWireshark: () -> Unit) {
         }
         val t = tree ?: return@LaunchedEffect
         val found = withContext(Dispatchers.IO) { runCatching { CardFiles.logs(context, t) } }
-        found.onSuccess { logs = it; message = if (it.isEmpty()) "This folder holds no layerwand_NNNN.log files. Pick the card's top folder." else null }
+        found.onSuccess { logs = it; message = if (it.isEmpty()) "This folder holds no hunter_NNNN.log files. Pick the card's top folder." else null }
             .onFailure { logs = emptyList(); message = "LayerScope cannot read this folder any more. Pick it again." }
     }
     LaunchedEffect(chosen) {
@@ -114,12 +121,18 @@ fun HunterCardScreen(onBack: () -> Unit, onOpenWireshark: () -> Unit) {
         }
         item {
             val pulling = pull is CardPull.State.Listing || pull is CardPull.State.Pulling
-            SciFiPrimary("PULL FROM THE HUNTER", enabled = servesCard && !pulling, large = true) {
-                LinkForegroundService.active?.pullCard(pulledDir)
+            // A Hunter without a card: no button, one plain sentence (2026-11-05).
+            if (offer != CardPull.Offer.NoCard) {
+                SciFiPrimary("PULL FROM THE HUNTER", enabled = offer == CardPull.Offer.Card && !pulling, large = true) {
+                    LinkForegroundService.active?.pullCard(pulledDir)
+                }
             }
             val status = when (val p = pull) {
-                is CardPull.State.Idle -> if (servesCard) null
-                    else "Connect a Hunter with firmware build 93 or later to pull its card over Bluetooth."
+                is CardPull.State.Idle -> when (offer) {
+                    CardPull.Offer.NoHunter -> "Connect a Hunter with firmware build 93 or later to pull its card over Bluetooth."
+                    CardPull.Offer.NoCard -> CardPull.NO_CARD_SENTENCE
+                    else -> null
+                }
                 is CardPull.State.Listing -> p.note
                 is CardPull.State.Pulling -> "Pulling file ${p.fileIndex} of ${p.files}: ${p.name}, %,d of %,d bytes.".format(p.bytes, p.size)
                 is CardPull.State.Done -> "Pulled ${p.pulled} files in %.1f s; ${p.upToDate} were already up to date.".format(p.elapsedMs / 1000.0) +

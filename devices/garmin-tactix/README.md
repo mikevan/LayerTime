@@ -20,11 +20,11 @@ intervals, min, mean, p95, max, gaps, and disconnects. `source/link/LinkVectors.
 generated from `contracts/vectors/link_frames.json` by the repository's
 `tools/gen_link_vectors_mc.py`; do not edit it by hand.
 
-Increment 2B adds the LayerTime product screens for LayerWand's Recon: the
+Increment 2B adds the LayerTime product screens for Hunter's Recon: the
 home screen (`source/HomeView.mc`), the Recon page with the detection list
 and a detail page per detection (`source/ReconPage.mc`), and the Recon
 Controls (`source/Controls.mc`, MENU on the home screen or the Recon page).
-The list is the watch's copy of LayerWand's event log,
+The list is the watch's copy of Hunter's event log,
 `source/link/ReconMirror.mc`, kept in step by GET_CHANGED whenever Status's
 `changeSeq` moves; detail text comes by GET_TEXT; the Controls send COMMAND
 (`contracts/link.md`). The Increment 1 Link diagnostics page is the last

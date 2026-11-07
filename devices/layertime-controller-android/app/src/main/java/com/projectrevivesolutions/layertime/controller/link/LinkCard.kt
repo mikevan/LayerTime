@@ -18,14 +18,17 @@ import kotlinx.coroutines.flow.asStateFlow
 object LinkCard {
     const val OP_CARD_LIST = 0x0B
     const val OP_CARD_READ = 0x0C
+    /** Clear Card (2026-11-06): erases the Hunter's own files from its card; END(count erased). */
+    const val OP_CARD_CLEAR = 0x0D
     const val TYPE_CARD_ENTRY = 0x8B
     const val TYPE_CARD_BYTES = 0x8C
     const val TYPE_CARD_DONE = 0x8D
     const val CAP_CARD_READ = 0x0200
+    const val CAP_CARD_CLEAR = 0x0400
     const val KIND_LOG = 0
     const val KIND_PCAP = 1
 
-    fun isCardOp(op: Int) = op == OP_CARD_LIST || op == OP_CARD_READ
+    fun isCardOp(op: Int) = op == OP_CARD_LIST || op == OP_CARD_READ || op == OP_CARD_CLEAR
     fun isCardFrame(b: ByteArray) = b.isNotEmpty() && (b[0].toInt() and 0xFF) in TYPE_CARD_ENTRY..TYPE_CARD_DONE
 
     data class FileId(val kind: Int, val serial: Int, val eventId: Long) {
@@ -34,8 +37,8 @@ object LinkCard {
             KIND_PCAP -> eventId in 1..0xFFFFFFFFL
             else -> false
         }
-        /** "layerwand_0007.log" or "ev_0007/event_00042.pcap". */
-        val name: String get() = if (kind == KIND_LOG) "layerwand_%04d.log".format(serial)
+        /** "hunter_0007.log" or "ev_0007/event_00042.pcap". */
+        val name: String get() = if (kind == KIND_LOG) "hunter_%04d.log".format(serial)
             else "ev_%04d/event_%05d.pcap".format(serial, eventId)
     }
 
@@ -48,6 +51,7 @@ object LinkCard {
     private fun put32(b: ByteArray, o: Int, v: Long) { for (i in 0..3) b[o + i] = ((v shr (8 * i)) and 0xFF).toByte() }
 
     fun cardList(reqId: Int): ByteArray = byteArrayOf(OP_CARD_LIST.toByte(), reqId.toByte())
+    fun cardClear(reqId: Int): ByteArray = byteArrayOf(OP_CARD_CLEAR.toByte(), reqId.toByte())
 
     fun cardRead(reqId: Int, id: FileId, offset: Long): ByteArray {
         val b = ByteArray(13)
@@ -119,4 +123,74 @@ object CardPull {
     val state: StateFlow<State> = _state.asStateFlow()
     internal fun set(s: State) { _state.value = s }
     fun reset() { _state.value = State.Idle }
+
+    /**
+     * Whether a pull is on offer (2026-11-05). The SD card is what sets one Hunter
+     * apart from another, and it must be quiet: a Hunter without a card gets one
+     * plain sentence on HUNTER CARD and nothing anywhere else.
+     *   servesCard: HELLO_ACK capability bit 9. noSdLog: the latest Status flag,
+     *   null until the first Status arrives.
+     */
+    enum class Offer { NoHunter, Checking, Card, NoCard }
+    fun offer(servesCard: Boolean, noSdLog: Boolean?): Offer = when {
+        !servesCard -> Offer.NoHunter
+        noSdLog == null -> Offer.Checking
+        noSdLog -> Offer.NoCard
+        else -> Offer.Card
+    }
+    const val NO_CARD_SENTENCE = "This Hunter has no SD card, so there is nothing to pull."
+}
+
+/**
+ * Where a Clear Card stands (Michael, 2026-11-06). HUNTER ACTIONS starts it after the
+ * operator confirms; LinkClient drives it. It erases the Hunter's SD card completely, then
+ * lists the card again so the result comes from the card itself. Nothing on the phone is
+ * touched.
+ */
+object CardClear {
+    sealed interface State {
+        data object Idle : State
+        data class Connecting(val name: String) : State
+        data class Clearing(val name: String) : State
+        data class Verifying(val name: String) : State
+        /** [remaining]: the files the card still lists afterwards. [complete]: the Hunter erased everything it found. */
+        data class Done(val name: String, val erased: Int, val remaining: List<String>, val complete: Boolean) : State
+        data class Failed(val message: String) : State
+    }
+    private val _state = MutableStateFlow<State>(State.Idle)
+    val state: StateFlow<State> = _state.asStateFlow()
+    internal fun set(s: State) { _state.value = s }
+
+    /** The confirmation the operator answers with Erase or Cancel. */
+    fun confirmText(name: String) = "Erase everything on $name's SD card? This cannot be undone."
+
+    private fun files(n: Int) = if (n >= 255) "255 or more files" else if (n == 1) "1 file" else "$n files"
+
+    /** True when what the card lists afterwards is nothing, or only the fresh log the Hunter opens. */
+    fun clean(remaining: List<String>) = remaining.isEmpty() || remaining == listOf("hunter_0001.log")
+
+    /** One sentence for the panel, or null when there is nothing to say. */
+    fun sentence(s: State): String? = when (s) {
+        State.Idle -> null
+        is State.Connecting -> "Connecting to ${s.name} to clear its card."
+        is State.Clearing -> "Clearing ${s.name}'s card."
+        is State.Verifying -> "Checking what ${s.name}'s card holds now."
+        is State.Done -> when {
+            s.complete && clean(s.remaining) ->
+                "${s.name}'s card is clear: ${files(s.erased)} erased. It now holds only a fresh hunter_0001.log."
+            clean(s.remaining) ->
+                "${s.name} erased ${files(s.erased)}, but some files on its card would not erase. Tap Clear Card again."
+            else -> "${s.name}'s card still holds ${files(s.remaining.size)}: " +
+                s.remaining.take(5).joinToString(", ") + (if (s.remaining.size > 5) ", and more." else ".") + " Tap Clear Card again."
+        }
+        is State.Failed -> s.message
+    }
+
+    const val OLD_FIRMWARE = "This Hunter's firmware cannot clear its card. Flash Hunter firmware build 94 or later."
+    const val PULL_RUNNING = "A card pull is running. Clear the card when it finishes."
+    const val REFUSED = "The Hunter could not start clearing its card. It may have no card, or be sending a file."
+    const val DROPPED = "The link dropped while the Hunter was clearing its card. Part of the card may still hold files. Tap Clear Card again to finish."
+    const val TIMED_OUT = "The Hunter did not finish clearing its card in 2 minutes."
+    const val CLEAR_TIMEOUT_MS = 120_000L
+    const val NO_LIST = "The Hunter cleared its card but did not answer when asked what the card holds now. Tap Clear Card again to check."
 }

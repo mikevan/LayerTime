@@ -1,0 +1,434 @@
+// LayerTime - passive early-warning firmware for the LILYGO T-Dongle-C5.
+//
+// Copyright (C) 2026 Michael Van Geertruy
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+// This file belongs to the tdongle_c5 build environments only
+// (devices/lilygo-hunter/platformio.ini). The guard below dates from when
+// every environment compiled all of src/, and is kept as a safety net.
+#if defined(LAYERTIME_TARGET_TDONGLE_C5)
+
+#include "C5Link.h"
+#include "BringUpLogic.h"
+
+#include <Arduino.h>
+#include <NimBLEDevice.h>
+#include <esp_mac.h>
+#include <esp_random.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#if defined(LAYERTIME_MEASURE)
+#include <freertos/task.h>
+#endif
+#include <string.h>
+
+#include "core/link/LinkCodec.h"
+#include "core/link/LinkHunt.h"
+
+namespace layertime {
+namespace tdongle_c5 {
+
+namespace {
+
+constexpr uint32_t kHeartbeatMs = 1000;
+// contracts/link.md: Status is notified within 200 ms of a change.
+constexpr uint32_t kChangeNotifyMs = 200;
+
+C5Link *gLink = nullptr;
+NimBLEServer *gServer = nullptr;
+NimBLECharacteristic *gControl = nullptr;
+NimBLECharacteristic *gStatus = nullptr;
+NimBLECharacteristic *gData = nullptr;
+#if defined(LAYERTIME_LINK_TEST)
+NimBLECharacteristic *gProbe = nullptr;
+#endif
+
+class ServerCallbacks : public NimBLEServerCallbacks {
+public:
+    void onConnect(NimBLEServer *, NimBLEConnInfo &info) override
+    {
+        if (gLink) gLink->onConnected(info.getAddress().toString().c_str(), info.getMTU());
+    }
+    void onDisconnect(NimBLEServer *, NimBLEConnInfo &, int) override
+    {
+        if (gLink) gLink->onDisconnected();
+        // advertiseOnDisconnect(true) restarts advertising; nothing to do here.
+    }
+    void onMTUChange(uint16_t mtu, NimBLEConnInfo &) override
+    {
+        if (gLink) gLink->onMtuChanged(mtu);
+    }
+};
+
+class ControlCallbacks : public NimBLECharacteristicCallbacks {
+public:
+    void onWrite(NimBLECharacteristic *c, NimBLEConnInfo &) override
+    {
+        const NimBLEAttValue v = c->getValue();
+        if (gLink) gLink->onControlWritten(v.data(), v.size());
+    }
+};
+
+ServerCallbacks gServerCallbacks;
+ControlCallbacks gControlCallbacks;
+
+uint16_t nonZeroSessionId()
+{
+    uint16_t id = 0;
+    while (id == 0) id = static_cast<uint16_t>(esp_random() & 0xFFFF);
+    return id;
+}
+
+} // namespace
+
+void C5Link::lockIo() const
+{
+    if (_io) xSemaphoreTake(static_cast<SemaphoreHandle_t>(_io), portMAX_DELAY);
+}
+
+void C5Link::unlockIo() const
+{
+    if (_io) xSemaphoreGive(static_cast<SemaphoreHandle_t>(_io));
+}
+
+bool C5Link::begin(uint16_t capabilities)
+{
+    gLink = this;
+    _io = xSemaphoreCreateMutex();
+    _identity.sessionId = nonZeroSessionId();
+    _identity.capabilities = capabilities;
+#if defined(LAYERTIME_LINK_TEST)
+    _identity.testBuild = true;
+#endif
+    _status.sessionId = _identity.sessionId;
+    _status.changeSeq = 1;
+
+    uint8_t mac[6] = {};
+    esp_read_mac(mac, ESP_MAC_BT);
+    // Every unit says what it is (Michael, 2026-11-04): Hunter, the chip, and
+    // five base-32 characters from its own address (2026-11-05), "Hunter-C5-BSV72".
+    char chip[8];
+    chipShortName(ESP.getChipModel(), chip, sizeof(chip));
+    if (!formatUnitName("Hunter", chip, mac, _name, sizeof(_name))) snprintf(_name, sizeof(_name), "Hunter");
+
+    if (!NimBLEDevice::init(_name)) return false;
+    // The frame ceiling is 20 bytes by contract; a larger MTU only matters
+    // for the Probe measurement, which the central decides by negotiating.
+    NimBLEDevice::setMTU(247);
+
+    gServer = NimBLEDevice::createServer();
+    gServer->setCallbacks(&gServerCallbacks);
+    gServer->advertiseOnDisconnect(true);
+
+    NimBLEService *svc = gServer->createService(link::kServiceUuid);
+    gControl = svc->createCharacteristic(link::kControlUuid, NIMBLE_PROPERTY::WRITE);
+    gControl->setCallbacks(&gControlCallbacks);
+    gStatus = svc->createCharacteristic(link::kStatusUuid, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+    gData = svc->createCharacteristic(link::kDataUuid, NIMBLE_PROPERTY::NOTIFY);
+#if defined(LAYERTIME_LINK_TEST)
+    gProbe = svc->createCharacteristic(link::kProbeUuid, NIMBLE_PROPERTY::NOTIFY);
+#endif
+    // No svc->start(): in NimBLE-Arduino 2.x it is a deprecated no-op; the
+    // GATT server (and its services) starts inside adv->start() below.
+
+    uint8_t frame[link::kMaxFrame];
+    gStatus->setValue(frame, static_cast<uint16_t>(link::encodeStatus(_status, frame)));
+
+    NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
+    NimBLEAdvertisementData primary;
+    primary.setFlags(BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP);
+    primary.addServiceUUID(link::kServiceUuid);
+    NimBLEAdvertisementData scanResponse;
+    scanResponse.setName(_name);
+    adv->setAdvertisementData(primary);
+    adv->setScanResponseData(scanResponse);
+    adv->enableScanResponse(true);
+    return adv->start();
+}
+
+void C5Link::service(uint32_t nowMs)
+{
+    if (nowMs - _lastBeatMs >= kHeartbeatMs) {
+        _lastBeatMs = nowMs;
+        lockIo();
+        ++_status.heartbeat;
+        unlockIo();
+        notifyStatus(nowMs);
+        return;
+    }
+    if (_statusDirty && nowMs - _lastStatusNotifyMs >= kChangeNotifyMs) {
+        ++_changeNotifies;
+        notifyStatus(nowMs);
+    }
+}
+
+void C5Link::updateStatus()
+{
+    if (_server == nullptr) return;
+    link::StatusSnapshot next;
+    _server->fillStatus(next);
+    next.flags |= _extraFlags;
+    lockIo();
+    const bool changed = next.changeSeq != _status.changeSeq || next.flags != _status.flags ||
+                         next.selected != _status.selected || next.active != _status.active ||
+                         next.eventCount != _status.eventCount ||
+                         next.lastAlertEventId != _status.lastAlertEventId;
+    if (changed) {
+        _status.changeSeq = next.changeSeq;
+        _status.flags = next.flags;
+        _status.selected = next.selected;
+        _status.active = next.active;
+        _status.eventCount = next.eventCount;
+        _status.lastAlertEventId = next.lastAlertEventId;
+    }
+    unlockIo();
+    if (changed) _statusDirty = true;
+}
+
+void C5Link::pushFrame(const uint8_t *frame, size_t len, void *self)
+{
+    C5Link *me = static_cast<C5Link *>(self);
+    me->lockIo();
+    // A reply to a central that has since gone is dropped, so the next
+    // central does not find the pipe busy with it.
+    if (me->_answeringConnection == me->_connection) me->_pipe.push(frame, len);
+    me->unlockIo();
+}
+
+// One evidence frame: wait for NimBLE buffers, as BULK does (Phase 0: about
+// 3.6 refusals per frame at full speed, never a lost frame). Gives up when the
+// central goes or after kEvidenceStallMs with no buffer, so a stuck stack
+// cannot hold the loop.
+bool C5Link::sendEvidenceFrame(const uint8_t *frame, size_t len, void *self)
+{
+    C5Link *me = static_cast<C5Link *>(self);
+    static constexpr uint32_t kEvidenceStallMs = 2000;
+    const uint32_t start = millis();
+    while (me->_connected) {
+        if (gData->notify(frame, len)) { ++me->_evidenceFramesSent; return true; }
+        ++me->_evidenceRefused;
+        if (millis() - start > kEvidenceStallMs) return false;
+        vTaskDelay(1);
+    }
+    return false;
+}
+
+void C5Link::serviceRequests(uint32_t nowMs)
+{
+    if (_server == nullptr) return;
+    uint8_t request[link::kMaxFrame];
+    lockIo();
+    const size_t n = _pipe.take(request);
+    const uint8_t heartbeat = _status.heartbeat;
+    _answeringConnection = _connection;
+    unlockIo();
+    if (n > 0) {
+#if defined(LAYERTIME_MEASURE)
+        if (request[0] == link::measure::kOpBulk) {
+            runBulk(request, n);
+            lockIo();
+            _pipe.finish();
+            unlockIo();
+            ++_requestsAnswered;
+            return;
+        }
+#endif
+        if (_evidence != nullptr && (link::evidence::isEvidenceOp(request[0]) || link::card::isCardOp(request[0]))) {
+            // Streamed straight to NimBLE at this connection's size, not through
+            // the reply pipe; the pipe is empty here (one request at a time).
+            _evidence(request, n, nowMs, link::evidence::frameSizeForMtu(_mtu), sendEvidenceFrame, this, _evidenceContext);
+        } else if (_hunt != nullptr && link::hunt::isHuntOp(request[0])) {
+            // HUNT v1: one reply frame, queued like any other, and sent below
+            // in this same pass.
+            uint8_t reply[link::kMaxFrame];
+            const size_t len = _hunt(request, n, nowMs, reply, _huntContext);
+            if (len > 0) pushFrame(reply, len, this);
+        } else {
+            // The server takes the event-log lock where it needs it; the io
+            // lock is not held here, and pushFrame takes it per frame.
+            _server->handle(_identity, heartbeat, request, n, nowMs, pushFrame, this);
+        }
+        lockIo();
+        _pipe.finish();
+        unlockIo();
+        ++_requestsAnswered;
+    }
+    for (uint8_t i = 0; i < kFramesPerService; ++i) {
+        uint8_t frame[link::kMaxFrame];
+        lockIo();
+        const size_t len = _pipe.front(frame);
+        unlockIo();
+        if (len == 0) break;
+        if (!_connected) break;
+        if (!gData->notify(frame, len)) {
+            // NimBLE is out of buffers: keep the frame and try next pass.
+            ++_notifyRefused;
+            break;
+        }
+        lockIo();
+        _pipe.pop();
+        unlockIo();
+        ++_framesSent;
+    }
+}
+
+void C5Link::notifyStatus(uint32_t nowMs)
+{
+    uint8_t frame[link::kMaxFrame];
+    lockIo();
+    const size_t n = link::encodeStatus(_status, frame);
+    _statusDirty = false;
+    _lastStatusNotifyMs = nowMs;
+    unlockIo();
+    gStatus->setValue(frame, static_cast<uint16_t>(n));
+    if (_connected) {
+        gStatus->notify();
+#if defined(LAYERTIME_LINK_TEST)
+        ++_statusNotifies; // counted after the call; scheduling is unchanged
+#endif
+    }
+}
+
+void C5Link::onConnected(const char *peer, uint16_t mtu)
+{
+    _mtu = mtu;
+    strncpy(_peer, peer, sizeof(_peer) - 1);
+    _peer[sizeof(_peer) - 1] = '\0';
+    _connected = true;
+    notifyStatus(millis());
+}
+
+void C5Link::onDisconnected()
+{
+    _connected = false;
+    _peer[0] = '\0';
+    // The central is gone: a waiting request and unsent reply frames go with
+    // it. A reply in progress in the loop finishes into an empty pipe.
+    lockIo();
+    _pipe.clear();
+    ++_connection;
+    unlockIo();
+}
+
+void C5Link::onControlWritten(const uint8_t *data, size_t len)
+{
+    if (_server != nullptr && len >= 1) {
+        const uint8_t op = data[0];
+        const bool deferred = op == static_cast<uint8_t>(link::Op::Command) ||
+                              op == static_cast<uint8_t>(link::Op::GetChanged) ||
+                              op == static_cast<uint8_t>(link::Op::GetText) ||
+                              (_hunt != nullptr && link::hunt::isHuntOp(op)) ||
+                              // Slice 2: GET_FRAMES and GET_FRAME_BYTES wait for the loop,
+                              // which streams the answer (serviceRequests). Without this they
+                              // fell through to dispatch() and got ERROR UnknownOp.
+                              (_evidence != nullptr && link::evidence::isEvidenceOp(op)) ||
+                              // Card ops (2026-11-04) go the same way.
+                              (_evidence != nullptr && link::card::isCardOp(op))
+#if defined(LAYERTIME_MEASURE)
+                              || op == link::measure::kOpBulk
+#endif
+                              ;
+        lockIo();
+        const bool busy = _pipe.busy();
+        const bool accepted = !busy && deferred && _pipe.offer(data, len);
+        unlockIo();
+        if (busy || (deferred && !accepted)) {
+            // Rule 2: one outstanding request. (A deferred request longer
+            // than a frame also lands here; the loop never sees it.)
+            uint8_t reply[link::kMaxFrame];
+            link::Error e;
+            e.reqId = len >= 2 ? data[1] : 0;
+            e.status = busy ? link::LinkStatus::Busy : link::LinkStatus::BadLength;
+            if (busy) ++_busyReplies;
+            gData->notify(reply, link::encodeError(e, reply));
+            return;
+        }
+        if (accepted) return; // the loop answers it
+    }
+    uint8_t reply[link::kMaxFrame];
+    const size_t n = link::dispatch(_identity, _status.heartbeat, data, len, reply);
+    if (n >= 2 && len == link::kPingSize && data[0] == static_cast<uint8_t>(link::Op::Ping) &&
+        reply[0] == static_cast<uint8_t>(link::FrameType::Ack)) {
+        ++_pings;
+        _lastToken = static_cast<uint32_t>(data[2]) | (static_cast<uint32_t>(data[3]) << 8) |
+                     (static_cast<uint32_t>(data[4]) << 16) | (static_cast<uint32_t>(data[5]) << 24);
+    }
+    gData->notify(reply, n);
+}
+
+#if defined(LAYERTIME_MEASURE)
+void C5Link::runBulk(const uint8_t *request, size_t len)
+{
+    namespace m = link::measure;
+    m::BulkRequest r;
+    size_t size = 0;
+    if (!m::decodeBulk(request, len, r) || (size = m::bulkFrameSize(r.size, _mtu)) == 0) {
+        uint8_t reply[link::kMaxFrame];
+        link::Error e;
+        e.reqId = len >= 2 ? request[1] : 0;
+        e.status = link::LinkStatus::BadLength;
+        if (_connected) gData->notify(reply, link::encodeError(e, reply));
+        return;
+    }
+    uint8_t frame[m::kBulkMaxSize];
+    const uint32_t start = millis();
+    uint32_t refused = 0;
+    uint16_t sent = 0;
+    bool stalled = false;
+    for (uint16_t seq = 0; seq < r.count && _connected && !stalled; ++seq) {
+        const size_t n = m::fillBulkFrame(r.reqId, seq, r.count, size, frame);
+        const uint32_t tryStart = millis();
+        while (_connected && !gData->notify(frame, n)) {
+            // NimBLE is out of buffers: let the stack drain, then retry.
+            ++refused;
+            if (millis() - tryStart > kBulkStallMs) { stalled = true; break; }
+            vTaskDelay(1);
+        }
+        if (!stalled && _connected) ++sent;
+    }
+    m::BulkDone d;
+    d.reqId = r.reqId;
+    d.sent = sent;
+    d.size = static_cast<uint8_t>(size);
+    d.mtu = _mtu;
+    d.refused = refused;
+    d.elapsedMs = millis() - start;
+    uint8_t done[m::kBulkDoneSize];
+    const size_t dn = m::encodeBulkDone(d, done);
+    const uint32_t tryStart = millis();
+    while (_connected && !gData->notify(done, dn) && millis() - tryStart < kBulkStallMs) vTaskDelay(1);
+    _lastBulk = d;
+    ++_bulkRuns;
+}
+#endif
+
+size_t C5Link::sendNextProbe()
+{
+#if defined(LAYERTIME_LINK_TEST)
+    if (!_connected || gProbe == nullptr) return 0;
+    uint8_t payload[link::kProbeMaxSize];
+    const size_t size = link::fillProbe(link::kProbeSizes[_probeIndex], payload);
+    _probeIndex = (_probeIndex + 1) % link::kProbeSizeCount;
+    gProbe->notify(payload, size);
+    return size;
+#else
+    return 0;
+#endif
+}
+
+} // namespace tdongle_c5
+} // namespace layertime
+
+#endif

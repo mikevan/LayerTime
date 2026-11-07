@@ -19,7 +19,7 @@
 import Toybox.Lang;
 import Toybox.Test;
 
-// ReconMirror, the watch's copy of the LayerWand event log: the GET_CHANGED
+// ReconMirror, the watch's copy of the Hunter event log: the GET_CHANGED
 // rules of contracts/link.md.
 module ReconMirrorTests {
 

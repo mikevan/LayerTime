@@ -9,8 +9,8 @@ package com.projectrevivesolutions.layertime.controller.flow
  *
  * JSON shape:
  *   { "name": "...", "version": 1,
- *     "steps": [ { "id": "frames", "type": "load_frames", "settings": { "window_ms": 10000 } }, ... ],
- *     "edges": [ { "from": "frames", "to": "target.frames", "carries": "frames" }, ... ] }
+ *     "steps": [ { "id": "event", "type": "event_source", "settings": { "window_ms": 10000 } }, ... ],
+ *     "edges": [ { "from": "event", "to": "target.frames", "carries": "frames" }, ... ] }
  *
  * "from" names a step (each step has at most one output). "to" is "stepId.port".
  */
@@ -28,7 +28,7 @@ enum class DataType(val wire: String) {
 }
 
 /** One input a step declares. `many` lets several edges feed it (the verdict's features). */
-data class PortSpec(val name: String, val type: DataType, val many: Boolean = false)
+data class PortSpec(val name: String, val type: DataType, val many: Boolean = false, val optional: Boolean = false)
 
 /** One setting a step declares, with its default. The validator refuses unknown keys and wrong kinds. */
 data class SettingSpec(val key: String, val default: Any, val description: String) {
@@ -48,6 +48,8 @@ data class StepSpec(
     val inputs: List<PortSpec> = emptyList(),
     val output: DataType? = null,
     val settings: List<SettingSpec> = emptyList(),
+    /** The Tools page tool this step is ("wireshark", "attack_timeline"), or null for a step that only passes field values. */
+    val tool: String? = null,
 ) {
     fun input(name: String): PortSpec? = inputs.firstOrNull { it.name == name }
     fun setting(key: String): SettingSpec? = settings.firstOrNull { it.key == key }
@@ -164,7 +166,7 @@ object WorkflowValidator {
             val spec = registry.spec(s.type)!!
             for (p in spec.inputs) {
                 val n = fed[s.id to p.name] ?: 0
-                if (n == 0) problems += Problem(s.id, p.name, "Nothing feeds this input; \"${spec.title}\" needs ${p.type.wire} here.")
+                if (n == 0 && !p.optional) problems += Problem(s.id, p.name, "Nothing feeds this input; \"${spec.title}\" needs ${p.type.wire} here.")
                 else if (n > 1 && !p.many) problems += Problem(s.id, p.name, "$n edges feed this input; it takes one.")
             }
         }

@@ -22,7 +22,7 @@ import Toybox.Math;
 import Toybox.System;
 import Toybox.WatchUi;
 
-// The Recon page: the LayerWand's detections, newest first, from the
+// The Recon page: the Hunter's detections, newest first, from the
 // ReconMirror (GET_CHANGED). Each row is the detection type, its RSSI and
 // how many times it was seen; the row of the event that raised the pending
 // alert is red. The two lines above the list are the Recon mode and the
@@ -100,19 +100,19 @@ class ReconView extends WatchUi.View {
         var mode = ReconNames.modeText(_link.flags, _link.selected);
         var modeColor = phase == :ready ? AMBER : GREY;
         if (alert) { mode = "ALERT  " + mode; modeColor = RED; }
-        if (phase == :searching || phase == :failed) { mode = "NO LAYERWAND"; }
+        if (phase == :searching || phase == :failed) { mode = "NO HUNTER"; }
         dc.setColor(modeColor, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, s(84), Graphics.FONT_XTINY, mode, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         var linkText = ReconNames.countText(_link.eventCount);
         var linkColor = Graphics.COLOR_WHITE;
-        // Detections were dropped on LayerWand before the watch fetched them
+        // Detections were dropped on Hunter before the watch fetched them
         // (END gap). Shown until Clear succeeds or a new session starts.
         if (_link.mirror.gaps > 0) { linkText += "  GAP"; linkColor = AMBER; }
-        // No SD card log on the LayerWand: its events live only in memory.
+        // No SD card log on the Hunter: its events live only in memory.
         if ((_link.flags & Link.FLAG_NO_SD_LOG) != 0) { linkText += "  NO SD"; linkColor = AMBER; }
-        // An Increment 1 Link-only LayerWand runs no Recon.
-        if (phase == :ready && !_link.reconAvailable) { linkText = "LINK-ONLY LAYERWAND"; linkColor = GREY; }
+        // An Increment 1 Link-only Hunter runs no Recon.
+        if (phase == :ready && !_link.reconAvailable) { linkText = "LINK-ONLY HUNTER"; linkColor = GREY; }
         if (phase == :stale) { linkText = "LINK STALE"; linkColor = AMBER; }
         else if (phase == :reconnecting) { linkText = "RECONNECTING"; linkColor = GREY; }
         else if (phase == :searching) { linkText = "SEARCHING"; linkColor = GREY; }

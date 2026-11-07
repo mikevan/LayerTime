@@ -35,11 +35,22 @@
 //
 // A file is named by code, not by text, so every frame but CARD_BYTES fits 20
 // bytes and a request can only ever name the Hunter's own files:
-//   kind 0 (log):  serial N          -> layerwand_NNNN.log   (eventId 0)
+//   kind 0 (log):  serial N          -> hunter_NNNN.log   (eventId 0)
 //   kind 1 (pcap): serial N, event E -> ev_NNNN/event_EEEEE.pcap
 // No card: RESULT NotReady. No such file, or a bad kind or serial: RESULT
 // InvalidArgument. Wrong length: ERROR BadLength. RESULT carries the op as its
 // commandType. HELLO_ACK capability bit 9 (0x0200): the Node serves its card.
+//
+// Clear Card (Michael, 2026-11-06). Not read only: it erases the card
+// COMPLETELY, every file and folder, so a card full of tracker logs can be
+// cleaned out in the field without a computer.
+//   CARD_CLEAR 0x0D  op reqId                                          2 bytes
+//     -> END (count = files erased, at most 255) once the card is empty and a
+//        fresh hunter_0001.log is open. No card, a card read or another clear
+//        running, or something that would not erase: RESULT NotReady. Wrong
+//        length: ERROR BadLength. LayerScope asks the operator to confirm before
+//        it sends this, and lists the card again afterwards to show the result.
+// HELLO_ACK capability bit 10 (0x0400): the Node clears its card.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -50,21 +61,24 @@ namespace card {
 
 constexpr uint8_t kOpCardList = 0x0B;
 constexpr uint8_t kOpCardRead = 0x0C;
+constexpr uint8_t kOpCardClear = 0x0D;
 constexpr uint8_t kTypeCardEntry = 0x8B;
 constexpr uint8_t kTypeCardBytes = 0x8C;
 constexpr uint8_t kTypeCardDone = 0x8D;
 constexpr size_t kCardListSize = 2;
 constexpr size_t kCardReadSize = 13;
+constexpr size_t kCardClearSize = 2;
 constexpr size_t kCardEntrySize = 13;
 constexpr size_t kCardBytesHeader = 6;
 constexpr size_t kCardDoneSize = 10;
 constexpr uint16_t kCapCardRead = 0x0200;
+constexpr uint16_t kCapCardClear = 0x0400;
 constexpr uint8_t kKindLog = 0;
 constexpr uint8_t kKindPcap = 1;
 constexpr uint16_t kMaxSerial = 9999;
 constexpr size_t kCardNameSize = sizeof("ev_0000/event_4294967295.pcap");
 
-inline bool isCardOp(uint8_t op) { return op == kOpCardList || op == kOpCardRead; }
+inline bool isCardOp(uint8_t op) { return op == kOpCardList || op == kOpCardRead || op == kOpCardClear; }
 
 struct FileId {
     uint8_t kind = kKindLog;
@@ -75,13 +89,14 @@ struct FileId {
 // A valid code: a log with serial 1 to 9999 and eventId 0, or a pcap with
 // serial 1 to 9999 and eventId 1 or more.
 bool validFileId(const FileId &id);
-// "layerwand_0007.log" or "ev_0007/event_00042.pcap". False if invalid or too small.
+// "hunter_0007.log" or "ev_0007/event_00042.pcap". False if invalid or too small.
 bool fileName(const FileId &id, char *out, size_t size);
 // The reverse, strictly: exactly the names the Hunter writes (lower case, no
 // leading '/', 4-digit serial, 5 to 10 digit event id). False for anything else.
 bool fileIdFromName(const char *name, FileId &out);
 
 size_t encodeCardList(uint8_t reqId, uint8_t *out);
+size_t encodeCardClear(uint8_t reqId, uint8_t *out);
 size_t encodeCardRead(uint8_t reqId, const FileId &id, uint32_t offset, uint8_t *out);
 size_t encodeCardEntry(uint8_t reqId, const FileId &id, uint32_t size, uint8_t *out);
 size_t encodeCardBytesHeader(uint8_t reqId, uint32_t offset, uint8_t *out);

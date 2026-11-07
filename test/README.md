@@ -119,11 +119,11 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_settings
 ./tests_settings_commands
 ```
 
-## T-Dongle-C5 (LayerWand)
+## T-Dongle-C5 (Hunter)
 
-The LayerWand's host tests moved with it to `devices/lilygo-layerwand/test/`
+The Hunter's host tests moved with it to `devices/lilygo-hunter/test/`
 in layout step 2 (2026-10-02). The build command is in
-`devices/lilygo-layerwand/README.md`, "Host tests".
+`devices/lilygo-hunter/README.md`, "Host tests".
 
 ## LayerTime Link
 
@@ -177,7 +177,7 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_mea
 `test_link_hunt` covers `src/core/link/LinkHunt`: the HUNT_START, HUNT_STOP and
 GET_HUNT codec, the HUNT_READING frame, HuntTracker's readings (one window per
 poll, the rounded mean, lost after 5 s, saturation), and the answers the
-LayerWand gives. It also proves the Node dispatcher without HUNT answers the
+Hunter gives. It also proves the Node dispatcher without HUNT answers the
 HUNT ops with ERROR UnknownOp. See `claude/hunt_v1_layervixen_plan.md` in the project.
 
 ```
@@ -195,7 +195,7 @@ reach only `src/core` and the C and C++ standard library, and `src/` holds
 nothing but core. Only the Ultra's own files (its `main.cpp` included) reach
 the Ultra's platform code. Added in Phase 0 Step 7; since layout step 4 the
 Ultra's platform code is its own folder instead of `src/platform/twatch_ultra/`.
-The LayerWand and the S3 Plus check their own boundaries in their own test
+The Hunter and the S3 Plus check their own boundaries in their own test
 folders. Run from `test/`, because it reads `../src` and
 `../devices/lilygo-tultra/src`.
 

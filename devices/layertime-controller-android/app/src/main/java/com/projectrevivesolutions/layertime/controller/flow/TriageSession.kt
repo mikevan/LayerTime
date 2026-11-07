@@ -46,6 +46,20 @@ object TriageSession {
         _workflow.value = w
     }
 
+    /**
+     * Makes [w] the workflow TRIAGE runs (the Builder's USE FOR TRIAGE, 2026-11-06). Only an
+     * accepted workflow is taken; returns false and changes nothing otherwise.
+     */
+    fun use(w: Workflow): Boolean {
+        DeauthSteps.register()
+        val problems = WorkflowValidator.validate(w)
+        if (problems.isNotEmpty()) return false
+        _problems.value = problems
+        _workflow.value = w
+        clear()
+        return true
+    }
+
     fun key(e: EventRow) = "${e.sessionId}:${e.eventId}"
 
     /** The imported capture as analytic frames, mapped once per import. */

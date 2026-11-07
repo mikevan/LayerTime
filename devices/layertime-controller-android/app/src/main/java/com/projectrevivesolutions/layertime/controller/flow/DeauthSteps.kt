@@ -34,11 +34,10 @@ object DeauthSteps {
     private fun noDeauths(step: String) = feature(step, "none", Lean.UNKNOWN, "No disconnect frames from this transmitter are in the window.")
 
     fun register() {
-        Engine.register("event_source") { _, _, ctx -> ctx.event }
-        Engine.register("load_frames") { inputs, s, ctx ->
-            val ev = inputs["event"]?.firstOrNull() as? DetectionEvent ?: ctx.event
+        // Detection gathers the frames in its window around the event; every check reads from here.
+        Engine.register("event_source") { _, s, ctx ->
             val half = s.long("window_ms") * 1_000_000L
-            ctx.source.frames().filter { it.timeNanos >= ev.timeNanos - half && it.timeNanos <= ev.timeNanos + half }
+            ctx.source.frames().filter { it.timeNanos >= ctx.event.timeNanos - half && it.timeNanos <= ctx.event.timeNanos + half }
         }
         Engine.register("deauth_target") { inputs, _, ctx -> target(View(frames(inputs), ctx.event)) }
         Engine.register("deauth_rate") { inputs, s, ctx -> rate(View(frames(inputs), ctx.event), s.int("burst_frames"), s.long("burst_ms")) }
@@ -47,7 +46,14 @@ object DeauthSteps {
         Engine.register("signal_match") { inputs, s, ctx -> signal(View(frames(inputs), ctx.event), s.int("tolerance_db")) }
         Engine.register("aftermath") { inputs, s, ctx -> aftermath(View(frames(inputs), ctx.event), s.long("watch_ms")) }
         Engine.register("mgmt_protection") { inputs, _, ctx -> protection(View(frames(inputs), ctx.event)) }
-        Engine.register("deauth_verdict") { inputs, _, _ -> verdict(inputs["features"]?.filterIsInstance<Feature>() ?: emptyList()) }
+        Engine.register("deauth_verdict") { inputs, s, _ ->
+            val features = inputs["features"]?.filterIsInstance<Feature>() ?: emptyList()
+            @Suppress("UNCHECKED_CAST")
+            val frames = (inputs["frames"]?.firstOrNull() as? List<AnalyticFrame>) ?: emptyList()
+            val text = (s["rules"] as? String).orEmpty()
+            val rules = if (text.isBlank()) VerdictRuleSet.deauthDefault() else VerdictRuleSet.parse(text)
+            rules.evaluate(features, frames)
+        }
     }
 
     fun target(v: View): Feature {
@@ -179,35 +185,9 @@ object DeauthSteps {
     }
 
     /**
-     * The deterministic rule. The core five decide; aftermath escalates; a single ordinary
-     * frame is never worrisome. Protection does not lower the call (Michael, 2026-11-04):
-     * a flood against a network that requires management frame protection is still a
-     * LIKELY ATTACK, and the summary says it most likely failed.
+     * The verdict is produced by a rule set now (Michael, 2026-11-06). The shipped deauth
+     * triage is [VerdictRuleSet.deauthDefault], so an operator can read it and copy it. This
+     * wrapper keeps the old call working; callers that have no tile settings get that default.
      */
-    fun verdict(features: List<Feature>): Finding {
-        fun f(step: String) = features.firstOrNull { it.step == step }
-        val core = listOfNotNull(f("target"), f("rate"), f("reason"), f("seq"), f("signal"))
-        val suspicious = core.count { it.lean == Lean.SUSPICIOUS }
-        val couldNotRun = features.filter { it.lean == Lean.UNKNOWN }
-        val rate = f("rate"); val reason = f("reason"); val after = f("after"); val mfp = f("mfp")
-        val followOn = after?.lean == Lean.SUSPICIOUS && (after.value.contains("clone") || after.value.contains("handshake"))
-        val protected = mfp?.value == "required"
-        val singleOrdinary = rate?.value == "1 frame" && reason?.lean == Lean.BENIGN
-        val verdict = when {
-            singleOrdinary -> Verdict.NOT_WORRISOME
-            suspicious >= 3 && followOn -> Verdict.ATTACK_WITH_FOLLOW_ON
-            suspicious >= 3 -> Verdict.LIKELY_ATTACK
-            suspicious >= 1 -> Verdict.WATCH
-            else -> Verdict.NOT_WORRISOME
-        }
-        val summary = when (verdict) {
-            Verdict.NOT_WORRISOME -> if (singleOrdinary) "A single ordinary disconnect; housekeeping." else "Nothing in the disconnects points to an attack."
-            Verdict.WATCH -> "$suspicious of ${core.size} checks lean suspicious; not enough to call an attack. Keep watching this transmitter."
-            Verdict.LIKELY_ATTACK -> "$suspicious of ${core.size} checks lean suspicious: a forged disconnect flood from a second radio." +
-                if (protected) " The network requires management frame protection, so the attack most likely failed." else ""
-            Verdict.ATTACK_WITH_FOLLOW_ON -> "A forged disconnect flood, and then what it was for: ${after!!.reason.removePrefix("In the next ").substringAfter(", ")}"
-        } + if (couldNotRun.isNotEmpty()) " ${couldNotRun.size} check${if (couldNotRun.size == 1) "" else "s"} could not run." else ""
-        val frames = features.flatMap { it.frames }.distinct().sorted()
-        return Finding(verdict, summary, features.filter { it.lean != Lean.UNKNOWN }, couldNotRun, frames)
-    }
+    fun verdict(features: List<Feature>): Finding = VerdictRuleSet.deauthDefault().evaluate(features)
 }

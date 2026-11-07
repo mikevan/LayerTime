@@ -5,7 +5,7 @@ import kotlin.math.roundToInt
 
 /**
  * The pure logic behind the QUICK LOOK card on ATTACK DETAIL: reading the
- * transmitter address the LayerWand reported, what kind of address it is, how
+ * transmitter address the Hunter reported, what kind of address it is, how
  * the signal is trending, and what the wearer should do. No Android types, so
  * it is unit-tested on the JVM (SignalAnalysisTest).
  *
@@ -86,7 +86,7 @@ object SignalAnalysis {
         return Trend(state, latest, strongest, recent.size, change)
     }
 
-    /** Seconds since the LayerWand last heard it: its age at the last report, plus the time since that report. */
+    /** Seconds since the Hunter last heard it: its age at the last report, plus the time since that report. */
     fun lastHeardSeconds(ageSeconds: Int, lastUpdatedMillis: Long, nowMillis: Long): Long =
         ageSeconds + ((nowMillis - lastUpdatedMillis).coerceAtLeast(0) / 1000)
 

@@ -22,7 +22,7 @@ import Toybox.WatchUi;
 
 // A full-screen notice: an amber title and a sentence wrapped to fit the
 // round face, on black. Any of BACK, START, or a tap dismisses it. Used for
-// the LayerWand's no-SD-card warning (Controls.showNoSdCard).
+// the Hunter's no-SD-card warning (Controls.showNoSdCard).
 class NoticeView extends WatchUi.View {
 
     private const AMBER = 0xFFA020;

@@ -25,6 +25,7 @@ data class AnalyticFrame(
     val mfpCapable: Boolean? = null,   // RSN capabilities in a beacon; null when no RSN element
     val mfpRequired: Boolean? = null,
     val eapol: Boolean = false,
+    val eapolMsg: Int? = null,   // EAPOL-Key handshake message number, wlan_rsna_eapol.keydes.msgnr
 ) {
     val isDeauth get() = typeSubtype == DEAUTH
     val isDisassoc get() = typeSubtype == DISASSOC
@@ -67,6 +68,7 @@ data class AnalyticFrame(
                 mfpCapable = bit(first("wlan.rsn.capabilities.mfpc")),
                 mfpRequired = bit(first("wlan.rsn.capabilities.mfpr")),
                 eapol = f.fields.any { it.name == "eapol" },
+                eapolMsg = leadingInt(first("wlan_rsna_eapol.keydes.msgnr")),
             )
         }
 

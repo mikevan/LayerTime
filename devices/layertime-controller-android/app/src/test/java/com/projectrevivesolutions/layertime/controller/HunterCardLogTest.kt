@@ -7,7 +7,7 @@ import org.junit.Test
 
 /** The Hunter's SD card log as LayerScope reads it (2026-11-04). Lines are the firmware's own test lines. */
 class HunterCardLogTest {
-    // devices/lilygo-layerwand/test/test_tdongle_c5_bringup: the expected lines, verbatim.
+    // devices/lilygo-hunter/test/test_tdongle_c5_bringup: the expected lines, verbatim.
     private val log = listOf(
         HunterCardLog.HEADER,
         "7,0,\"boot\",,,,,\"\",\"power-on\",,,,",
@@ -50,13 +50,31 @@ class HunterCardLogTest {
     }
 
     @Test fun namesAndFolders() {
-        assertEquals(7, HunterCardLog.logSerial("layerwand_0007.log"))
-        assertEquals(7, HunterCardLog.logSerial("LAYERWAND_0007.LOG"))
-        assertNull(HunterCardLog.logSerial("layerwand_7.log"))
+        assertEquals(7, HunterCardLog.logSerial("hunter_0007.log"))
+        assertEquals(7, HunterCardLog.logSerial("HUNTER_0007.LOG"))
+        assertNull(HunterCardLog.logSerial("hunter_7.log"))
         assertNull(HunterCardLog.logSerial("notes.txt"))
-        assertEquals("ev_0007", HunterCardLog.evidenceFolder("layerwand_0007.log"))
+        assertEquals("ev_0007", HunterCardLog.evidenceFolder("hunter_0007.log"))
         assertEquals("1 min 21 s after boot", HunterCardLog.sinceBoot(81_000))
         assertEquals("2 h 5 min after boot", HunterCardLog.sinceBoot(7_500_000))
+    }
+
+    @Test fun oldLayerWandLogNamesAreReadAndRenamed() {
+        assertEquals(7, HunterCardLog.logSerial("layerwand_0007.log"))
+        assertEquals("ev_0007", HunterCardLog.evidenceFolder("LAYERWAND_0007.LOG"))
+        assertEquals("hunter_0007.log", HunterCardLog.currentName("layerwand_0007.log"))
+        assertNull(HunterCardLog.currentName("hunter_0007.log"))
+        val dir = java.nio.file.Files.createTempDirectory("card").toFile()
+        try {
+            java.io.File(dir, "layerwand_0001.log").writeText("old one")
+            java.io.File(dir, "layerwand_0002.log").writeText("old two")
+            java.io.File(dir, "hunter_0002.log").writeText("new two") // taken: the old one stays
+            assertEquals(1, HunterCardLog.renameLegacyLogs(dir))
+            assertEquals("old one", java.io.File(dir, "hunter_0001.log").readText())
+            assertEquals("new two", java.io.File(dir, "hunter_0002.log").readText())
+            assertEquals(true, java.io.File(dir, "layerwand_0002.log").exists())
+            assertEquals(0, HunterCardLog.renameLegacyLogs(dir))
+        } finally { dir.deleteRecursively() }
     }
 
     @Test fun aRepeatWithoutItsEventStillShows() {

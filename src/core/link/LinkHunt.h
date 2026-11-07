@@ -57,7 +57,7 @@ constexpr uint16_t kCapHunt = 0x0040;
 constexpr uint8_t kFlagHunting = 0x40;
 
 // The LayerVixen beacon's service, in the LayerTime UUID family. Not the
-// Link service: watches never connect to a Vixen and LayerWands never count
+// Link service: watches never connect to a Vixen and Hunters never count
 // one as a node.
 constexpr char kVixenServiceUuid[] = "8ac60010-a08b-4851-b89f-e6b39081268e";
 

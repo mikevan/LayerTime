@@ -32,7 +32,7 @@ import java.util.ArrayDeque
 import java.util.UUID
 
 /**
- * Android LayerTime Link 0.1 central (the "controller"). Discovers a LayerWand
+ * Android LayerTime Link 0.1 central (the "controller"). Discovers a Hunter
  * by service UUID, connects, enables notifications, completes HELLO, and then
  * pulls detection events with GET_CHANGED whenever the Node's changeSeq moves.
  *
@@ -89,6 +89,21 @@ class LinkClient(private val appContext: Context) {
     private var scanTimeout: Runnable? = null
     private var autoStartTarget: Int? = null
 
+    // HUNTER ACTIONS (2026-11-06): the Hunter chosen on its row, by Bluetooth address.
+    // While set, the scan connects only to that Hunter, and so do reconnects, so a
+    // dropped link comes back to the same Hunter and never to another one in range.
+    // Null: the first Hunter heard (the old Scan & connect).
+    private var targetAddress: String? = null
+    private var targetName: String? = null
+    // The Hunter this client is connecting or connected to.
+    @Volatile var currentAddress: String? = null
+        private set
+    @Volatile var currentName: String? = null
+        private set
+    /** The connected Hunter's address once the handshake is done, else null. */
+    val connectedAddress: String? get() = if (handshakeDone) currentAddress else null
+    private var cardClearSupported = false
+
     // Reconnection: we keep trying to restore the link until stop() is called.
     private var wantConnected = false
     private var reconnectAttempts = 0
@@ -99,7 +114,28 @@ class LinkClient(private val appContext: Context) {
     private var requestTimeout: Runnable? = null
 
     companion object {
+        /** A Clear Card waiting for its Hunter to connect (HUNTER ACTIONS, 2026-11-06). */
+        @Volatile var pendingClearAddress: String? = null
         const val SCAN_TIMEOUT_MS = 20_000L
+        /** How long one step of bringing the link up may take (connect, discovery, each notification setup, HELLO). */
+        const val STEP_TIMEOUT_MS = 4_000L
+        const val CONNECT_TIMEOUT_MS = 10_000L
+        // Service discovery on a first, cold connection can be slow or hang (the 2026-11-06 capture:
+        // it answered only on a later connection). So after a short settle we give each discovery try
+        // its own window and, on a miss, clear the service cache and try again on the SAME connection,
+        // rather than tearing the link down and rescanning (which also resets the Hunter's advertising).
+        const val DISCOVERY_SETTLE_MS = 600L
+        const val DISCOVERY_TRY_MS = 5_000L
+        const val DISCOVERY_RETRY_GAP_MS = 400L
+        const val MAX_DISCOVERY_TRIES = 4
+        // A first, cold GATT connection sometimes never reports CONNECTED to the app even though the
+        // radio link is up (the 2026-11-06 capture: LE connected in 62 ms, no GATT callback after).
+        // The old scan-time probe used to make these throwaway connections and warm the stack. With it
+        // gone, the connect makes its own: if CONNECTED does not arrive in time, close and reopen, a few times.
+        const val CONNECT_AFTER_SCAN_MS = 400L       // let the LE scan fully stop before connecting (avoids no-callback)
+        const val CONNECT_TRY_MS = 6_000L            // a connect that is going to bind does so well under this
+        const val CONNECT_RETRY_GAP_MS = 800L        // let the Hunter resume advertising before the next attempt
+        const val MAX_CONNECT_TRIES = 4              // priming: the first cold connect often will not bind
         const val REQUEST_TIMEOUT_MS = 5_000L
         /** HUNT v1: GET_HUNT four to five times a second (contracts/link_0_2.md). */
         const val HUNT_POLL_MS = 220L
@@ -135,8 +171,23 @@ class LinkClient(private val appContext: Context) {
         return needed.all { ContextCompat.checkSelfPermission(appContext, it) == PackageManager.PERMISSION_GRANTED }
     }
 
-    /** Begin scanning for a LayerWand. [autoStart] optionally issues ReconStart after HELLO. */
-    fun start(autoStart: Int? = null) = handler.post {
+    /** Begin scanning for a Hunter. [autoStart] optionally issues ReconStart after HELLO. */
+    fun start(autoStart: Int? = null, address: String? = null, name: String? = null) = handler.post {
+        if (address != null) {
+            // Already on this Hunter: nothing to do.
+            if (address == currentAddress && (handshakeDone || gatt != null)) return@post
+            // Another Hunter is held: let it go first (one at a time, 2026-11-06).
+            if (gatt != null) {
+                gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
+                gatt = null; control = null; statusCh = null; dataCh = null
+                stopHealthCheck()
+                handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
+                linkQueue.clear(); gattOps.clear(); textTargets.clear(); summaries.clear(); textFrags.clear()
+                requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
+                repo.reset()
+            }
+            targetAddress = address; targetName = name
+        }
         // One tap is one clean attempt (build 69). Before this, a tap during a reconnect wait
         // left the scheduled retry in place; when it fired it closed the connection the tap had
         // just started, so the first tap looked dead and a second was needed. A tap could also
@@ -170,11 +221,12 @@ class LinkClient(private val appContext: Context) {
         repo.setConn(ConnState.SCANNING, "by service UUID ${LinkConstants.SERVICE_UUID}")
         scanner?.startScan(listOf(filter), settings, scanCallback)
         scanTimeout = Runnable {
-            if (gatt == null) { stopScan(); repo.setConn(ConnState.FAILED, "no Hunter found in 20s") }
+            if (gatt == null) { stopScan(); repo.setConn(ConnState.FAILED, targetName?.let { "$it was not found in 20 s" } ?: "no Hunter found in 20s") }
         }.also { handler.postDelayed(it, 20_000) }
     }
 
     fun stop() = handler.post {
+        stepTimeout?.let { handler.removeCallbacks(it) }; stepTimeout = null; stepName = null
         stopHealthCheck()
         repo.setReconnecting(false)
         wantConnected = false
@@ -184,8 +236,9 @@ class LinkClient(private val appContext: Context) {
         stopScan()
         gatt?.let { g -> g.disconnect(); g.close() }
         gatt = null; control = null; statusCh = null; dataCh = null
-        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard()
+        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
         linkQueue.clear(); gattOps.clear(); textTargets.clear(); summaries.clear(); textFrags.clear()
+        currentAddress = null; currentName = null; targetAddress = null; targetName = null
         repo.setConn(ConnState.IDLE)
     }
 
@@ -213,14 +266,55 @@ class LinkClient(private val appContext: Context) {
         repo.setLinkStale(false)
     }
 
+    // ---- connection step deadlines (2026-11-06) ----
+    // The 2026-11-06 capture showed Android Bluetooth requests that never complete: service
+    // discovery hung until the connection closed, and one notification setup never finished, so
+    // the HELLO queued behind it was never sent while the Status kept arriving and the health
+    // check saw nothing wrong. Every step of bringing the link up now has a deadline.
+    private var stepTimeout: Runnable? = null
+    private var stepName: String? = null
+    private var discoveryTries = 0
+    private var connectTries = 0
+    private var connectAddress: String? = null
+
+    private fun armStep(name: String, ms: Long = STEP_TIMEOUT_MS) {
+        stepTimeout?.let { handler.removeCallbacks(it) }
+        stepName = name
+        repo.log(LogEntry.Category.LINK, "step: $name")
+        stepTimeout = Runnable { stepStalled(name, ms) }.also { handler.postDelayed(it, ms) }
+    }
+
+    private fun clearStep(done: String) {
+        stepTimeout?.let { handler.removeCallbacks(it) }; stepTimeout = null
+        stepName?.let { repo.log(LogEntry.Category.LINK, "step done: $it ($done)") }
+        stepName = null
+    }
+
+    /** A step missed its deadline (or Android refused it): drop the connection and reconnect, naming the step. */
+    private fun stepStalled(name: String, ms: Long, detail: String? = null) {
+        stepTimeout?.let { handler.removeCallbacks(it) }; stepTimeout = null; stepName = null
+        val why = detail ?: "no answer in ${ms / 1000} s"
+        repo.log(LogEntry.Category.ERROR, "connection step stalled: $name ($why); dropping and reconnecting")
+        stopHealthCheck()
+        gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
+        gatt = null; control = null; statusCh = null; dataCh = null
+        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
+        linkQueue.clear(); gattOps.clear(); textTargets.clear()
+        requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
+        repo.noteBackgroundDisconnect()
+        repo.setConn(ConnState.DISCONNECTED, "$name stalled")
+        if (wantConnected) { repo.setReconnecting(true); scheduleReconnect("$name stalled") }
+    }
+
     /** No Status within the allowance: drop the connection ourselves and reconnect. */
     private fun linkLost(silenceMs: Long) {
+        stepTimeout?.let { handler.removeCallbacks(it) }; stepTimeout = null; stepName = null
         healthCheck = null
         repo.setLinkStale(false)
         repo.log(LogEntry.Category.ERROR, "link lost: no Status for ${silenceMs / 1000} s; dropping and reconnecting")
         gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
         gatt = null; control = null; statusCh = null; dataCh = null
-        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard()
+        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
         linkQueue.clear(); gattOps.clear(); textTargets.clear()
         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
         repo.noteBackgroundDisconnect()
@@ -240,7 +334,7 @@ class LinkClient(private val appContext: Context) {
         reconnectPending = Runnable {
             gatt?.let { g -> runCatching { g.close() } }
             gatt = null; control = null; statusCh = null; dataCh = null
-            handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard()
+            handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
             linkQueue.clear(); gattOps.clear(); textTargets.clear()
             start(autoStartTarget)
         }.also { handler.postDelayed(it, delay) }
@@ -257,11 +351,13 @@ class LinkClient(private val appContext: Context) {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             val device = result.device ?: return
             if (gatt != null) return // already connecting/connected
+            targetAddress?.let { if (device.address != it) return } // only the Hunter chosen on its row
             stopScan()
             val name = runCatching { device.name }.getOrNull() ?: result.scanRecord?.deviceName
+            currentAddress = device.address; currentName = name ?: targetName ?: "Hunter"
             repo.setDeviceLabel((name ?: "Hunter") + " / " + device.address)
             repo.setConn(ConnState.CONNECTING, "${name ?: "?"} ${device.address} rssi=${result.rssi}")
-            connect(device)
+            handler.postDelayed({ if (gatt == null) connect(device) }, CONNECT_AFTER_SCAN_MS)
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -271,8 +367,71 @@ class LinkClient(private val appContext: Context) {
         }
     }
 
+    /**
+     * Connect, priming the way the old card probe did (Michael, 2026-11-06). On this phone the FIRST GATT
+     * connection to a freshly advertising Hunter often never binds (Android sits in W4_CONN_ST); the probe
+     * used to absorb that with its throwaway connects. So we make a direct connect and, if it does not
+     * report CONNECTED in time, FULLY close and try again, up to [MAX_CONNECT_TRIES]. Every attempt is a
+     * direct connect (autoConnect = false) with a matching close(), so no background GATT client is ever
+     * left registered. The autoConnect in builds 104-106 was what leaked those and wedged the stack; a
+     * direct connect's client is released on close, so this primes without leaking.
+     */
     private fun connect(device: BluetoothDevice) {
-        gatt = device.connectGatt(appContext, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        connectAddress = device.address
+        connectTries = 0
+        attemptConnect()
+    }
+
+    private fun attemptConnect() {
+        val address = connectAddress ?: return
+        val dev = adapter?.getRemoteDevice(address)
+        if (dev == null) { stepStalled("connect", CONNECT_TRY_MS, "Bluetooth adapter is gone"); return }
+        connectTries++
+        stepTimeout?.let { handler.removeCallbacks(it) }
+        stepName = "connect"
+        repo.log(LogEntry.Category.LINK, "step: connect (try $connectTries of $MAX_CONNECT_TRIES)")
+        stepTimeout = Runnable { connectRetryOrStall("no GATT connection in ${CONNECT_TRY_MS / 1000} s") }
+            .also { handler.postDelayed(it, CONNECT_TRY_MS) }
+        gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
+        gatt = dev.connectGatt(appContext, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        if (gatt == null) connectRetryOrStall("Android refused to start the connection")
+    }
+
+    private fun connectRetryOrStall(why: String) {
+        stepTimeout?.let { handler.removeCallbacks(it) }; stepTimeout = null; stepName = null
+        val address = connectAddress ?: return
+        if (connectTries >= MAX_CONNECT_TRIES) { stepStalled("connect", CONNECT_TRY_MS, "$why, after $connectTries tries"); return }
+        repo.log(LogEntry.Category.LINK, "connect: $why; fully closing and priming again")
+        gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
+        gatt = null
+        handler.postDelayed({ if (connectAddress == address) attemptConnect() }, CONNECT_RETRY_GAP_MS)
+    }
+
+    /** Asks for the service list, with its own deadline; a miss retries on the same connection. */
+    private fun beginDiscovery(g: BluetoothGatt) {
+        if (g !== gatt) return
+        discoveryTries++
+        stepTimeout?.let { handler.removeCallbacks(it) }
+        stepName = "service discovery"
+        repo.log(LogEntry.Category.LINK, "step: service discovery (try $discoveryTries of $MAX_DISCOVERY_TRIES)")
+        stepTimeout = Runnable { discoveryRetryOrStall(g, "no answer in ${DISCOVERY_TRY_MS / 1000} s") }
+            .also { handler.postDelayed(it, DISCOVERY_TRY_MS) }
+        if (!g.discoverServices()) discoveryRetryOrStall(g, "Android refused discoverServices")
+    }
+
+    /** Discovery missed or refused: clear the service cache and try again, or give up after the last try. */
+    private fun discoveryRetryOrStall(g: BluetoothGatt, why: String) {
+        stepTimeout?.let { handler.removeCallbacks(it) }; stepTimeout = null; stepName = null
+        if (g !== gatt) return
+        if (discoveryTries >= MAX_DISCOVERY_TRIES) { stepStalled("service discovery", DISCOVERY_TRY_MS, "$why, after $discoveryTries tries"); return }
+        repo.log(LogEntry.Category.ERROR, "service discovery: $why; clearing the service cache and trying again on the same connection")
+        refreshGatt(g)
+        handler.postDelayed({ if (g === gatt) beginDiscovery(g) }, DISCOVERY_RETRY_GAP_MS)
+    }
+
+    /** Clears Android's cached GATT service list for this connection (hidden BluetoothGatt.refresh()). */
+    private fun refreshGatt(g: BluetoothGatt) {
+        runCatching { g.javaClass.getMethod("refresh").invoke(g) }
     }
 
     // ---- GATT callback ----
@@ -280,20 +439,28 @@ class LinkClient(private val appContext: Context) {
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             handler.post {
+                // A connection LayerScope already dropped (a stalled step) can still report late; ignore it.
+                if (g !== gatt) { repo.log(LogEntry.Category.LINK, "ignored a late state change ($newState, status $status) from a dropped connection"); return@post }
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
                         repo.setConn(ConnState.DISCOVERING, "gattStatus=$status")
-                        g.discoverServices()
-                        startHealthCheck()
+                        clearStep("connected, status $status")
+                        discoveryTries = 0
+                        // A short settle before discovery: calling discoverServices() straight from this
+                        // callback is the classic cause of onServicesDiscovered never firing on a cold
+                        // connection. The health check starts after the handshake (bring-up has its own
+                        // deadlines), so a slow discovery cannot trip a false link-lost.
+                        handler.postDelayed({ if (g === gatt) beginDiscovery(g) }, DISCOVERY_SETTLE_MS)
                     }
                     BluetoothProfile.STATE_DISCONNECTED -> {
+                        stepTimeout?.let { handler.removeCallbacks(it) }; stepTimeout = null; stepName = null
                         stopHealthCheck()
                         // A measurement in progress ends with the connection, and the MTU resets.
                         mtuRequested = false
                         if (pingBurstLeft > 0) { pingBurstLeft = 0; LinkMeasure.addLine("PING burst stopped: the link dropped.") }
                         bulkRun?.let { reportBulk(it, null, "the link dropped.") }
                         LinkMeasure.setMtu(23)
-                        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard()
+                        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
                         huntPollOutstanding = false
                         if (huntWanted) HuntSession.setProblem("The link to the Hunter dropped. Reconnecting.")
                         linkQueue.clear(); gattOps.clear(); textTargets.clear()
@@ -311,9 +478,11 @@ class LinkClient(private val appContext: Context) {
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
             handler.post {
+                if (g !== gatt) { repo.log(LogEntry.Category.LINK, "ignored a late service list from a dropped connection"); return@post }
                 if (status != BluetoothGatt.GATT_SUCCESS) {
-                    repo.setConn(ConnState.FAILED, "service discovery status=$status"); return@post
+                    discoveryRetryOrStall(g, "Android reported status $status"); return@post
                 }
+                clearStep("${g.services.size} services")
                 val svc = g.getService(UUID.fromString(LinkConstants.SERVICE_UUID))
                 if (svc == null) { repo.setConn(ConnState.FAILED, "LayerTime service not present"); return@post }
                 control = svc.getCharacteristic(UUID.fromString(LinkConstants.CONTROL_UUID))
@@ -326,10 +495,13 @@ class LinkClient(private val appContext: Context) {
                 // Enable notifications on Status then Data, then HELLO.
                 enableNotify(statusCh!!)
                 enableNotify(dataCh!!)
-                enqueueGatt { sendControl(nextReqId().let { id ->
-                    pending = Pending(id, LinkConstants.Op.HELLO)
-                    LinkCodec.hello(id)
-                }) }
+                enqueueGatt {
+                    armStep("handshake (HELLO)")
+                    sendControl(nextReqId().let { id ->
+                        pending = Pending(id, LinkConstants.Op.HELLO)
+                        LinkCodec.hello(id)
+                    })
+                }
             }
         }
 
@@ -344,7 +516,13 @@ class LinkClient(private val appContext: Context) {
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
-            handler.post { gattOpComplete() }
+            handler.post {
+                if (g !== gatt) return@post
+                val which = shortUuid(d.characteristic?.uuid)
+                if (status != BluetoothGatt.GATT_SUCCESS) { stepStalled("notification setup $which", STEP_TIMEOUT_MS, "Android reported status $status"); return@post }
+                clearStep("status $status")
+                gattOpComplete()
+            }
         }
 
         // Only the LINK MEASURE panel asks for a larger MTU (measureRequestMtu).
@@ -354,7 +532,7 @@ class LinkClient(private val appContext: Context) {
                 LinkMeasure.addLine(if (status == BluetoothGatt.GATT_SUCCESS) "MTU is now $mtu (asked for ${LinkMeasure.MTU_REQUEST})."
                     else "MTU request failed, status $status. MTU stays $mtu.")
                 repo.log(LogEntry.Category.LINK, "MTU changed to $mtu status=$status")
-                // Only complete the GATT op we started; a change the LayerWand
+                // Only complete the GATT op we started; a change the Hunter
                 // started must not release another op still in flight.
                 if (mtuRequested) { mtuRequested = false; gattOpComplete() }
             }
@@ -362,6 +540,7 @@ class LinkClient(private val appContext: Context) {
 
         override fun onCharacteristicWrite(g: BluetoothGatt, ch: BluetoothGattCharacteristic, status: Int) {
             handler.post {
+                if (g !== gatt) return@post
                 if (status != BluetoothGatt.GATT_SUCCESS) {
                     repo.log(LogEntry.Category.ERROR, "Control write failed status=$status; freeing link gate")
                     linkBusy = false; pending = null
@@ -385,16 +564,26 @@ class LinkClient(private val appContext: Context) {
 
     private fun enableNotify(ch: BluetoothGattCharacteristic) = enqueueGatt {
         val g = gatt ?: return@enqueueGatt gattOpComplete()
+        val which = shortUuid(ch.uuid)
+        armStep("notification setup $which")
         g.setCharacteristicNotification(ch, true)
         val cccd = ch.getDescriptor(UUID.fromString(LinkConstants.CCCD_UUID))
-        if (cccd == null) { repo.log(LogEntry.Category.ERROR, "no CCCD on ${ch.uuid}"); return@enqueueGatt gattOpComplete() }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            g.writeDescriptor(cccd, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+        if (cccd == null) { repo.log(LogEntry.Category.ERROR, "no CCCD on ${ch.uuid}"); clearStep("no CCCD"); return@enqueueGatt gattOpComplete() }
+        // Android's answer to the request itself: anything but success means no callback will come.
+        val accepted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val code = g.writeDescriptor(cccd, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+            repo.log(LogEntry.Category.LINK, "writeDescriptor $which returned $code")
+            code == android.bluetooth.BluetoothStatusCodes.SUCCESS
         } else {
             @Suppress("DEPRECATION") cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            @Suppress("DEPRECATION") g.writeDescriptor(cccd)
+            @Suppress("DEPRECATION") val ok = g.writeDescriptor(cccd)
+            repo.log(LogEntry.Category.LINK, "writeDescriptor $which returned $ok")
+            ok
         }
+        if (!accepted) stepStalled("notification setup $which", STEP_TIMEOUT_MS, "Android refused the request")
     }
+
+    private fun shortUuid(u: UUID?): String = u?.toString()?.substring(0, 8) ?: "?"
 
     private fun sendControl(frame: ByteArray) {
         val g = gatt; val c = control
@@ -448,8 +637,10 @@ class LinkClient(private val appContext: Context) {
                 if (kind == LinkHunt.OP_GET_HUNT) huntPollOutstanding = false
                 if (LinkEvidence.isEvidenceOp(kind) && evidence != null) failEvidence("The Hunter stopped sending frames (no reply for ${REQUEST_TIMEOUT_MS / 1000} s).")
                 if (LinkCard.isCardOp(kind) && card != null) onCardStall()
+                if (kind == LinkCard.OP_CARD_CLEAR && clearing) { clearing = false; CardClear.set(CardClear.State.Failed(CardClear.TIMED_OUT)) }
+                if (kind == LinkCard.OP_CARD_LIST && clearCheck != null) { clearCheck = null; CardClear.set(CardClear.State.Failed(CardClear.NO_LIST)) }
             }
-        }.also { handler.postDelayed(it, REQUEST_TIMEOUT_MS) }
+        }.also { handler.postDelayed(it, if (kind == LinkCard.OP_CARD_CLEAR) CardClear.CLEAR_TIMEOUT_MS else REQUEST_TIMEOUT_MS) }
     }
 
     private fun finishLink() {
@@ -542,6 +733,7 @@ class LinkClient(private val appContext: Context) {
             repo.log(LogEntry.Category.ERROR, "bad Status length ${value.size}"); return
         }
         repo.onStatus(s)
+        lastNoSdLog = s.noSdLog
         lastStatusAt = android.os.SystemClock.elapsedRealtime()
         lastSchedule = s.schedule; lastNextReportS = s.nextReportS
         repo.setLinkStale(false)
@@ -556,12 +748,14 @@ class LinkClient(private val appContext: Context) {
         if (LinkCard.isCardFrame(value)) { onCardFrame(value); return }
         when (val f = LinkCodec.decodeFrame(value)) {
             is Frame.HelloAck -> {
+                clearStep("HELLO_ACK, server ${f.serverMajor}.${f.serverMinor}")
                 repo.onServerInfo(f)
                 if (f.linkStatus == LinkConstants.LinkStatus.VERSION_MISMATCH) {
                     repo.setConn(ConnState.FAILED,
                         "version mismatch: server ${f.serverMajor}.${f.serverMinor}, client ${LinkConstants.CLIENT_MAJOR}.${LinkConstants.CLIENT_MINOR}")
                 } else {
                     handshakeDone = true
+                    startHealthCheck()
                     repo.setReconnecting(false)
                     reconnectAttempts = 0 // link restored; reset backoff
                     repo.setConn(ConnState.CONNECTED, "link up, server ${f.serverMajor}.${f.serverMinor}")
@@ -577,6 +771,12 @@ class LinkClient(private val appContext: Context) {
                     // 56 KB/s at MTU 247 against 15 KB/s at the default 23).
                     rawCapture = f.capabilities and LinkEvidence.CAP_RAW_CAPTURE != 0
                     cardSupported = f.capabilities and LinkCard.CAP_CARD_READ != 0
+                    lastNoSdLog = null // this Hunter's own Status says whether it has a card
+                    cardClearSupported = f.capabilities and LinkCard.CAP_CARD_CLEAR != 0
+                    if (pendingClearAddress != null && pendingClearAddress == currentAddress) {
+                        pendingClearAddress = null
+                        handler.post { sendCardClear() }
+                    }
                     if (rawCapture && LinkMeasure.state.value.mtu < LinkMeasure.MTU_REQUEST) requestLargeMtu()
                     autoStartTarget?.let { reconStart(it) }
                     // A hunt that was running when the link dropped picks up again.
@@ -596,6 +796,14 @@ class LinkClient(private val appContext: Context) {
             is Frame.Result -> {
                 if (f.commandType == LinkHunt.OP_HUNT_START || f.commandType == LinkHunt.OP_HUNT_STOP) {
                     onHuntResult(f.commandType, f.commandResult)
+                } else if (f.commandType == LinkCard.OP_CARD_CLEAR) {
+                    repo.log(LogEntry.Category.ERROR, "RESULT CARD_CLEAR => ${LinkConstants.CommandResult.name(f.commandResult)}; listing the card to see what is left")
+                    // The trailing finishLink() below frees the gate; the list request is posted, so it goes after.
+                    if (clearing) { clearing = false; verifyClear(0, complete = false) }
+                } else if (f.commandType == LinkCard.OP_CARD_LIST && clearCheck != null) {
+                    clearCheck = null
+                    CardClear.set(CardClear.State.Failed(if (f.commandResult == LinkConstants.CommandResult.NOT_READY)
+                        "${currentName ?: "The Hunter"} has no SD card open, so there is nothing to clear." else CardClear.NO_LIST))
                 } else if (LinkCard.isCardOp(f.commandType) && card != null) {
                     failCard(when (f.commandResult) {
                         LinkConstants.CommandResult.NOT_READY -> "The Hunter has no SD card log open, or it is already sending a file. Try again in a moment."
@@ -613,6 +821,13 @@ class LinkClient(private val appContext: Context) {
                     repo.setEvidenceHoldApplied(if (ok) sentEvidenceHold else null)
                     repo.log(if (ok) LogEntry.Category.COMMAND else LogEntry.Category.ERROR,
                         "RESULT SetEvidenceHold ${sentEvidenceHold ?: 0}s => ${LinkConstants.CommandResult.name(f.commandResult)}")
+                } else if (f.commandType == LinkConstants.CommandType.RECON_CLEAR_EVENTS) {
+                    // Clear means the same on both screens (2026-11-06): only after the
+                    // Hunter says it cleared, so a refused Clear leaves the list as it is.
+                    val ok = f.commandResult == LinkConstants.CommandResult.OK
+                    if (ok) repo.clearEventList()
+                    repo.log(if (ok) LogEntry.Category.COMMAND else LogEntry.Category.ERROR,
+                        "RESULT ReconClearEvents => ${LinkConstants.CommandResult.name(f.commandResult)}")
                 } else if (f.commandType == LinkConstants.CommandType.SET_SENSORS) {
                     val ok = f.commandResult == LinkConstants.CommandResult.OK
                     repo.setSensorsApplied(if (ok) sentSensorMask else null)
@@ -632,7 +847,18 @@ class LinkClient(private val appContext: Context) {
                 if (newOne && f.hasDetail) getTextQueued(f.eventId, LinkConstants.TextField.DETAIL)
             }
             is Frame.Text -> textFrags.add(f)
-            is Frame.End -> if (pending?.kind?.let { LinkEvidence.isEvidenceOp(it) } == true) {
+            is Frame.End -> if (pending?.kind == LinkCard.OP_CARD_CLEAR) {
+                finishLink()
+                clearing = false
+                repo.log(LogEntry.Category.COMMAND, "CARD_CLEAR done: ${f.count} files erased; listing the card to check")
+                verifyClear(f.count, complete = true)
+            } else if (pending?.kind == LinkCard.OP_CARD_LIST && clearCheck != null) {
+                finishLink()
+                val listed = clearCheck!!.map { it.id.name }.sorted()
+                clearCheck = null
+                repo.log(LogEntry.Category.COMMAND, "CARD_LIST after clear: ${listed.size} files${if (listed.isNotEmpty()) " (" + listed.joinToString() + ")" else ""}")
+                CardClear.set(CardClear.State.Done(currentName ?: "the Hunter", clearErased, listed, clearComplete))
+            } else if (pending?.kind?.let { LinkEvidence.isEvidenceOp(it) } == true) {
                 val kind = pending!!.kind
                 finishLink()
                 onEvidenceEnd(kind)
@@ -655,6 +881,12 @@ class LinkClient(private val appContext: Context) {
             is Frame.Error -> {
                 repo.log(LogEntry.Category.ERROR, "ERROR linkStatus=${LinkConstants.LinkStatus.name(f.linkStatus)} reqId=${f.reqId}")
                 val wasBulk = pending?.kind == LinkMeasure.OP_BULK
+                if (pending?.kind == LinkCard.OP_CARD_CLEAR && clearing) {
+                    clearing = false
+                    CardClear.set(CardClear.State.Failed(if (f.linkStatus == LinkConstants.LinkStatus.UNKNOWN_OP) CardClear.OLD_FIRMWARE
+                        else "The Hunter refused Clear Card (${LinkConstants.LinkStatus.name(f.linkStatus)})."))
+                }
+                if (pending?.kind == LinkCard.OP_CARD_LIST && clearCheck != null) { clearCheck = null; CardClear.set(CardClear.State.Failed(CardClear.NO_LIST)) }
                 if (pending?.kind?.let { LinkCard.isCardOp(it) } == true && card != null) failCard(
                     if (f.linkStatus == LinkConstants.LinkStatus.UNKNOWN_OP) "This Hunter's firmware cannot send its card. Flash firmware build 93 or later."
                     else "The Hunter refused the card request (${LinkConstants.LinkStatus.name(f.linkStatus)}).")
@@ -764,6 +996,9 @@ class LinkClient(private val appContext: Context) {
     private var cardSupported = false
     /** Whether the connected Hunter serves its card (HELLO_ACK capability bit 9). */
     val servesCard: Boolean get() = handshakeDone && cardSupported
+    /** The latest Status's no-SD-log flag (2026-11-05); null until a Status arrives. */
+    @Volatile var lastNoSdLog: Boolean? = null
+        private set
 
     private class CardRun(val dest: java.io.File) {
         val listed = ArrayList<LinkCard.Entry>()
@@ -780,7 +1015,7 @@ class LinkClient(private val appContext: Context) {
 
     /**
      * Pulls every card file that is new or has changed size into [dest] (kept as
-     * layerwand_NNNN.log and ev_NNNN/event_EEEEE.pcap), checking each against the
+     * hunter_NNNN.log and ev_NNNN/event_EEEEE.pcap), checking each against the
      * Hunter's CRC-32. CardPull reports progress. Read only on the Hunter.
      */
     fun pullCard(dest: java.io.File) = handler.post {
@@ -789,6 +1024,8 @@ class LinkClient(private val appContext: Context) {
         if (!cardSupported) { CardPull.set(CardPull.State.Failed("This Hunter's firmware cannot send its card. Flash firmware build 93 or later.")); return@post }
         if (evidence != null) { CardPull.set(CardPull.State.Failed("A frame pull is running. Try again when it finishes.")); return@post }
         card = CardRun(dest.apply { mkdirs() })
+        val renamed = com.projectrevivesolutions.layertime.controller.card.HunterCardLog.renameLegacyLogs(dest)
+        if (renamed > 0) repo.log(LogEntry.Category.CONNECTION, "renamed $renamed pulled layerwand_NNNN.log files to hunter_NNNN.log")
         CardPull.set(CardPull.State.Listing())
         if (rawCapture && LinkMeasure.state.value.mtu < LinkMeasure.MTU_REQUEST) requestLargeMtu()
         val id = nextReqId(); submit(LinkCard.OP_CARD_LIST, LinkCard.cardList(id))
@@ -796,6 +1033,11 @@ class LinkClient(private val appContext: Context) {
     }
 
     private fun onCardFrame(value: ByteArray) {
+        clearCheck?.let { list ->
+            if ((value[0].toInt() and 0xFF) == LinkCard.TYPE_CARD_ENTRY) LinkCard.decodeEntry(value)?.takeIf { it.id.valid }?.let { list += it }
+            pending?.let { armRequestTimeout(it.reqId, it.kind) }
+            return
+        }
         val r = card ?: return
         when (value[0].toInt() and 0xFF) {
             LinkCard.TYPE_CARD_ENTRY -> LinkCard.decodeEntry(value)?.takeIf { it.id.valid }?.let { r.listed += it }
@@ -868,6 +1110,51 @@ class LinkClient(private val appContext: Context) {
         failCard("The Hunter stopped sending (no reply for ${REQUEST_TIMEOUT_MS / 1000} s).")
     }
 
+    // ---- Clear Card (2026-11-06) ----
+
+    private var clearing = false
+    // After a clear: the card list being collected, and what the clear reported.
+    private var clearCheck: ArrayList<LinkCard.Entry>? = null
+    private var clearErased = 0
+    private var clearComplete = true
+
+    /** Lists the card again after a clear, so the result shown comes from the card itself. */
+    private fun verifyClear(erased: Int, complete: Boolean) {
+        clearErased = erased; clearComplete = complete
+        clearCheck = ArrayList()
+        CardClear.set(CardClear.State.Verifying(currentName ?: "the Hunter"))
+        val id = nextReqId(); submit(LinkCard.OP_CARD_LIST, LinkCard.cardList(id))
+    }
+
+    /**
+     * Clears the card of the Hunter at [address], after the operator confirmed. If this
+     * client is connected to it, the request goes now; otherwise the caller connects to it
+     * (LinkForegroundService.start with the address) and the request goes after HELLO.
+     */
+    fun clearCard(address: String) {
+        handler.post {
+            if (connectedAddress == address) sendCardClear()
+            else pendingClearAddress = address
+        }
+    }
+
+    private fun sendCardClear() {
+        val name = currentName ?: "the Hunter"
+        when {
+            !handshakeDone -> { CardClear.set(CardClear.State.Failed("$name is not connected.")); return }
+            !cardClearSupported -> { CardClear.set(CardClear.State.Failed(CardClear.OLD_FIRMWARE)); return }
+            card != null -> { CardClear.set(CardClear.State.Failed(CardClear.PULL_RUNNING)); return }
+        }
+        clearing = true
+        CardClear.set(CardClear.State.Clearing(name))
+        val id = nextReqId(); submit(LinkCard.OP_CARD_CLEAR, LinkCard.cardClear(id))
+        repo.log(LogEntry.Category.COMMAND, "CARD_CLEAR #$id to $name")
+    }
+
+    private fun dropClear() {
+        if (clearing || clearCheck != null) { clearing = false; clearCheck = null; CardClear.set(CardClear.State.Failed(CardClear.DROPPED)) }
+    }
+
     private fun dropCard() { if (card != null) failCard("The connection dropped during the card pull. Pull again to continue; finished files are kept.") }
 
     private fun failCard(message: String) {
@@ -898,7 +1185,7 @@ class LinkClient(private val appContext: Context) {
     }
     private var bulkRun: BulkRun? = null
 
-    /** Ask the LayerWand for a larger ATT MTU. Affects this connection until it drops. */
+    /** Ask the Hunter for a larger ATT MTU. Affects this connection until it drops. */
     fun measureRequestMtu() = handler.post {
         if (!handshakeDone) { LinkMeasure.addLine("MTU request: not connected."); return@post }
         LinkMeasure.setRunning("Requesting MTU ${LinkMeasure.MTU_REQUEST}.")
@@ -931,7 +1218,7 @@ class LinkClient(private val appContext: Context) {
         repo.log(LogEntry.Category.LINK, "MEASURE ping burst done: ${LinkMeasure.state.value.lines.lastOrNull()}")
     }
 
-    /** BULK: the LayerWand sends count frames of size bytes (capped at MTU minus 3), then BULK_DONE. */
+    /** BULK: the Hunter sends count frames of size bytes (capped at MTU minus 3), then BULK_DONE. */
     fun measureBulk(count: Int, size: Int) = handler.post {
         if (!handshakeDone) { LinkMeasure.addLine("BULK: not connected."); return@post }
         if (pingBurstLeft > 0 || bulkRun != null) return@post

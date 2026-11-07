@@ -57,7 +57,7 @@ module HomeHit {
 // The LayerTime home screen, to Michael's mockup of 2026-09-30: the watch
 // battery as an amber segmented arc with the icon and percentage beneath,
 // the LAYERTIME title, the owl with a GPS satellite icon to its left and a
-// LayerWand antenna icon to its right, the clock stacked (hours ivory over
+// Hunter antenna icon to its right, the clock stacked (hours ivory over
 // minutes amber), a TEMP complication left and the next solar event right,
 // MAPPING and MESH buttons, the amber Recon entry (mode and detection
 // count), and the date.
@@ -79,7 +79,7 @@ module HomeHit {
 // is a percentage; the two complication rings are frames. Weather and GPS
 // come through Env, so the preview build can show every state.
 //
-// The Recon entry says what the link is doing: NO LAYERWAND / SEARCHING
+// The Recon entry says what the link is doing: NO HUNTER / SEARCHING
 // before the first connection, RECONNECTING (grey, last known count) after
 // a loss, LINK STALE (amber, count grey) when connected but Status is more
 // than 3 s old, and the Recon mode and count when current.
@@ -201,7 +201,7 @@ class HomeView extends WatchUi.View {
         dc.setPenWidth(1);
     }
 
-    // --- Owl (96..186) with the GPS satellite (left) and LayerWand antenna
+    // --- Owl (96..186) with the GPS satellite (left) and Hunter antenna
     // (right) beside its head.
 
     private function drawOwlAndIcons(dc as Dc, cx as Number) as Void {
@@ -361,7 +361,7 @@ class HomeView extends WatchUi.View {
 
     private function drawRecon(dc as Dc, cx as Number) as Void {
         var phase = _link.phase();
-        var mode = "NO LAYERWAND";
+        var mode = "NO HUNTER";
         var color = GREY;
         var count = phase == :failed ? "LINK FAILED" : "SEARCHING";
         var countColor = GREY;
@@ -441,13 +441,13 @@ class HomeView extends WatchUi.View {
         }
     }
 
-    // A new LayerWand session is announced once as a native toast, not on
+    // A new Hunter session is announced once as a native toast, not on
     // the face, and then acknowledged. The Recon page keeps the session id.
     private function noticeNewSession() as Void {
         if (!_link.newSession) { return; }
         _link.acknowledgeNewSession();
         if (WatchUi has :showToast) {
-            WatchUi.showToast("New LayerWand session", null);
+            WatchUi.showToast("New Hunter session", null);
         }
     }
 }

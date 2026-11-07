@@ -25,7 +25,7 @@ import Toybox.WatchUi;
 // The watch's own navigation data for the home screen: GPS fix quality,
 // altitude, and distance travelled since the app started. This is the
 // Garmin's domain under the LayerTime separation of duties (the watch owns
-// GPS, position and navigation; LayerWand owns RF). Travel is the sum of
+// GPS, position and navigation; Hunter owns RF). Travel is the sum of
 // straight-line legs between usable fixes, in metres; it is not a Garmin
 // activity and is not stored.
 class NavTracker {

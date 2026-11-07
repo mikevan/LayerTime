@@ -17,10 +17,13 @@ data class FlowLayout(val nodes: List<NodeBox>, val width: Float, val height: Fl
     fun hit(px: Float, py: Float) = nodes.firstOrNull { it.contains(px, py) }
 
     companion object {
-        const val NODE_W = 168f
-        const val NODE_H = 60f
-        const val COL_GAP = 56f
-        const val ROW_GAP = 22f
+        // A block is a tile: the step's icon on top, its name below (Michael, 2026-11-06).
+        const val NODE_W = 128f
+        const val NODE_H = 96f
+        const val COL_GAP = 96f
+        const val ROW_GAP = 14f
+        /** Where the ports sit: level with the icon's center. */
+        const val PORT_Y = 24f
 
         fun of(w: Workflow): FlowLayout {
             val order = WorkflowValidator.order(w) ?: w.steps.map { it.id }

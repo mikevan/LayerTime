@@ -54,11 +54,11 @@ class FrameFabricator {
         add(atNanos, AnalyticFrame.DATA, da = to, sa = from, bssid = bssid, seq = seq, body = ByteArray(16), channel = channel, rssi = rssi)
 
     /** An EAPOL-Key frame (a password handshake message). */
-    fun eapol(atNanos: Long, from: String, to: String, bssid: String, seq: Int, channel: Int, rssi: Int): FrameFabricator {
+    fun eapol(atNanos: Long, from: String, to: String, bssid: String, seq: Int, channel: Int, rssi: Int, msg: Int = 1): FrameFabricator {
         val llc = byteArrayOf(0xAA.toByte(), 0xAA.toByte(), 0x03, 0, 0, 0, 0x88.toByte(), 0x8E.toByte())
         val eapol = byteArrayOf(0x02, 0x03, 0x00, 0x5F) + ByteArray(95) // version 2, EAPOL-Key, length 95
         return add(atNanos, AnalyticFrame.DATA, da = to, sa = from, bssid = bssid, seq = seq, body = llc + eapol, channel = channel, rssi = rssi,
-            extra = { it.copy(eapol = true) })
+            extra = { it.copy(eapol = true, eapolMsg = msg) })
     }
 
     private fun add(atNanos: Long, typeSubtype: Int, da: String, sa: String, bssid: String, seq: Int, body: ByteArray,

@@ -38,11 +38,11 @@
 //     radios idle for kEarlyWarningRestMs after the scan has finished, and
 //     repeat. Starting a manual session pauses it; stopManual() resumes it.
 //
-// The LayerWand schedule (Michael, 2026-10-02): the same four schedules,
+// The Hunter schedule (Michael, 2026-10-02): the same four schedules,
 // with two differences a platform switches on.
 //
 //   * A channel plan. The reference plan is 2.4 GHz channels 1 to 11. A
-//     platform may supply its own: the LayerWand's is every 5 GHz channel
+//     platform may supply its own: the Hunter's is every 5 GHz channel
 //     its radio accepts, lowest to highest, then every 2.4 GHz channel,
 //     lowest to highest.
 //   * SweepMode::FullPass. A pass is every channel in the plan once, in
@@ -51,7 +51,7 @@
 //     full pass, then one BLE scan, then rests. Wi-Fi-only and BLE-only
 //     manual sessions behave as in Timed mode. SweepMode::Timed is the
 //     reference, unchanged, and the default.
-//   * A random source (optional). Two LayerWands on the same schedule stay
+//   * A random source (optional). Two Hunters on the same schedule stay
 //     locked in step, and with a bad offset one's BLE scan keeps landing
 //     while the other is busy on Wi-Fi, so one never hears the other
 //     (seen on hardware 2026-10-02; moving one wand's boot by 30 s cured

@@ -16,7 +16,7 @@ does not use GitHub Actions or any other hosted CI; this script is the gate.
   |---|---|
   | `twatch_ultra` | `devices/lilygo-tultra` |
   | `twatch_s3plus` | `devices/lilygo-s3plus` |
-  | `tdongle_c5_wand` | `devices/lilygo-layerwand` |
+  | `tdongle_c5_hunter` | `devices/lilygo-hunter` |
 
   Any other name stops the run before anything is built. A required firmware
   target that cannot run (no `pio` on PATH) is reported NOT RUN and fails the

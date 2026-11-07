@@ -24,7 +24,7 @@ import com.projectrevivesolutions.layertime.controller.ui.MainActivity
  * Medium or High alerts then. [AlertSelector] decides; what it has alerted is
  * remembered across restarts so a reconnect or an app restart does not alert the
  * same detections again. More than three new at once collapse into one summary
- * alert. While the LayerWand reports sleep mode, alerts are silent, as on
+ * alert. While the Hunter reports sleep mode, alerts are silent, as on
  * the Garmin face.
  *
  * Low-confidence detections never raise an alert. LayerTime-Sensors defines Low as

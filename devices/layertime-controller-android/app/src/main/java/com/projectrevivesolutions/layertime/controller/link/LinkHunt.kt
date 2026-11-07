@@ -3,7 +3,7 @@ package com.projectrevivesolutions.layertime.controller.link
 /**
  * HUNT v1, the watch side (claude/hunt_v1_layervixen_plan.md): the HUNT_START,
  * HUNT_STOP and GET_HUNT requests and the HUNT_READING frame. The byte layout
- * matches src/core/link/LinkHunt.h on the LayerWand, and LinkHuntTest holds it to
+ * matches src/core/link/LinkHunt.h on the Hunter, and LinkHuntTest holds it to
  * the same bytes as test/test_link_hunt.
  *
  * v1 hunts one target: any LayerVixen (target kind 0xF0).

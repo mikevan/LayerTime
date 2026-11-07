@@ -1,9 +1,7 @@
 package com.projectrevivesolutions.layertime.controller.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +11,8 @@ import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Laptop
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.LinkOff
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,17 +23,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.projectrevivesolutions.layertime.controller.link.ConnNotice
+import com.projectrevivesolutions.layertime.controller.link.HunterRoster
 
 private val OpsInk=Color(0xFFE5EDF1)
 private val OpsMuted=Color(0xFF9FB0BB)
@@ -61,44 +59,54 @@ fun OpsLinkStrip(online:Boolean,connecting:Boolean,stale:Boolean,events:Int) {
     }
 }
 
+/**
+ * HUNTER ACTIONS (Michael, 2026-11-06), the phone OPS page. SCAN at the top finds every
+ * Hunter in range and checks each for an SD card; each Hunter gets a row with its name,
+ * Connect, Disconnect, and, only for a Hunter with an SD card, Clear Card. One Hunter is
+ * connected at a time; Connect on another row lets the current one go first.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun OpsConnectionPanel(
-    online:Boolean, connecting:Boolean, canDisconnect:Boolean, device:String,
-    metadata:String?, notice:ConnNotice.Notice?, swipeDisconnects:Boolean,
-    onSwipeChange:(Boolean)->Unit,onConnect:()->Unit,onDisconnect:()->Unit,
+fun OpsHunterActionsPanel(
+    hunters:List<HunterRoster.Hunter>, scanning:Boolean, scanSentence:String?,
+    currentAddress:String?, online:Boolean, connecting:Boolean,
+    metadata:String?, notice:ConnNotice.Notice?, clearSentence:String?, clearFailed:Boolean, clearBusy:Boolean,
+    onScan:()->Unit, onConnect:(HunterRoster.Hunter)->Unit, onDisconnect:()->Unit, onClearCard:(HunterRoster.Hunter)->Unit,
 ) {
     OpsConnectionHousing(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().padding(start=18.dp,end=18.dp,top=15.dp,bottom=if(metadata!=null)23.dp else 15.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+        Column(Modifier.fillMaxWidth().padding(start=18.dp,end=18.dp,top=15.dp,bottom=if(metadata!=null)23.dp else 15.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.size(6.dp).background(if(online)OpsGreen else OpsMuted,CircleShape))
-                Text(if(online) "1 CONNECTION" else "NO CONNECTION",color=OpsInk,style=OpsType.copy(fontSize=13.sp,lineHeight=16.sp))
+                Text("HUNTER ACTIONS",color=OpsInk,style=OpsType.copy(fontSize=13.sp,lineHeight=16.sp))
                 Spacer(Modifier.weight(1f))
+                Text(if(hunters.size==1)"1 Hunter" else "${hunters.size} Hunters",color=OpsMuted,style=OpsType)
                 Text("///",color=OpsCyan.copy(alpha=.65f),style=OpsType.copy(letterSpacing=1.sp))
             }
             OpsRule()
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.Bottom,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-                Icon(Icons.Outlined.Laptop,null,tint=OpsInk,modifier=Modifier.size(18.dp))
-                Text(device.substringBefore(" / ").ifBlank { "No Hunter selected" },color=if(online)OpsInk else OpsMuted,
-                    style=OpsType.copy(fontSize=11.sp,lineHeight=14.sp),maxLines=1,
-                    modifier=Modifier.weight(1f).alignByBaseline())
-                device.substringAfter(" / ","").takeIf {it.isNotBlank()}?.let {
-                    Text("|",color=OpsMuted,style=OpsType,modifier=Modifier.alignByBaseline())
-                    Text("MAC $it",color=OpsMuted,style=OpsType.copy(fontFamily=FontFamily.Monospace,fontSize=9.sp,lineHeight=14.sp),
-                        maxLines=1,modifier=Modifier.alignByBaseline())
-                }
-            }
+            OpsGlassAction(if(scanning)"Scanning…" else "Scan",Icons.Outlined.Search,!scanning,Modifier.fillMaxWidth(),onScan)
+            scanSentence?.let { Text(it,color=OpsCyan,style=OpsType) }
             notice?.let { Text(it.text,color=if(it.tone==ConnNotice.Tone.PROBLEM)OpsAmber else OpsCyan,style=OpsType) }
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                OpsGlassAction("Scan & connect",Icons.Outlined.Link,!online && !connecting,Modifier.weight(1f),onConnect)
-                OpsGlassAction("Disconnect",Icons.Outlined.LinkOff,canDisconnect,Modifier.weight(1f),onDisconnect)
-            }
-            Row(Modifier.fillMaxWidth().heightIn(min=26.dp)
-                .toggleable(value=swipeDisconnects,role=Role.Switch,onValueChange=onSwipeChange),verticalAlignment=Alignment.CenterVertically,
-                horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("Swipe away disconnects",color=OpsInk,style=OpsType.copy(fontSize=12.sp,lineHeight=15.sp),modifier=Modifier.weight(1f))
-                Text(if(swipeDisconnects)"ON" else "OFF",color=OpsMuted,style=OpsType.copy(fontSize=11.sp,lineHeight=14.sp))
-                OpsCompactSwitch(swipeDisconnects)
+            clearSentence?.let { Text(it,color=if(clearFailed)OpsAmber else OpsCyan,style=OpsType) }
+            if(hunters.isEmpty() && !scanning)
+                Text("Tap Scan to find the Hunters in range.",color=OpsMuted,style=OpsType.copy(fontSize=12.sp,lineHeight=15.sp))
+            hunters.forEach { h ->
+                OpsRule()
+                val mine=h.address==currentAddress
+                val linked=mine && online
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.Bottom,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                    Icon(Icons.Outlined.Laptop,null,tint=if(linked)OpsGreen else OpsInk,modifier=Modifier.size(18.dp))
+                    Text(h.name,color=if(linked)OpsInk else OpsMuted,style=OpsType.copy(fontSize=12.sp,lineHeight=15.sp),maxLines=1,
+                        modifier=Modifier.weight(1f).alignByBaseline())
+                    Text(when { linked -> "Connected"; mine && connecting -> "Linking…"
+                        h.card==HunterRoster.Card.YES -> "SD card"; h.card==HunterRoster.Card.NO -> "No SD card"; else -> "" },
+                        color=if(linked)OpsGreen else OpsMuted,style=OpsType.copy(fontSize=10.sp),modifier=Modifier.alignByBaseline())
+                }
+                FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    OpsGlassAction("Connect",Icons.Outlined.Link,HunterRoster.canConnect(h.address,currentAddress,online,connecting,scanning),Modifier.weight(1f),{ onConnect(h) })
+                    OpsGlassAction("Disconnect",Icons.Outlined.LinkOff,mine && (online || connecting),Modifier.weight(1f),onDisconnect)
+                    if(h.card==HunterRoster.Card.YES)
+                        OpsGlassAction("Clear Card",Icons.Outlined.DeleteSweep,!scanning && !clearBusy,Modifier.weight(1f),{ onClearCard(h) })
+                }
             }
             metadata?.let {
                 OpsRule()
@@ -140,22 +148,6 @@ private fun OpsGlassAction(label:String,icon:ImageVector,enabled:Boolean,modifie
         Spacer(Modifier.width(5.dp))
         Text(label,style=OpsType.copy(fontSize=11.sp,lineHeight=14.sp),fontWeight=FontWeight.Medium)
     }
-    }
-}
-
-/** The visible track matches the 12sp label's capital height; the entire row toggles it. */
-@Composable
-private fun OpsCompactSwitch(checked:Boolean) {
-    val letterHeight=with(LocalDensity.current) { 12.sp.toDp()*.73f }
-    Canvas(Modifier.size(width=letterHeight*3.1f,height=letterHeight)) {
-        val r=size.height/2
-        drawRoundRect(Brush.verticalGradient(if(checked)listOf(Color(0xFF397889),Color(0xFF183D4C))
-            else listOf(Color(0xFF49616C),Color(0xFF233D49))),cornerRadius=CornerRadius(r))
-        drawRoundRect(if(checked)OpsCyan.copy(alpha=.8f) else Color(0xFF68838E),
-            cornerRadius=CornerRadius(r),style=Stroke(.5.dp.toPx()))
-        val cx=if(checked)size.width-r else r
-        drawCircle(Brush.radialGradient(listOf(Color.White,Color(0xFFCDD6DA)),
-            center=Offset(cx-r*.2f,r*.7f),radius=r*1.3f),r*.78f,Offset(cx,r))
     }
 }
 

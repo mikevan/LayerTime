@@ -25,16 +25,16 @@ import Toybox.Weather;
 
 // Preview build only (preview.jungle): fixed scenarios for the simulator, so
 // the home screen, the Recon page and the Controls can be looked at in each
-// state without a LayerWand, weather, or GPS. A tap on the LAYERTIME title
+// state without a Hunter, weather, or GPS. A tap on the LAYERTIME title
 // moves to the next scenario and names it in a toast. Nothing here is in
 // the release or test builds.
 //
-//   1 NORMAL        LayerWand connected, early warning, 12 detections,
+//   1 NORMAL        Hunter connected, early warning, 12 detections,
 //                   fresh weather, GPS fix
 //   2 ALERT         manual ALL, an unacknowledged alert, 3 detections
-//   3 DISCONNECTED  the LayerWand link lost, reconnecting; last counts kept
+//   3 DISCONNECTED  the Hunter link lost, reconnecting; last counts kept
 //   4 STALE WEATHER connected; the weather observation is 5 hours old
-//   5 MISSING DATA  no LayerWand yet, no weather, no GPS
+//   5 MISSING DATA  no Hunter yet, no weather, no GPS
 (:preview)
 module Preview {
 

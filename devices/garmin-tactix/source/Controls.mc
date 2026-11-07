@@ -36,7 +36,7 @@ module Controls {
         menu.addItem(new WatchUi.ToggleMenuItem("Sleep mode", "alerts off, still logged", :sleep,
                                                 (link.flags & Link.FLAG_SLEEP_MODE) != 0, null));
         menu.addItem(new WatchUi.MenuItem("Acknowledge alert", alert ? "alert pending" : "no alert", :ack, null));
-        menu.addItem(new WatchUi.MenuItem("Clear detections", "on LayerWand", :clear, null));
+        menu.addItem(new WatchUi.MenuItem("Clear detections", "on Hunter", :clear, null));
         menu.addItem(new WatchUi.MenuItem("Link diagnostics", null, :diagnostics, null));
         WatchUi.pushView(menu, new ControlsDelegate(link), WatchUi.SLIDE_UP);
     }
@@ -51,12 +51,12 @@ module Controls {
     }
 
     function send(link as LinkClient, commandType as Number, arg as Number?) as Void {
-        if (!link.sendCommand(commandType, arg)) { toast("LayerWand not connected"); }
+        if (!link.sendCommand(commandType, arg)) { toast("Hunter not connected"); }
     }
 
     // LinkClient.resultObserver: one toast per command.
     function showResult(commandType as Number, result as Number) as Void {
-        if (result == -1) { toast("No answer from LayerWand"); return; }
+        if (result == -1) { toast("No answer from Hunter"); return; }
         if (result != Link.RESULT_OK) { toast(Link.commandResultName(result)); return; }
         if (commandType == Link.CMD_RECON_START) { toast("Recon started"); }
         else if (commandType == Link.CMD_RECON_STOP) { toast("Recon stopped"); }
@@ -67,14 +67,14 @@ module Controls {
         WatchUi.requestUpdate();
     }
 
-    // LinkClient.gapObserver: some detections were dropped on LayerWand
+    // LinkClient.gapObserver: some detections were dropped on Hunter
     // before the watch fetched them. The Recon page keeps showing GAP.
     function showGap() as Void {
         toast("Some detections were missed.");
         WatchUi.requestUpdate();
     }
 
-    // LinkClient.noSdObserver: the LayerWand has no SD card log, so its
+    // LinkClient.noSdObserver: the Hunter has no SD card log, so its
     // events live only in its memory. Shown once per connection.
     function showNoSdCard() as Void {
         WatchUi.pushView(new $.NoticeView("NO SD CARD", NO_SD_CARD_TEXT), new $.NoticeDelegate(), WatchUi.SLIDE_UP);
@@ -110,7 +110,7 @@ class ControlsDelegate extends WatchUi.Menu2InputDelegate {
         } else if (id == :ack) {
             Controls.send(_link, Link.CMD_RECON_ACKNOWLEDGE_ALERT, null);
         } else if (id == :clear) {
-            WatchUi.pushView(new WatchUi.Confirmation("Clear all detections on LayerWand?"),
+            WatchUi.pushView(new WatchUi.Confirmation("Clear all detections on Hunter?"),
                              new ClearConfirmDelegate(_link), WatchUi.SLIDE_IMMEDIATE);
         } else if (id == :diagnostics) {
             var diag = new $.LayerTimeView(_link);

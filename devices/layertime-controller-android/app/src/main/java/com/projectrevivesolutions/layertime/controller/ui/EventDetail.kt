@@ -206,7 +206,7 @@ private sealed interface VendorLookup {
 
 /**
  * QUICK LOOK: only what helps a fast investigation with nothing but the watch
- * and a LayerWand. What it is, who sent it, whether it is getting closer,
+ * and a Hunter. What it is, who sent it, whether it is getting closer,
  * whether it is still around, where on the air, and what to do. Fields with
  * no data are left out rather than listed as unavailable; the full record is
  * in the cards below.

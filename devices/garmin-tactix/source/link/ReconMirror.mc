@@ -18,7 +18,7 @@
 
 import Toybox.Lang;
 
-// The watch's copy of the LayerWand event log, kept by GET_CHANGED
+// The watch's copy of the Hunter event log, kept by GET_CHANGED
 // (contracts/link.md). Pure logic, no BLE and no UI, so it is unit tested.
 //
 // Rules, from the contract:

@@ -18,7 +18,7 @@
 #   5. Copies the PRG, then copies it back from the watch and compares SHA-256
 #      hashes, so "installed" means the exact bytes are on the watch.
 #
-# It never touches a serial port, so a running LayerWand logger is not
+# It never touches a serial port, so a running Hunter logger is not
 # affected. It never deletes anything on the watch.
 #
 # Run (from any PowerShell window, watch connected by its USB cable):
@@ -89,7 +89,7 @@ foreach ($marker in @('STALE WEATHER', 'PREVIEW ')) {
     if (Test-Contains $bytes $marker) { Fail "the PRG contains the preview build's '$marker'. Nothing was installed." }
 }
 if (Test-Contains $bytes 'hb,start') { Fail "the PRG contains the linktest build's 'hb,start'. Nothing was installed." }
-if (-not (Test-Contains $bytes 'NO LAYERWAND')) { Fail 'the PRG does not contain the current home screen text. Nothing was installed.' }
+if (-not (Test-Contains $bytes 'NO HUNTER')) { Fail 'the PRG does not contain the current home screen text. Nothing was installed.' }
 $localHash = (Get-FileHash -Algorithm SHA256 $prg).Hash
 Write-Host ("Production PRG: {0}, {1} bytes, SHA-256 {2}" -f $prg, $bytes.Length, $localHash)
 

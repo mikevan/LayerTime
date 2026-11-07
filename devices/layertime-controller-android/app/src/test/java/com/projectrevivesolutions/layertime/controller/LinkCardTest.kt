@@ -1,5 +1,6 @@
 package com.projectrevivesolutions.layertime.controller
 
+import com.projectrevivesolutions.layertime.controller.link.CardPull
 import com.projectrevivesolutions.layertime.controller.link.LinkCard
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -33,7 +34,7 @@ class LinkCardTest {
     }
 
     @Test fun namesAndValidityMatchTheHunter() {
-        assertEquals("layerwand_0007.log", LinkCard.FileId(LinkCard.KIND_LOG, 7, 0).name)
+        assertEquals("hunter_0007.log", LinkCard.FileId(LinkCard.KIND_LOG, 7, 0).name)
         assertEquals("ev_0007/event_4294967295.pcap", LinkCard.FileId(LinkCard.KIND_PCAP, 7, 4294967295L).name)
         assertTrue(LinkCard.FileId(LinkCard.KIND_LOG, 9999, 0).valid)
         assertTrue(!LinkCard.FileId(LinkCard.KIND_LOG, 0, 0).valid)
@@ -65,5 +66,14 @@ class LinkCardTest {
         b.onBytes(0, file)
         b.onDone(LinkCard.Done(1, 1000, 0x12345678L))
         assertTrue(b.problem()!!.contains("checksum"))
+    }
+
+    @Test fun aPullIsOfferedOnlyWhenTheHunterHasACard() {
+        assertEquals(CardPull.Offer.NoHunter, CardPull.offer(false, null))
+        assertEquals(CardPull.Offer.NoHunter, CardPull.offer(false, false))
+        assertEquals(CardPull.Offer.Checking, CardPull.offer(true, null))
+        assertEquals(CardPull.Offer.Card, CardPull.offer(true, false))
+        assertEquals(CardPull.Offer.NoCard, CardPull.offer(true, true))
+        assertTrue(CardPull.NO_CARD_SENTENCE.endsWith("."))
     }
 }

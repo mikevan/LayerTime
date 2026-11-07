@@ -5,8 +5,8 @@ package com.projectrevivesolutions.layertime.controller.link
  * second, and "the heartbeat is what the interface watches for link health"). Pure, so
  * it is unit-tested on the JVM.
  *
- * A LayerWand that loses power or goes out of range does not always produce a GATT
- * disconnect promptly; on the LOKMAT watch the link stayed ONLINE after the LayerWand
+ * A Hunter that loses power or goes out of range does not always produce a GATT
+ * disconnect promptly; on the LOKMAT watch the link stayed ONLINE after the Hunter
  * was unplugged. So the interface times the link out itself: STALE after
  * [STALE_MS] of silence (the Garmin face's threshold), LOST after [LOST_MS], and on
  * LOST it drops the connection and reconnects. During a scheduled Recon window

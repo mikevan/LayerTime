@@ -11,7 +11,7 @@ This replaces the plan part of `devices/layertime-controller-android/FRAME_EVIDE
 
 ## Goals
 
-1. **Deeper Wireshark analysis on the watch.** Bring the raw frames behind a detection from the LayerWand to the watch, so Wireshark decodes the real evidence instead of an imported file.
+1. **Deeper Wireshark analysis on the watch.** Bring the raw frames behind a detection from the Hunter to the watch, so Wireshark decodes the real evidence instead of an imported file.
 2. **A true fox hunt.**
    - Lock onto one emitter and get fast signal strength.
    - Turn that into a direction and a rough location with the hardware the watch actually has.
@@ -21,14 +21,14 @@ This replaces the plan part of `devices/layertime-controller-android/FRAME_EVIDE
 
 | Fact | Evidence |
 |---|---|
-| The LayerWand sees every raw Wi-Fi frame and keeps none | `C5ReconRadio.cpp` passes `packet->payload` to the classifier and returns (FRAME_EVIDENCE_PROPOSAL.md) |
+| The Hunter sees every raw Wi-Fi frame and keeps none | `C5ReconRadio.cpp` passes `packet->payload` to the classifier and returns (FRAME_EVIDENCE_PROPOSAL.md) |
 | Link 0.1 frames are 20 bytes or less | `contracts/link.md` rule 1. The Garmin's Connect IQ BLE API writes at most 20 bytes. |
 | The Android watch does not request a larger BLE MTU today | No `requestMtu` anywhere in the controller |
 | Garmin ignores unknown capability bits | `LinkClient.mc:644` masks only `CAP_LOCAL_WIFI_MONITOR \| CAP_LOCAL_BLE_MONITOR` |
 | The watch is running Wireshark 4.4.19 | `wireshark-prebuilt/include/config.h` |
 | The watch's sensors are an accelerometer, a light sensor, a barometer, a temperature sensor (which never reports), a step detector and counter, heart rate, and a tilt detector | `dumpsys sensorservice` on the LOKMAT watch, 2026-10-30 |
 | No magnetometer and no gyroscope, so no compass and no heading | Same; every Android fusion mode shows "disabled (0 clients)" |
-| The LayerWand hands NimBLE's address over backwards, so the library's Bluetooth prefix checks never match | `C5ReconRadio.cpp:283` KNOWN_DEFECT; LayerTime-Sensors `test_api_examples` proves the rule |
+| The Hunter hands NimBLE's address over backwards, so the library's Bluetooth prefix checks never match | `C5ReconRadio.cpp:283` KNOWN_DEFECT; LayerTime-Sensors `test_api_examples` proves the rule |
 
 ## Rules that do not change
 
@@ -45,9 +45,9 @@ Each `Candidate` gains two fields: `frame` (const uint8_t pointer) and `frameLen
 - **Wi-Fi:** the 802.11 frame passed to `classify()`.
 - **Bluetooth:** the raw advertisement. `BleAdvertSource` gains optional `payload` and `payloadLength` fields; NimBLE provides them with `getPayload()`. Left empty, `frame` is null, so existing callers keep compiling.
 - **API and tests:** `API.md` documents both. A test proves the pointer is the right bytes and is null when no payload is given.
-- **Why the library:** the LayerWand needs this to know which bytes to keep, and every other user of the library gets a way to save evidence.
+- **Why the library:** the Hunter needs this to know which bytes to keep, and every other user of the library gets a way to save evidence.
 
-## Part 2: LayerWand evidence buffer
+## Part 2: Hunter evidence buffer
 
 As in FRAME_EVIDENCE_PROPOSAL.md section A, with Bluetooth added.
 
@@ -71,6 +71,7 @@ All new ops reply on Data. Every frame stays 20 bytes or less unless the interfa
 | 5 | rawCapture | The Node keeps evidence windows and answers GET_FRAMES and GET_FRAME_BYTES |
 | 6 | hunt | The Node answers HUNT_START, HUNT_STOP, and GET_HUNT |
 | 9 | cardRead | The Node answers CARD_LIST and CARD_READ (2026-11-04) |
+| 10 | cardClear | The Node answers CARD_CLEAR (2026-11-06) |
 
 ### Status
 
@@ -103,7 +104,7 @@ All new ops reply on Data. Every frame stays 20 bytes or less unless the interfa
   - `msSinceHeard u16`, saturating;
   - `channel u8`, and flags (locked on channel, target lost).
 - **Pull, not push (rule 4) stays.** The interface polls GET_HUNT four to five times a second. One request is outstanding at a time, so nothing queues.
-- **On the LayerWand,** HUNT compares the source address of every Wi-Fi frame and Bluetooth advertisement with the target before classification:
+- **On the Hunter,** HUNT compares the source address of every Wi-Fi frame and Bluetooth advertisement with the target before classification:
   - Wi-Fi stays on the target's channel instead of hopping.
   - Bluetooth scanning runs continuously.
   - The address byte-order defect must be fixed in the same change, or Bluetooth hunts would never lock.
@@ -120,7 +121,7 @@ computer. Read only. Code: `src/core/link/LinkCard.h`; tests: `test/test_link_ca
   the end of the file at the connection's size, then **CARD_DONE** (type `0x8D`, 10 bytes:
   type, reqId, size u32, crc32 u32 of the whole file), then END. A dropped connection
   resumes from the last offset received.
-- A file is a code, never text: kind 0 is `layerwand_NNNN.log` (serial N, eventId 0); kind
+- A file is a code, never text: kind 0 is `hunter_NNNN.log` (serial N, eventId 0); kind
   1 is `ev_NNNN/event_EEEEE.pcap` (serial N, event E). Only the Hunter's own files can be
   named.
 - No card: RESULT NotReady. No such file, or a bad code: RESULT InvalidArgument. Wrong
@@ -128,6 +129,19 @@ computer. Read only. Code: `src/core/link/LinkCard.h`; tests: `test/test_link_ca
 - HELLO_ACK capability bit 9 (`0x0200`): the Node serves its card.
 - The Hunter sends a few frames per loop pass, so scanning and the Link keep running. One
   card read at a time, shared with the USB serial pull.
+- **CARD_CLEAR** (op `0x0D`, 2 bytes: op, reqId; 2026-11-06) erases the card COMPLETELY:
+  every file and folder, so a card full of tracker logs can be cleaned out in the field. It
+  works a few files per loop pass, so scanning and the Link keep running. The Hunter then
+  opens a fresh log, `hunter_0001.log`; records still waiting in its memory go there. It
+  answers END (count = files erased, at most 255). No card, a card read running, or anything
+  that would not erase: RESULT NotReady (the Hunter's serial log names what would not
+  erase). Wrong length: ERROR BadLength. HELLO_ACK capability bit 10 (`0x0400`). LayerScope
+  asks the operator to confirm, then sends CARD_LIST to show what the card now holds.
+  Nothing on the phone is touched.
+- Card file names (2026-11-06): logs are `hunter_NNNN.log`. Cards written before then hold
+  `layerwand_NNNN.log`; the Hunter renames each one to `hunter_NNNN.log` (same number, so
+  its `ev_NNNN` folder still matches) when it mounts the card. A name already taken is
+  left as it is.
 
 ### Larger frames (Android only)
 
@@ -159,7 +173,7 @@ The Android watch can request a larger BLE MTU, and the Garmin cannot.
    - A full-screen gauge with the latest, strongest, and smoothed signal, and a tone that rises as the signal strengthens. It's usable without looking.
    - "Target lost" after a set silence.
 3. **Bearing by manual sweep.** The watch has no compass or gyroscope.
-   - Hold the LayerWand against your chest, face each of eight directions, and tap once at each.
+   - Hold the Hunter against your chest, face each of eight directions, and tap once at each.
    - The watch takes the median HUNT signal over about two seconds per direction, and finds the weakest. The source is opposite, behind your body.
    - The arrow is relative to your starting direction, labeled plus or minus 45 degrees.
 4. **Closest-approach walk-and-fix,** using the step detector.
@@ -169,7 +183,7 @@ The Android watch can request a larger BLE MTU, and the Garmin cannot.
    - GPS is used when it has a fix.
    - Shown as an area with its uncertainty, never a pin.
 5. **Barometer floor hint.** If the signal peaks after a height change of about a floor, show "probably on this floor" as a hint.
-6. **Optional later: a heading sensor on the LayerWand.** A small compass and gyroscope board would let the sweep run itself and point to true north. It's a hardware decision.
+6. **Optional later: a heading sensor on the Hunter.** A small compass and gyroscope board would let the sweep run itself and point to true north. It's a hardware decision.
 
 ## Phase plan
 
@@ -177,10 +191,10 @@ Each phase is reviewed before the next starts. Michael flashes and commits.
 
 | Phase | What | Where | Gate |
 |---|---|---|---|
-| 0 | Measurement firmware (test build only). Wi-Fi length and FCS on the C5, RAM available for windows, BLE throughput at 20 bytes and with a larger MTU, frame rates under a deauth burst, and the HUNT poll rate. | LayerWand test build | Numbers recorded; window sizes set from them |
+| 0 | Measurement firmware (test build only). Wi-Fi length and FCS on the C5, RAM available for windows, BLE throughput at 20 bytes and with a larger MTU, frame rates under a deauth burst, and the HUNT poll rate. | Hunter test build | Numbers recorded; window sizes set from them |
 | 1 | LayerTime-Sensors 1.2.0: the frame behind each match | Library | Host tests; API.md updated |
 | 2 | Link 0.2 spec and vectors, both bindings | `contracts/`, C++ and Monkey C bindings | Existing vectors still pass; new vectors pass |
-| 3 | LayerWand: bootCount, evidence windows, evidence ops, HUNT ops, and the byte-order fix | Firmware | Host tests; on-device capture compared with TShark on the same bytes |
+| 3 | Hunter: bootCount, evidence windows, evidence ops, HUNT ops, and the byte-order fix | Firmware | Host tests; on-device capture compared with TShark on the same bytes |
 | 4 | Garmin compatibility | Garmin tactix against 0.2 firmware | Handshake, reconAvailable, GET_CHANGED, GET_TEXT, and recon alerts all still work |
 | 5 | Watch: evidence decode, HUNT gauge, sweep, walk-and-fix, and floor hint | Android | Unit tests for the math; field test with a known source (your own AirTag) |
 
@@ -195,6 +209,6 @@ Each phase is reviewed before the next starts. Michael flashes and commits.
 
 1. **Link 0.2 additions:** approved as drafted, including op numbers `0x06` to `0x0A`, capability bits 5 and 6, and Status flag bit 6.
 2. **Phase 0 measurement firmware:** approved.
-3. **LayerWand Bluetooth byte-order defect:** fix it in Phase 3, with a test that proves the order.
-4. **Heading sensor on the LayerWand:** not decided; revisit after Phase 5 field results.
+3. **Hunter Bluetooth byte-order defect:** fix it in Phase 3, with a test that proves the order.
+4. **Heading sensor on the Hunter:** not decided; revisit after Phase 5 field results.
 5. **Home of this design:** `contracts/link_0_2.md`.

@@ -149,10 +149,10 @@ if [ "$with_preflight" -eq 1 ]; then
   if want_case 7; then
     # --full maps each environment to its own project: a stand-in pio records where it ran.
     mkdir -p "$scratch/fakebin"; printf '#!/bin/sh\necho "$PWD|$*" >> "%s"\n' "$scratch/pio_calls" > "$scratch/fakebin/pio"; chmod +x "$scratch/fakebin/pio"
-    (cd "$p" && PATH="$scratch/fakebin:$PATH" bash tools/ci/preflight.sh --full --targets twatch_ultra,twatch_s3plus,tdongle_c5_wand >"$scratch/pf.out" 2>&1)
+    (cd "$p" && PATH="$scratch/fakebin:$PATH" bash tools/ci/preflight.sh --full --targets twatch_ultra,twatch_s3plus,tdongle_c5_hunter >"$scratch/pf.out" 2>&1)
     want="$p/devices/lilygo-tultra|run -e twatch_ultra
 $p/devices/lilygo-s3plus|run -e twatch_s3plus
-$p/devices/lilygo-layerwand|run -e tdongle_c5_wand"
+$p/devices/lilygo-hunter|run -e tdongle_c5_hunter"
     if [ "$(cat "$scratch/pio_calls" 2>/dev/null)" = "$want" ]; then echo "PASS  preflight: --full builds each environment in its own project"; pass=$((pass+1))
     else echo "FAIL  preflight: --full mapping"; cat "$scratch/pio_calls" 2>/dev/null | sed 's/^/      /'; fail=$((fail+1)); fi
   fi

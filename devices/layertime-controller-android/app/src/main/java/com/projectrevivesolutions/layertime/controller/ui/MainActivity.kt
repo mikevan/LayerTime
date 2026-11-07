@@ -99,6 +99,12 @@ import com.projectrevivesolutions.layertime.controller.mission.SensorSelection
 import com.projectrevivesolutions.layertime.controller.link.LinkConstants
 import com.projectrevivesolutions.layertime.controller.link.LinkMeasure
 import com.projectrevivesolutions.layertime.controller.link.ConnNotice
+import com.projectrevivesolutions.layertime.controller.link.CardClear
+import com.projectrevivesolutions.layertime.controller.link.HunterRoster
+import com.projectrevivesolutions.layertime.controller.link.HunterScanner
+import com.projectrevivesolutions.layertime.controller.DeviceKind
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import com.projectrevivesolutions.layertime.controller.BuildConfig
 import com.projectrevivesolutions.layertime.controller.model.ConnState
 import com.projectrevivesolutions.layertime.controller.model.EventRow
@@ -207,15 +213,21 @@ internal object MissionPrefs {
     // unless the operator had checked real sensors. After that the stored list is
     // used as is (presets expanded), and an empty one means every sensor off.
     private const val V2 = "sensors_v2"
+    // "trackers_off_once" (Michael, 2026-11-06): one time, on the first run of build 100 or
+    // later, the trackers are unchecked in a list saved before trackers-off became the default.
+    // After that the operator's choices are left alone; checking a tracker again sticks.
+    private const val TRACKERS_OFF_ONCE = "trackers_off_once"
     fun readSensors(ctx: Context): Set<Int> {
         val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val stored = p.getStringSet("sensors", null)?.mapNotNull { it.toIntOrNull() }?.toSet()
-        if (!p.getBoolean(V2, false)) {
-            val migrated = SensorSelection.migrate(stored)
-            writeSensors(ctx, migrated)
-            return migrated
-        }
-        return SensorSelection.normalize(stored ?: emptySet())
+        var selection = if (!p.getBoolean(V2, false)) SensorSelection.migrate(stored)
+            else SensorSelection.normalize(stored ?: emptySet())
+        if (!p.getBoolean(TRACKERS_OFF_ONCE, false)) {
+            selection = SensorSelection.withoutTrackers(selection)
+            writeSensors(ctx, selection)
+            p.edit().putBoolean(TRACKERS_OFF_ONCE, true).apply()
+        } else if (!p.getBoolean(V2, false)) writeSensors(ctx, selection)
+        return selection
     }
     fun writeSensors(ctx: Context, on: Set<Int>) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -297,6 +309,24 @@ private fun ControllerScreen() {
     val reconnecting by repo.reconnecting.collectAsState()
     val connDetail by repo.connDetail.collectAsState()
     val huntOpen by HuntSession.open.collectAsState()
+    // HUNTER ACTIONS (2026-11-06).
+    val roster by HunterRoster.hunters.collectAsState()
+    val rosterScan by HunterRoster.scan.collectAsState()
+    val cardClear by CardClear.state.collectAsState()
+    var confirmClear by remember { mutableStateOf<HunterRoster.Hunter?>(null) }
+    // The Link client is not observable, so which Hunter it holds is read each second.
+    var heldAddress by remember { mutableStateOf<String?>(null) }
+    var heldName by remember { mutableStateOf<String?>(null) }
+    var heldNoSdLog by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val c = LinkForegroundService.active
+            heldAddress = c?.currentAddress; heldName = c?.currentName; heldNoSdLog = c?.lastNoSdLog
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+    // What to do once Bluetooth permission is granted (Scan, or Connect on a row).
+    var afterPermission by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     var showLog by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf("main") }
@@ -326,12 +356,14 @@ private fun ControllerScreen() {
         val granted = MainActivity.requiredPermissions().all {
             result[it] == true || it == Manifest.permission.POST_NOTIFICATIONS
         }
-        if (granted) LinkForegroundService.start(context, target = null)
+        val then = afterPermission
+        afterPermission = null
+        if (granted) (then ?: { LinkForegroundService.start(context, target = null) })()
         else repo.log(LogEntry.Category.ERROR, "permissions denied; cannot scan or connect")
     }
 
     var locationNotice by remember { mutableStateOf<String?>(null) }
-    fun connect() {
+    fun connect(address: String? = null, name: String? = null) {
         if (LinkClient.locationSwitchBlocksScanning(context)) {
             locationNotice = LinkClient.LOCATION_OFF_MESSAGE
             repo.log(LogEntry.Category.ERROR, LinkClient.LOCATION_OFF_MESSAGE)
@@ -341,8 +373,44 @@ private fun ControllerScreen() {
         val missing = MainActivity.requiredPermissions().any {
             ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
         }
-        if (missing) permLauncher.launch(MainActivity.requiredPermissions())
-        else LinkForegroundService.start(context, target = null)
+        val go = { LinkForegroundService.start(context, target = null, address = address, name = name) }
+        if (missing) { afterPermission = go; permLauncher.launch(MainActivity.requiredPermissions()) }
+        else go()
+    }
+
+    // HUNTER ACTIONS: SCAN, and Clear Card once the operator says ERASE.
+    fun scanHunters() {
+        val missing = MainActivity.requiredPermissions().any {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        // The Hunter this phone holds, whether the handshake has finished or not: it is not
+        // advertising, so the scan cannot hear it (2026-11-06 capture: "held Hunter none").
+        val held = LinkForegroundService.active?.takeIf { conn != ConnState.IDLE }?.let { c ->
+            c.currentAddress?.let { a ->
+                HunterScanner.Connected(a, c.currentName ?: "Hunter", when (c.lastNoSdLog) {
+                    true -> HunterRoster.Card.NO; false -> HunterRoster.Card.YES; null -> HunterRoster.Card.UNKNOWN })
+            }
+        }
+        val go = { HunterScanner.scan(context, held) }
+        if (missing) { afterPermission = go; permLauncher.launch(MainActivity.requiredPermissions()) }
+        else go()
+    }
+    fun eraseCard(h: HunterRoster.Hunter) {
+        val c = LinkForegroundService.active
+        if (c != null && c.connectedAddress == h.address) { c.clearCard(h.address); return }
+        // Not connected to it: connect, and the clear goes after HELLO.
+        LinkClient.pendingClearAddress = h.address
+        CardClear.set(CardClear.State.Connecting(h.name))
+        connect(h.address, h.name)
+    }
+    confirmClear?.let { h ->
+        AlertDialog(
+            onDismissRequest = { confirmClear = null },
+            title = { Text("Clear Card") },
+            text = { Text(CardClear.confirmText(h.name)) },
+            confirmButton = { TextButton(onClick = { confirmClear = null; eraseCard(h) }) { Text("Erase") } },
+            dismissButton = { TextButton(onClick = { confirmClear = null }) { Text("Cancel") } },
+        )
     }
 
     val active = conn == ConnState.CONNECTED
@@ -360,7 +428,8 @@ private fun ControllerScreen() {
     // hand-edited list lights neither. START's Recon target follows the list: the Wi-Fi-only
     // deauth lock when the list is Deauth alone, the full sweep (with the list applied on
     // the Hunter) otherwise.
-    val everySensor = SensorSelection.ALL_SENSORS.toSet()
+    // Quick Start's All Sensors: every sensor but the trackers (2026-11-06).
+    val everySensor = SensorSelection.DEFAULT_SENSORS
     val onlyDeauth = setOf(LinkConstants.ReconTarget.DEAUTH)
     val target = if (missionSelection == onlyDeauth) LinkConstants.ReconTarget.DEAUTH else LinkConstants.ReconTarget.ALL
     val scanPick = when (missionSelection) { everySensor -> LinkConstants.ReconTarget.ALL; onlyDeauth -> LinkConstants.ReconTarget.DEAUTH; else -> -1 }
@@ -399,6 +468,12 @@ private fun ControllerScreen() {
         setMission(selection)
     }
     val connecting = conn in listOf(ConnState.SCANNING, ConnState.CONNECTING, ConnState.DISCOVERING, ConnState.HANDSHAKING)
+    val shownHunters = HunterRoster.withHeld(roster, if (conn == ConnState.IDLE) null else heldAddress, heldName, if (conn == ConnState.IDLE) null else heldNoSdLog)
+    val scanBusy = rosterScan is HunterRoster.Scan.Listening || rosterScan is HunterRoster.Scan.Checking
+    val clearBusy = cardClear is CardClear.State.Connecting || cardClear is CardClear.State.Clearing || cardClear is CardClear.State.Verifying
+    // Amber when the clear failed or the card still holds something afterwards.
+    val clearProblem = cardClear is CardClear.State.Failed ||
+        (cardClear as? CardClear.State.Done)?.let { !(it.complete && CardClear.clean(it.remaining)) } == true
     val wands = if (active) 1 else 0
 
     // On the sliding layout the face is parked off screen while the operator works
@@ -654,7 +729,7 @@ private fun ControllerScreen() {
                         }
                     }
 
-                    "builder" -> BuilderScreen()
+                    "builder" -> BuilderScreen(onWireshark = { page = "wireshark" }, onTimeline = { page = "timeline" })
 
                     "capture" -> CaptureOnlyScreen(onBack = { page = "attacks" }, onOpenWireshark = { page = "wireshark" })
 
@@ -709,6 +784,24 @@ private fun ControllerScreen() {
                                 )
                             }
                             item { LayerTimeButtonPanel(nowMs) }
+                            // Moved here from HUNTER ACTIONS (Michael, 2026-11-06). Only the LOKMAT
+                            // watch uses it; on every other device it is greyed out and has no effect.
+                            item {
+                                val applies = DeviceKind.isLokmatWatch
+                                var swipeOff by remember { mutableStateOf(LinkForegroundService.swipeDisconnects(context)) }
+                                SciFiPanel("LINK") {
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text("Swipe away disconnects", color = if (applies) LtColors.Ivory else LtColors.Grey, fontSize = 12.sp,
+                                            letterSpacing = 1.sp, modifier = Modifier.align(Alignment.CenterVertically))
+                                        val flip = { swipeOff = !swipeOff; LinkForegroundService.setSwipeDisconnects(context, swipeOff) }
+                                        if (applies && swipeOff) SciFiPrimary("ON", enabled = true) { flip() }
+                                        else SciFiOutline("OFF", enabled = applies) { flip() }
+                                    }
+                                    Text(if (applies) "When this is on, swiping LayerScope away from the recent apps disconnects the Hunter."
+                                        else "This setting applies only to the LOKMAT watch.",
+                                        color = LtColors.Grey, fontSize = 12.sp)
+                                }
+                            }
                             if (BuildConfig.DEBUG && !onHull) item { LinkMeasurePanel(active) }
                             item {
                                 SciFiPanel("SCREEN-OFF RECEPTION TEST") {
@@ -793,26 +886,27 @@ private fun ControllerScreen() {
                             if (onHull) item { HudStatusStrip(active, connecting, events.size, linkStale) }
                             item {
                                 if (!onHull) {
-                                    var swipeOff by remember { mutableStateOf(LinkForegroundService.swipeDisconnects(context)) }
-                                    OpsConnectionPanel(
-                                        online = active, connecting = connecting, canDisconnect = conn != ConnState.IDLE,
-                                        device = deviceLabel,
+                                    OpsHunterActionsPanel(
+                                        hunters = shownHunters, scanning = scanBusy, scanSentence = HunterRoster.sentence(rosterScan),
+                                        currentAddress = if (conn == ConnState.IDLE) null else heldAddress,
+                                        online = active, connecting = connecting,
                                         metadata = server?.takeIf { active }?.let { "Server ${it.serverMajor}.${it.serverMinor}   |   Session ${it.sessionId}   |   Max frame ${it.maxFrame} B" },
                                         notice = locationNotice?.let { ConnNotice.Notice(it, ConnNotice.Tone.PROBLEM) }
                                             ?: ConnNotice.of(conn, connDetail, reconnecting),
-                                        swipeDisconnects = swipeOff,
-                                        onSwipeChange = { swipeOff = it; LinkForegroundService.setSwipeDisconnects(context, it) },
-                                        onConnect = { connect() }, onDisconnect = { LinkForegroundService.stop(context) },
+                                        clearSentence = CardClear.sentence(cardClear), clearFailed = clearProblem,
+                                        clearBusy = clearBusy,
+                                        onScan = { scanHunters() }, onConnect = { h -> connect(h.address, h.name) },
+                                        onDisconnect = { LinkForegroundService.stop(context) }, onClearCard = { h -> confirmClear = h },
                                     )
                                 } else {
-                                SciFiPanel("CONNECTION", statusColor = if (active) LtColors.Green else LtColors.Red, statusCount = wands) {
+                                // HUNTER ACTIONS (Michael, 2026-11-06): SCAN, then a row per Hunter.
+                                SciFiPanel("HUNTER ACTIONS", statusColor = if (active) LtColors.Green else LtColors.Red, statusCount = shownHunters.size) {
                                     if (active && server != null) {
                                         Text("Server 0.${server!!.serverMinor}   |   Session ${server!!.sessionId}   |   Max frames ${server!!.maxFrame}",
                                             color = LtColors.Ivory, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
                                     }
-                                    if (active && deviceLabel.isNotBlank()) {
-                                        Text(deviceLabel.uppercase(), color = LtColors.Cyan, fontSize = 13.sp, fontFamily = ConsoleFonts.mono, letterSpacing = 1.sp)
-                                    }
+                                    SciFiPrimary(if (scanBusy) "Scanning…" else "Scan", enabled = !scanBusy, large = true) { scanHunters() }
+                                    HunterRoster.sentence(rosterScan)?.let { Text(it, color = LtColors.Cyan, fontSize = 12.sp) }
                                     // Why the link is where it is, and what to tap next (ConnNotice).
                                     val notice = locationNotice?.let { ConnNotice.Notice(it, ConnNotice.Tone.PROBLEM) }
                                         ?: ConnNotice.of(conn, connDetail, reconnecting)
@@ -820,22 +914,26 @@ private fun ControllerScreen() {
                                         Text(it.text, color = if (it.tone == ConnNotice.Tone.PROBLEM) LtColors.Red else LtColors.Cyan,
                                             fontSize = 12.sp)
                                     }
-                                    // Wraps DISCONNECT onto its own line when the panel is narrow (build 70:
-                                    // on a phone it was crushed to a sliver or broke as "DISCONNEC / T").
-                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        SciFiPrimary("Scan & connect", enabled = !active && !connecting, large = true) { connect() }
-                                        // Build 71: also live after a failure ("Link failed"), when the service is still running and retrying.
-                                        SciFiOutline("Disconnect", enabled = conn != ConnState.IDLE, large = true) {
-                                            LinkForegroundService.stop(context)
-                                        }
+                                    CardClear.sentence(cardClear)?.let {
+                                        Text(it, color = if (clearProblem) LtColors.Red else LtColors.Cyan, fontSize = 12.sp)
                                     }
-                                    // Build 71: an explicit off for always-on. Off by default.
-                                    var swipeOff by remember { mutableStateOf(LinkForegroundService.swipeDisconnects(context)) }
-                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text("Swipe away disconnects", color = LtColors.Grey, fontSize = 12.sp, letterSpacing = 1.sp,
-                                            modifier = Modifier.align(Alignment.CenterVertically))
-                                        val flip = { swipeOff = !swipeOff; LinkForegroundService.setSwipeDisconnects(context, swipeOff) }
-                                        if (swipeOff) SciFiPrimary("ON", enabled = true) { flip() } else SciFiOutline("OFF", enabled = true) { flip() }
+                                    if (shownHunters.isEmpty() && !scanBusy) Text("Tap Scan to find the Hunters in range.", color = LtColors.Grey, fontSize = 12.sp)
+                                    val held = if (conn == ConnState.IDLE) null else heldAddress
+                                    shownHunters.forEach { h ->
+                                        val mine = h.address == held
+                                        Text(h.name.uppercase() + when {
+                                                mine && active -> "  //  CONNECTED"; mine && connecting -> "  //  LINKING"
+                                                h.card == HunterRoster.Card.YES -> "  //  SD CARD"; h.card == HunterRoster.Card.NO -> "  //  NO SD CARD"; else -> "" },
+                                            color = if (mine && active) LtColors.Green else LtColors.Cyan, fontSize = 13.sp,
+                                            fontFamily = ConsoleFonts.mono, letterSpacing = 1.sp)
+                                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            SciFiPrimary("Connect", enabled = !mine && !scanBusy, large = true) { connect(h.address, h.name) }
+                                            SciFiOutline("Disconnect", enabled = mine && conn != ConnState.IDLE, large = true) {
+                                                LinkForegroundService.stop(context)
+                                            }
+                                            if (h.card == HunterRoster.Card.YES)
+                                                SciFiOutline("Clear Card", enabled = !scanBusy && !clearBusy, large = true) { confirmClear = h }
+                                        }
                                     }
                                 }
                                 }
@@ -1100,8 +1198,8 @@ internal fun emptyEventsMessage(connected: Boolean, status: com.projectrevivesol
 /**
  * LINK MEASURE: the watch side of Link 0.2 Phase 0 (claude/link_0_2_phase0_plan.md,
  * M5). A PING burst for the round trip that limits HUNT polling, and BULK runs for
- * throughput at 20 bytes and at a larger MTU. BULK needs the LayerWand measurement
- * firmware; a release LayerWand answers UnknownOp, and the panel says so.
+ * throughput at 20 bytes and at a larger MTU. BULK needs the Hunter measurement
+ * firmware; a release Hunter answers UnknownOp, and the panel says so.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

@@ -54,12 +54,14 @@ per attribute. These are fixed.
 - The primary advertisement carries the flags AD and the 128-bit service UUID
   (21 bytes of the 31 available).
 - The scan response carries the complete local name, which says what the
-  Node is (2026-11-04): `Hunter-C5-001`, the kind, the chip (`C5` from
-  ESP32-C5), and the unit number given when it was flashed (1 to 999, three
-  digits). A Node with no number uses the last two bytes of its Bluetooth
-  address in upper-case hex instead: `Hunter-C5-3FA2`. (Before 2026-11-04 the
-  name was `LT-C5-xxxx`.) The Vixen beacon is named the same way,
-  `Vixen-C5-001`.
+  Node is (2026-11-04; base 32 since 2026-11-05): `Hunter-C5-BSV72`, the
+  kind, the chip (`C5` from ESP32-C5), and five characters unique to the
+  module: the last three bytes of its Bluetooth address (set from the chip's
+  factory address) in Crockford base 32 (`0123456789ABCDEFGHJKMNPQRSTVWXYZ`,
+  most significant first, so the first character is 0 to F). Nothing is
+  numbered or stored; a reflash keeps the name. (Before 2026-11-05 the name
+  was `Hunter-C5-001`, a number given at flash time; before 2026-11-04 it was
+  `LT-C5-xxxx`.) The Vixen beacon is named the same way, `Vixen-C5-00FX2`.
 - The Node advertises whenever no central is connected, and accepts one
   central at a time. On disconnect it advertises again at once.
 - The interface discovers by service UUID, not by name.

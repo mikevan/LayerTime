@@ -1,11 +1,11 @@
 # Wi-Fi frame evidence on Android: finding and proposal
 
-Status: investigation complete, proposal for review. No contract or LayerWand
+Status: investigation complete, proposal for review. No contract or Hunter
 change is implemented. This gates the Wireshark-grade attack-detail screen.
 
 ## Finding: the wand captures raw frames but keeps none, and Link carries none
 
-Inspected `devices/lilygo-layerwand/src/C5ReconRadio.cpp`, the LayerTime Link
+Inspected `devices/lilygo-hunter/src/C5ReconRadio.cpp`, the LayerTime Link
 contract, and the Android controller.
 
 - The wand runs promiscuous Wi-Fi capture (`esp_wifi_set_promiscuous(true)`,
@@ -111,7 +111,7 @@ fingerprint (the TA/BSSID from a decoded frame) — see section B and
 
 ## Proposal for review (implement only after you approve)
 
-### A. LayerWand: a bounded raw-frame evidence buffer with burst context
+### A. Hunter: a bounded raw-frame evidence buffer with burst context
 A single triggering frame cannot establish burst behavior, so retention must
 keep context, not just the trigger.
 

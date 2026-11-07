@@ -1,0 +1,933 @@
+// Host tests for the hardware-free logic behind the T-Dongle-C5 bring-up
+// firmware (Slice 1, Increment 0): the APA102 frame, the button debouncer,
+// the Hunter button gestures (Increment 2B), the advertised test name, the
+// MiB report, and the Hunter screen: the eye and cheek indicators, the
+// event totals by band, and the count of other Hunters nearby.
+//
+// Build command: see devices/lilygo-hunter/README.md, "Host tests".
+
+#include "check.h"
+
+#include <cstring>
+
+#include "BringUpLogic.h"
+#include "CardTransferLogic.h"
+#include "SdLogLogic.h"
+
+using namespace layertime::tdongle_c5;
+using layertime::Band;
+using layertime::SourceKind;
+
+// --- APA102 --------------------------------------------------------------
+
+void apa102_frame_is_start_led_end()
+{
+    uint8_t f[kApa102FrameBytes];
+    encodeApa102(Rgb{0x11, 0x22, 0x33}, 7, f);
+    CHECK_INT(12, kApa102FrameBytes);
+    // A whole number of 32-bit words, so consecutive updates stay aligned.
+    CHECK_INT(0, static_cast<int>(kApa102FrameBytes % 4));
+    // 32-bit start frame of zeros.
+    CHECK_INT(0x00, f[0]);
+    CHECK_INT(0x00, f[1]);
+    CHECK_INT(0x00, f[2]);
+    CHECK_INT(0x00, f[3]);
+    // LED frame: 111 + 5-bit brightness, then blue, green, red.
+    CHECK_INT(0xE7, f[4]);
+    CHECK_INT(0x33, f[5]);
+    CHECK_INT(0x22, f[6]);
+    CHECK_INT(0x11, f[7]);
+    // Trailing 32 zero bits (SK9822 reset frame); leaves the data line low.
+    CHECK_INT(0x00, f[8]);
+    CHECK_INT(0x00, f[9]);
+    CHECK_INT(0x00, f[10]);
+    CHECK_INT(0x00, f[11]);
+}
+
+void apa102_brightness_is_clamped_to_five_bits()
+{
+    uint8_t f[kApa102FrameBytes];
+    encodeApa102(Rgb{0, 0, 0}, 200, f);
+    CHECK_INT(0xFF, f[4]);
+    encodeApa102(Rgb{0, 0, 0}, 31, f);
+    CHECK_INT(0xFF, f[4]);
+    encodeApa102(Rgb{0, 0, 0}, 0, f);
+    CHECK_INT(0xE0, f[4]);
+}
+
+void led_cycle_is_red_green_blue_repeating()
+{
+    const Rgb r = bringUpCycleColor(0), g = bringUpCycleColor(1), b = bringUpCycleColor(2);
+    CHECK_INT(255, r.red);   CHECK_INT(0, r.green);   CHECK_INT(0, r.blue);
+    CHECK_INT(0, g.red);     CHECK_INT(255, g.green); CHECK_INT(0, g.blue);
+    CHECK_INT(0, b.red);     CHECK_INT(0, b.green);   CHECK_INT(255, b.blue);
+    const Rgb again = bringUpCycleColor(3);
+    CHECK_INT(255, again.red);
+    CHECK_INT(0, again.blue);
+}
+
+// --- Button --------------------------------------------------------------
+
+void a_clean_press_counts_once_after_the_debounce_time()
+{
+    ButtonDebouncer d;
+    CHECK_FALSE(d.update(false, 0));
+    CHECK_FALSE(d.update(true, 100));                            // edge seen, timer starts
+    CHECK_FALSE(d.update(true, 100 + ButtonDebouncer::kDebounceMs - 1));
+    CHECK_TRUE(d.update(true, 100 + ButtonDebouncer::kDebounceMs)); // counted once
+    CHECK_TRUE(d.isPressed());
+    CHECK_FALSE(d.update(true, 500));                            // held: no second count
+    CHECK_FALSE(d.update(true, 5000));
+}
+
+void a_bounce_shorter_than_the_debounce_time_is_ignored()
+{
+    ButtonDebouncer d;
+    d.update(false, 0);
+    CHECK_FALSE(d.update(true, 100));
+    CHECK_FALSE(d.update(false, 110)); // bounced back before 30 ms
+    CHECK_FALSE(d.update(false, 200));
+    CHECK_FALSE(d.isPressed());
+}
+
+void release_rearms_and_the_next_press_counts_again()
+{
+    ButtonDebouncer d;
+    d.update(false, 0);
+    d.update(true, 100);
+    CHECK_TRUE(d.update(true, 130));
+    CHECK_FALSE(d.update(false, 400));  // release edge
+    CHECK_FALSE(d.update(false, 430));  // release becomes stable, no count
+    CHECK_FALSE(d.isPressed());
+    d.update(true, 1000);
+    CHECK_TRUE(d.update(true, 1030));
+}
+
+void the_debouncer_survives_millis_wraparound()
+{
+    ButtonDebouncer d;
+    const uint32_t nearWrap = 0xFFFFFFF0u;
+    d.update(false, nearWrap);
+    d.update(true, nearWrap);
+    CHECK_TRUE(d.update(true, nearWrap + ButtonDebouncer::kDebounceMs)); // wraps past zero
+}
+
+// --- Advertised name -----------------------------------------------------
+
+// --- Button gestures (Hunter: short press wakes the screen, long press
+// dumps the run) ------------------------------------------------------------
+
+int g(ButtonGestures &b, bool pressed, uint32_t now) { return static_cast<int>(b.update(pressed, now)); }
+const int kNone = static_cast<int>(ButtonGesture::None);
+const int kShort = static_cast<int>(ButtonGesture::Short);
+const int kLong = static_cast<int>(ButtonGesture::Long);
+
+void a_short_press_reports_short_once_after_the_release_settles()
+{
+    ButtonGestures b;
+    CHECK_INT(kNone, g(b, true, 100));
+    CHECK_INT(kNone, g(b, true, 130));   // pressed and settled
+    CHECK_INT(kNone, g(b, true, 400));
+    CHECK_INT(kNone, g(b, false, 500));  // release starts
+    CHECK_INT(kNone, g(b, false, 529));  // not settled yet
+    CHECK_INT(kShort, g(b, false, 530)); // settled: Short
+    CHECK_INT(kNone, g(b, false, 600));  // once
+}
+
+void a_long_press_reports_long_once_while_held_and_nothing_on_release()
+{
+    ButtonGestures b;
+    CHECK_INT(kNone, g(b, true, 1000));
+    CHECK_INT(kNone, g(b, true, 1030));
+    CHECK_INT(kNone, g(b, true, 1000 + ButtonGestures::kLongPressMs - 1));
+    CHECK_INT(kLong, g(b, true, 1000 + ButtonGestures::kLongPressMs));
+    CHECK_INT(kNone, g(b, true, 5000));  // once
+    CHECK_INT(kNone, g(b, false, 6000));
+    CHECK_INT(kNone, g(b, false, 6100)); // no Short after a Long
+    // Re-armed: the next short press counts.
+    CHECK_INT(kNone, g(b, true, 7000));
+    CHECK_INT(kNone, g(b, true, 7040));
+    CHECK_INT(kNone, g(b, false, 7100));
+    CHECK_INT(kShort, g(b, false, 7140));
+}
+
+void a_bounce_shorter_than_the_debounce_time_is_not_a_press()
+{
+    ButtonGestures b;
+    CHECK_INT(kNone, g(b, true, 100));
+    CHECK_INT(kNone, g(b, false, 110));  // released after 10 ms
+    CHECK_INT(kNone, g(b, false, 200));
+    CHECK_INT(kNone, g(b, false, 300));  // never reported
+}
+
+void a_release_bounce_does_not_end_the_press()
+{
+    ButtonGestures b;
+    CHECK_INT(kNone, g(b, true, 100));
+    CHECK_INT(kNone, g(b, true, 140));   // down
+    CHECK_INT(kNone, g(b, false, 200));  // brief bounce
+    CHECK_INT(kNone, g(b, true, 210));   // back down before settling
+    CHECK_INT(kNone, g(b, true, 400));
+    CHECK_INT(kNone, g(b, false, 500));
+    CHECK_INT(kShort, g(b, false, 540)); // one Short for the whole press
+}
+
+void gestures_survive_millis_wraparound()
+{
+    ButtonGestures b;
+    const uint32_t nearWrap = 0xFFFFFFF0u;
+    CHECK_INT(kNone, g(b, true, nearWrap));
+    CHECK_INT(kNone, g(b, true, nearWrap + 40));
+    CHECK_INT(kLong, g(b, true, nearWrap + ButtonGestures::kLongPressMs)); // wraps past zero
+}
+
+// Unit names (2026-11-04; base 32 from the chip, 2026-11-05): every unit
+// says what it is, and the last part is unique to the module itself.
+void a_unit_is_kind_chip_and_five_base32_characters_from_its_address()
+{
+    char chip[8];
+    chipShortName("ESP32-C5", chip, sizeof(chip));
+    CHECK_STR("C5", chip);
+    char name[kUnitNameSize];
+    // Michael's Hunter, Bluetooth address 38:44:BE:BC:EC:E2: 0xBCECE2 = 11,25,27,7,2.
+    const uint8_t hunter[6] = {0x38, 0x44, 0xBE, 0xBC, 0xEC, 0xE2};
+    CHECK_TRUE(formatUnitName("Hunter", chip, hunter, name, sizeof(name)));
+    CHECK_STR("Hunter-C5-BSV72", name);
+    // 0x003FA2 = 0,0,15,29,2.
+    const uint8_t low[6] = {0x7C, 0xDF, 0xA1, 0x00, 0x3F, 0xA2};
+    CHECK_TRUE(formatUnitName("Vixen", chip, low, name, sizeof(name)));
+    CHECK_STR("Vixen-C5-00FX2", name);
+    chipShortName("ESP32-S3", chip, sizeof(chip));
+    CHECK_TRUE(formatUnitName("Hunter", chip, low, name, sizeof(name)));
+    CHECK_STR("Hunter-S3-00FX2", name);
+    // Only the last three bytes count.
+    const uint8_t other[6] = {0xFF, 0xFF, 0xFF, 0x00, 0x3F, 0xA2};
+    CHECK_TRUE(formatUnitName("Vixen", "C5", other, name, sizeof(name)));
+    CHECK_STR("Vixen-C5-00FX2", name);
+}
+
+void the_base32_id_uses_crockford_letters_and_covers_every_address()
+{
+    char id[kUnitIdSize];
+    const uint8_t zero[6] = {0, 0, 0, 0, 0, 0};
+    unitIdBase32(zero, id, sizeof(id));
+    CHECK_STR("00000", id);
+    const uint8_t top[6] = {0, 0, 0, 0xFF, 0xFF, 0xFF};
+    unitIdBase32(top, id, sizeof(id));
+    CHECK_STR("FZZZZ", id);
+    // Every one of the 32 digit values, in the last place: never I, L, O, or U.
+    const char *expected = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    for (uint8_t v = 0; v < 32; ++v) {
+        const uint8_t mac[6] = {0, 0, 0, 0, 0, v};
+        unitIdBase32(mac, id, sizeof(id));
+        CHECK_TRUE(id[4] == expected[v]);
+        CHECK_TRUE(strchr(id, 'I') == nullptr && strchr(id, 'L') == nullptr && strchr(id, 'O') == nullptr &&
+                   strchr(id, 'U') == nullptr);
+    }
+    // Neighbouring addresses give different names.
+    char a[kUnitIdSize], b[kUnitIdSize];
+    const uint8_t m1[6] = {0, 0, 0, 0x12, 0x34, 0x56};
+    const uint8_t m2[6] = {0, 0, 0, 0x12, 0x34, 0x57};
+    unitIdBase32(m1, a, sizeof(a));
+    unitIdBase32(m2, b, sizeof(b));
+    CHECK_TRUE(strcmp(a, b) != 0);
+    // A buffer too small for five characters gives an empty string.
+    char small[5] = {'x', 'x', 'x', 'x', 'x'};
+    unitIdBase32(m1, small, sizeof(small));
+    CHECK_STR("", small);
+    unitIdBase32(nullptr, id, sizeof(id));
+    CHECK_STR("", id);
+}
+
+void unit_names_fit_the_link_and_fail_cleanly()
+{
+    const uint8_t mac[6] = {0, 0, 0, 0xFF, 0xFF, 0xFF};
+    char name[kUnitNameSize];
+    char chip[8];
+    chipShortName(nullptr, chip, sizeof(chip));
+    CHECK_STR("ESP32", chip);
+    chipShortName("", chip, sizeof(chip));
+    CHECK_STR("ESP32", chip);
+    chipShortName("ESP32", chip, sizeof(chip));
+    CHECK_STR("ESP32", chip);
+    // The longest name fits the Link's 20-byte buffer.
+    CHECK_TRUE(formatUnitName("Hunter", "ESP32", mac, name, sizeof(name)));
+    CHECK_STR("Hunter-ESP32-FZZZZ", name);
+    CHECK_TRUE(strlen(name) < kUnitNameSize);
+    char tiny[8];
+    CHECK_FALSE(formatUnitName("Hunter", "C5", mac, tiny, sizeof(tiny)));
+    CHECK_STR("", tiny);
+    CHECK_FALSE(formatUnitName("Hunter", "C5", nullptr, name, sizeof(name)));
+    CHECK_STR("", name);
+}
+
+// Trackers off by default (2026-11-06): the Hunter's starting list matches
+// LayerScope's (SensorSelectionTest.trackersStartOff, 0x43BE0).
+void a_hunter_without_a_saved_list_runs_every_sensor_but_the_trackers()
+{
+    CHECK_INT(0x43BE0, static_cast<int>(kHunterDefaultSensorMask));
+    CHECK_TRUE((kHunterDefaultSensorMask & kTrackerSensorBits) == 0);
+    CHECK_TRUE((kHunterDefaultSensorMask | kTrackerSensorBits) == layertime::kAllSensorsMask);
+    CHECK_TRUE((kHunterDefaultSensorMask & (1u << 5)) != 0);  // Deauth on
+    CHECK_TRUE((kHunterDefaultSensorMask & (1u << 18)) != 0); // EAPOL on
+    CHECK_TRUE((kHunterDefaultSensorMask & (1u << 8)) != 0);  // Flock on
+}
+
+void unit_commands_parse_strictly()
+{
+    CHECK_INT(static_cast<int>(UnitCommand::Get), static_cast<int>(parseUnitCommand("unit get\r")));
+    CHECK_INT(static_cast<int>(UnitCommand::Get), static_cast<int>(parseUnitCommand("unit get")));
+    // The old numbering command is refused, so the unit can say why.
+    CHECK_INT(static_cast<int>(UnitCommand::Bad), static_cast<int>(parseUnitCommand("unit set 12")));
+    CHECK_INT(static_cast<int>(UnitCommand::Bad), static_cast<int>(parseUnitCommand("unit set")));
+    CHECK_INT(static_cast<int>(UnitCommand::Bad), static_cast<int>(parseUnitCommand("unit wipe")));
+    CHECK_INT(static_cast<int>(UnitCommand::Bad), static_cast<int>(parseUnitCommand("unit")));
+    CHECK_INT(static_cast<int>(UnitCommand::None), static_cast<int>(parseUnitCommand("units")));
+    CHECK_INT(static_cast<int>(UnitCommand::None), static_cast<int>(parseUnitCommand("card list")));
+    CHECK_INT(static_cast<int>(UnitCommand::None), static_cast<int>(parseUnitCommand(nullptr)));
+}
+
+// --- Units ---------------------------------------------------------------
+
+void whole_mib_rounds_down()
+{
+    CHECK_INT(8, wholeMiB(8u * 1024u * 1024u));
+    CHECK_INT(7, wholeMiB(8u * 1024u * 1024u - 1));
+    CHECK_INT(0, wholeMiB(0));
+    CHECK_INT(16, wholeMiB(16u * 1024u * 1024u));
+}
+
+// --- Hunter screen: owl indicators ------------------------------------------
+
+uint16_t to565(uint32_t r8, uint32_t g8, uint32_t b8)
+{
+    return static_cast<uint16_t>((((r8 * 31u + 127u) / 255u) << 11) | (((g8 * 63u + 127u) / 255u) << 5) |
+                                 ((b8 * 31u + 127u) / 255u));
+}
+uint32_t red8(uint16_t p) { return ((p >> 11) & 0x1F) * 255u / 31u; }
+uint32_t green8(uint16_t p) { return ((p >> 5) & 0x3F) * 255u / 63u; }
+uint32_t blue8(uint16_t p) { return (p & 0x1F) * 255u / 31u; }
+
+void the_eye_follows_the_link_and_the_cheek_the_mesh()
+{
+    CHECK_TRUE(linkIndicatorColor(LinkIndicator::NoWatch) == IndicatorColor::Red);
+    CHECK_TRUE(linkIndicatorColor(LinkIndicator::Connected) == IndicatorColor::Green);
+    CHECK_TRUE(meshIndicatorColor(MeshIndicator::NotConnected) == IndicatorColor::Red);
+    CHECK_TRUE(meshIndicatorColor(MeshIndicator::Node) == IndicatorColor::Green); // 2026-11-01: on the mesh is green, node or master
+    CHECK_TRUE(meshIndicatorColor(MeshIndicator::Master) == IndicatorColor::Green);
+}
+
+void only_the_owls_green_counts_as_green()
+{
+    CHECK_TRUE(isGreenPixel(to565(123, 222, 16)));  // the owl's green
+    CHECK_TRUE(isGreenPixel(to565(0, 20, 0)));      // a dim anti-aliased edge
+    CHECK_FALSE(isGreenPixel(to565(255, 182, 32))); // the owl's red
+    CHECK_FALSE(isGreenPixel(0));                   // black
+    CHECK_FALSE(isGreenPixel(0xFFFF));              // white
+}
+
+void a_red_eye_is_pure_red_and_keeps_its_shading()
+{
+    const uint16_t full = recolorGreenPixel(to565(123, 230, 16), IndicatorColor::Red);
+    CHECK_NEAR(255.0, static_cast<double>(red8(full)), 9.0);
+    CHECK_INT(0, green8(full));
+    CHECK_INT(0, blue8(full));
+    CHECK_FALSE(isGreenPixel(full));
+    // Brighter than the peak is clamped to the peak.
+    CHECK_INT(full, recolorGreenPixel(to565(123, 255, 16), IndicatorColor::Red));
+    // Half the green level, half the red.
+    const uint16_t half = recolorGreenPixel(to565(60, 115, 8), IndicatorColor::Red);
+    CHECK_NEAR(128.0, static_cast<double>(red8(half)), 9.0);
+    CHECK_INT(0, green8(half));
+}
+
+void a_blue_lens_is_blue()
+{
+    const uint16_t p = recolorGreenPixel(to565(123, 230, 16), IndicatorColor::Blue);
+    CHECK_TRUE(blue8(p) > green8(p));
+    CHECK_TRUE(blue8(p) > red8(p));
+    CHECK_NEAR(255.0, static_cast<double>(blue8(p)), 9.0);
+}
+
+void green_and_non_green_pixels_are_left_alone()
+{
+    const uint16_t green = to565(123, 222, 16);
+    const uint16_t red = to565(255, 182, 32);
+    CHECK_INT(green, recolorGreenPixel(green, IndicatorColor::Green));
+    CHECK_INT(red, recolorGreenPixel(red, IndicatorColor::Red));
+    CHECK_INT(red, recolorGreenPixel(red, IndicatorColor::Blue));
+    CHECK_INT(0, recolorGreenPixel(0, IndicatorColor::Red));
+}
+
+void only_green_pixels_inside_the_box_change()
+{
+    // 4 x 3 image, all owl green except one red pixel at row 1, column 2.
+    const uint16_t green = to565(123, 222, 16);
+    const uint16_t red = to565(255, 182, 32);
+    uint8_t img[4 * 3 * 2];
+    for (int i = 0; i < 12; ++i) {
+        const uint16_t p = (i == 1 * 4 + 2) ? red : green;
+        img[i * 2] = static_cast<uint8_t>(p & 0xFF); // little-endian, as LVGL stores it
+        img[i * 2 + 1] = static_cast<uint8_t>(p >> 8);
+    }
+    recolorIndicator(img, 4, PixelBox{1, 2, 1, 2}, IndicatorColor::Red);
+    const uint16_t redEye = recolorGreenPixel(green, IndicatorColor::Red);
+    for (int y = 0; y < 3; ++y) {
+        for (int x = 0; x < 4; ++x) {
+            const int i = y * 4 + x;
+            const uint16_t p = static_cast<uint16_t>(img[i * 2] | (img[i * 2 + 1] << 8));
+            const bool inside = y >= 1 && y <= 2 && x >= 1 && x <= 2;
+            if (i == 1 * 4 + 2) CHECK_INT(red, p);
+            else if (inside) CHECK_INT(redEye, p);
+            else CHECK_INT(green, p);
+        }
+    }
+}
+
+void the_eye_and_cheek_boxes_do_not_overlap()
+{
+    // Values from C5LogoImages.h, which needs LVGL and is not built here.
+    const PixelBox eye{23, 28, 34, 47};
+    const PixelBox cheek{29, 39, 33, 43};
+    CHECK_TRUE(eye.bottom < cheek.top);
+    CHECK_TRUE(cheek.bottom < 56 && eye.right < 56 && cheek.right < 56);
+}
+
+// --- Hunter screen: events by band -------------------------------------------
+
+void events_count_toward_their_band()
+{
+    CHECK_TRUE(eventBand(SourceKind::Ble, Band::Unknown, 0) == EventBand::Ble);
+    CHECK_TRUE(eventBand(SourceKind::Ble, Band::Band2_4GHz, 0) == EventBand::Ble);
+    CHECK_TRUE(eventBand(SourceKind::Wifi, Band::Band2_4GHz, 6) == EventBand::Wifi2_4GHz);
+    CHECK_TRUE(eventBand(SourceKind::Wifi, Band::Band5GHz, 36) == EventBand::Wifi5GHz);
+    // Band unknown: the channel decides.
+    CHECK_TRUE(eventBand(SourceKind::Wifi, Band::Unknown, 1) == EventBand::Wifi2_4GHz);
+    CHECK_TRUE(eventBand(SourceKind::Wifi, Band::Unknown, 14) == EventBand::Wifi2_4GHz);
+    CHECK_TRUE(eventBand(SourceKind::Wifi, Band::Unknown, 32) == EventBand::Wifi5GHz);
+    CHECK_TRUE(eventBand(SourceKind::Wifi, Band::Unknown, 165) == EventBand::Wifi5GHz);
+    CHECK_TRUE(eventBand(SourceKind::Wifi, Band::Unknown, 0) == EventBand::Other);
+    CHECK_TRUE(eventBand(SourceKind::Wifi, Band::Unknown, 20) == EventBand::Other);
+    CHECK_TRUE(eventBand(SourceKind::Unknown, Band::Band2_4GHz, 6) == EventBand::Other);
+    CHECK_TRUE(eventBand(SourceKind::Ieee802154, Band::Unknown, 11) == EventBand::Other);
+}
+
+void band_totals_add_up()
+{
+    BandTotals t;
+    t.add(EventBand::Ble);
+    t.add(EventBand::Ble);
+    t.add(EventBand::Wifi2_4GHz);
+    t.add(EventBand::Wifi5GHz);
+    t.add(EventBand::Other);
+    CHECK_INT(2, t.ble);
+    CHECK_INT(1, t.wifi2_4GHz);
+    CHECK_INT(1, t.wifi5GHz);
+    CHECK_INT(1, t.other);
+}
+
+// --- Hunter screen: other Hunters nearby -----------------------------------
+
+void a_peer_heard_again_counts_once()
+{
+    PeerSightings s;
+    const uint8_t a[6] = {0xE0, 0xEC, 0xBC, 0xBE, 0x44, 0x38};
+    const uint8_t b[6] = {0x10, 0xF4, 0xBC, 0xBE, 0x44, 0x38};
+    CHECK_INT(0, s.count(0));
+    s.saw(a, 1000);
+    s.saw(a, 2000);
+    CHECK_INT(1, s.count(2000));
+    s.saw(b, 3000);
+    CHECK_INT(2, s.count(3000));
+}
+
+void a_peer_not_heard_for_five_minutes_is_not_counted()
+{
+    PeerSightings s;
+    const uint8_t a[6] = {1, 2, 3, 4, 5, 6};
+    s.saw(a, 10000);
+    CHECK_INT(1, s.count(10000 + PeerSightings::kWindowMs - 1));
+    CHECK_INT(0, s.count(10000 + PeerSightings::kWindowMs));
+    s.saw(a, 10000 + PeerSightings::kWindowMs + 5); // heard again
+    CHECK_INT(1, s.count(10000 + PeerSightings::kWindowMs + 5));
+}
+
+void when_full_a_new_peer_takes_the_slot_heard_longest_ago()
+{
+    PeerSightings s;
+    uint8_t addr[6] = {0, 0, 0, 0, 0, 0};
+    for (uint8_t i = 0; i < PeerSightings::kCapacity; ++i) {
+        addr[0] = i;
+        s.saw(addr, 1000u + i); // address 0 heard first
+    }
+    CHECK_INT(PeerSightings::kCapacity, s.count(2000));
+    addr[0] = 0;
+    s.saw(addr, 2000); // address 0 heard again; now address 1 is oldest
+    addr[0] = 200;
+    s.saw(addr, 2001); // replaces address 1
+    CHECK_INT(PeerSightings::kCapacity, s.count(2001));
+    // Address 1 is gone: hearing it again replaces the next oldest (2).
+    addr[0] = 1;
+    s.saw(addr, 2002);
+    CHECK_INT(PeerSightings::kCapacity, s.count(2002));
+    // Addresses 3 and up expire first; 0, 200, and 1 remain.
+    CHECK_INT(3, s.count(1000u + PeerSightings::kCapacity + PeerSightings::kWindowMs));
+}
+
+void peer_sightings_survive_millis_wraparound()
+{
+    PeerSightings s;
+    const uint8_t a[6] = {9, 9, 9, 9, 9, 9};
+    const uint32_t nearWrap = 0xFFFFFF00u;
+    s.saw(a, nearWrap);
+    CHECK_INT(1, s.count(nearWrap + 60000u)); // wraps past zero
+    CHECK_INT(0, s.count(nearWrap + PeerSightings::kWindowMs));
+}
+
+// --- Hunter channel plan -------------------------------------------------------
+
+bool acceptAll(uint8_t, void *) { return true; }
+bool acceptNone(uint8_t, void *) { return false; }
+// The world-safe default as far as it is known: 2.4 GHz 1 to 11 only.
+bool accept1To11(uint8_t ch, void *) { return ch >= 1 && ch <= 11; }
+// Some 5 GHz channels and 2.4 GHz 1 to 13; counts the probes.
+bool acceptSome(uint8_t ch, void *context)
+{
+    ++*static_cast<int *>(context);
+    return ch == 36 || ch == 40 || ch == 149 || ch == 165 || (ch >= 1 && ch <= 13);
+}
+
+void the_plan_is_5_ghz_first_then_2_4_ghz_each_lowest_to_highest()
+{
+    uint8_t plan[64];
+    int probes = 0;
+    const uint8_t n = buildChannelPlan(acceptSome, &probes, plan, sizeof(plan));
+    CHECK_INT(17, n);
+    CHECK_INT(42, probes); // every candidate asked once
+    const uint8_t expected[] = {36, 40, 149, 165, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+    for (uint8_t i = 0; i < 17; ++i) CHECK_INT(expected[i], plan[i]);
+}
+
+void every_candidate_accepted_gives_28_then_14_in_order()
+{
+    uint8_t plan[64];
+    CHECK_INT(42, buildChannelPlan(acceptAll, nullptr, plan, sizeof(plan)));
+    CHECK_INT(36, plan[0]);
+    CHECK_INT(177, plan[27]);
+    CHECK_INT(1, plan[28]);
+    CHECK_INT(14, plan[41]);
+    for (uint8_t i = 1; i < 28; ++i) CHECK_TRUE(plan[i] > plan[i - 1]);
+    for (uint8_t i = 29; i < 42; ++i) CHECK_TRUE(plan[i] > plan[i - 1]);
+}
+
+void no_5_ghz_accepted_leaves_only_2_4_ghz_and_none_accepted_leaves_nothing()
+{
+    uint8_t plan[64];
+    CHECK_INT(11, buildChannelPlan(accept1To11, nullptr, plan, sizeof(plan)));
+    CHECK_INT(1, plan[0]);
+    CHECK_INT(11, plan[10]);
+    CHECK_INT(0, buildChannelPlan(acceptNone, nullptr, plan, sizeof(plan)));
+}
+
+void the_plan_stops_at_capacity()
+{
+    uint8_t plan[5] = {0, 0, 0, 0, 0};
+    CHECK_INT(5, buildChannelPlan(acceptAll, nullptr, plan, 5));
+    CHECK_INT(52, plan[4]);
+    // The scheduler holds 48, more than the 42 candidates.
+    CHECK_TRUE(sizeof(kWifi5GHzCandidates) + sizeof(kWifi2_4GHzCandidates) <= 48);
+}
+
+// --- SD-card log ---------------------------------------------------------
+
+void a_write_is_due_when_half_the_ring_waits()
+{
+    SdWritePolicy w(1024);
+    CHECK_INT(512, w.threshold());
+    CHECK_FALSE(w.due(0, false));
+    CHECK_FALSE(w.due(511, false));
+    CHECK_TRUE(w.due(512, false));
+    CHECK_TRUE(w.due(1024, false));
+}
+
+void a_link_change_writes_whatever_waits()
+{
+    SdWritePolicy w(1024);
+    CHECK_TRUE(w.due(1, true));
+    CHECK_FALSE(w.due(0, true)); // nothing to write
+}
+
+void a_tiny_ring_never_divides_to_zero()
+{
+    SdWritePolicy w(1);
+    CHECK_INT(0, w.threshold());
+    CHECK_FALSE(w.due(1, false)); // no threshold: only link changes write
+    CHECK_TRUE(w.due(1, true));
+}
+
+void log_file_names_parse_and_format()
+{
+    CHECK_INT(1, logFileSerial("hunter_0001.log"));
+    CHECK_INT(42, logFileSerial("/HUNTER_0042.LOG"));
+    CHECK_INT(9999, logFileSerial("hunter_9999.log"));
+    CHECK_INT(0, logFileSerial("hunter_001.log"));
+    CHECK_INT(0, logFileSerial("hunter_00a1.log"));
+    CHECK_INT(0, logFileSerial("hunter_0001.txt"));
+    CHECK_INT(0, logFileSerial("detections.csv"));
+    CHECK_INT(0, logFileSerial(nullptr));
+    // The old spelling (before 2026-11-06) is not a current log name, and is
+    // read only by legacyLogFileSerial, so the Hunter can rename it once.
+    CHECK_INT(0, logFileSerial("layerwand_0007.log"));
+    CHECK_INT(7, legacyLogFileSerial("layerwand_0007.log"));
+    CHECK_INT(42, legacyLogFileSerial("/LAYERWAND_0042.LOG"));
+    CHECK_INT(0, legacyLogFileSerial("hunter_0007.log"));
+    CHECK_INT(0, legacyLogFileSerial("layerwand_007.log"));
+    CHECK_INT(0, legacyLogFileSerial(nullptr));
+    char name[kLogFileNameSize];
+    CHECK_TRUE(logFileName(1, name, sizeof(name)));
+    CHECK_STR("hunter_0001.log", name);
+    CHECK_TRUE(logFileName(1234, name, sizeof(name)));
+    CHECK_STR("hunter_1234.log", name);
+    CHECK_FALSE(logFileName(0, name, sizeof(name)));
+    CHECK_FALSE(logFileName(kMaxLogSerial + 1, name, sizeof(name)));
+    CHECK_FALSE(logFileName(1, name, sizeof(name) - 1));
+}
+
+void the_ring_keeps_order_and_counts_what_it_drops()
+{
+    SdRecord storage[3];
+    SdRecordRing ring;
+    ring.attach(storage, 3);
+    SdRecord r;
+    for (uint32_t i = 1; i <= 4; ++i) {
+        r.uptimeMs = i;
+        const bool pushed = ring.push(r);
+        CHECK_INT(i <= 3 ? 1 : 0, pushed ? 1 : 0);
+    }
+    CHECK_INT(3, ring.size());
+    CHECK_INT(1, static_cast<int>(ring.dropped()));
+    SdRecord out;
+    CHECK_TRUE(ring.pop(out));
+    CHECK_INT(1, static_cast<int>(out.uptimeMs));
+    r.uptimeMs = 5;
+    CHECK_TRUE(ring.push(r)); // wraps
+    const uint32_t wants[] = {2u, 3u, 5u};
+    for (uint32_t want : wants) {
+        CHECK_TRUE(ring.pop(out));
+        CHECK_INT(static_cast<int>(want), static_cast<int>(out.uptimeMs));
+    }
+    CHECK_FALSE(ring.pop(out));
+    SdRecordRing none;
+    none.attach(nullptr, 8);
+    CHECK_FALSE(none.push(r));
+    CHECK_INT(1, static_cast<int>(none.dropped()));
+}
+
+void untrusted_text_is_quoted_and_escaped_without_loss()
+{
+    char out[64];
+    CHECK_INT(7, static_cast<int>(csvQuoted("plain", out, sizeof(out))));
+    CHECK_STR("\"plain\"", out);
+    csvQuoted("a\"b,c", out, sizeof(out));
+    CHECK_STR("\"a\"\"b,c\"", out);
+    csvQuoted("x\r\ny\x7F\\", out, sizeof(out));
+    CHECK_STR("\"x\\x0D\\x0Ay\\x7F\\\\\"", out);
+    csvQuoted("", out, sizeof(out));
+    CHECK_STR("\"\"", out);
+    csvQuoted(nullptr, out, sizeof(out));
+    CHECK_STR("\"\"", out);
+    // Exactly fits: "abc" plus quotes is 5, plus the terminator 6.
+    CHECK_INT(5, static_cast<int>(csvQuoted("abc", out, 6)));
+    CHECK_INT(0, static_cast<int>(csvQuoted("abc", out, 5)));
+    CHECK_STR("", out);
+}
+
+void an_event_line_has_every_column()
+{
+    SdRecord r;
+    r.kind = SdRecordKind::Event;
+    r.uptimeMs = 123456;
+    r.event.eventId = 17;
+    r.event.detector = layertime::ReconTarget::Deauth;
+    r.event.confidence = layertime::Confidence::Medium;
+    r.event.sourceKind = SourceKind::Wifi;
+    strcpy(r.event.sourceId, "AA:BB:CC:DD:EE:FF");
+    strcpy(r.event.detail, "Free \"WiFi\", ok");
+    r.event.rssi = -67;
+    r.event.channel = 36;
+    r.event.band = Band::Band5GHz;
+    r.event.count = 3;
+    char line[256];
+    const size_t n = formatSdRecord(r, 2, "DEAUTH", line, sizeof(line));
+    CHECK_STR("2,123456,\"event\",17,\"DEAUTH\",\"medium\",\"wifi\",\"AA:BB:CC:DD:EE:FF\","
+              "\"Free \"\"WiFi\"\", ok\",-67,36,\"5GHz\",3\r\n",
+              line);
+    CHECK_INT(static_cast<int>(strlen(line)), static_cast<int>(n));
+}
+
+void link_mode_and_boot_lines_leave_event_columns_empty()
+{
+    SdRecord r;
+    r.kind = SdRecordKind::Link;
+    r.uptimeMs = 5000;
+    strcpy(r.text, "connected");
+    strcpy(r.peer, "e0:48:24:3d:a2:60");
+    char line[256];
+    formatSdRecord(r, 1, "", line, sizeof(line));
+    CHECK_STR("1,5000,\"link\",,,,,\"e0:48:24:3d:a2:60\",\"connected\",,,,\r\n", line);
+    SdRecord m;
+    m.kind = SdRecordKind::Mode;
+    m.uptimeMs = 6000;
+    strcpy(m.text, "early-warning");
+    formatSdRecord(m, 1, "", line, sizeof(line));
+    CHECK_STR("1,6000,\"mode\",,,,,\"\",\"early-warning\",,,,\r\n", line);
+    SdRecord b;
+    b.kind = SdRecordKind::Boot;
+    strcpy(b.text, "power-on");
+    formatSdRecord(b, 7, "", line, sizeof(line));
+    CHECK_STR("7,0,\"boot\",,,,,\"\",\"power-on\",,,,\r\n", line);
+}
+
+void every_line_has_the_headers_column_count()
+{
+    auto commas = [](const char *s) {
+        int n = 0;
+        bool quoted = false;
+        for (; *s; ++s) {
+            if (*s == '"') quoted = !quoted;
+            else if (*s == ',' && !quoted) ++n;
+        }
+        return n;
+    };
+    const int want = commas(kSdLogHeader);
+    CHECK_INT(12, want);
+    SdRecord r;
+    strcpy(r.event.detail, "a,b,\"c\"");
+    char line[256];
+    formatSdRecord(r, 1, "X", line, sizeof(line));
+    CHECK_INT(want, commas(line));
+    r.kind = SdRecordKind::Link;
+    strcpy(r.text, ",,,");
+    formatSdRecord(r, 1, "", line, sizeof(line));
+    CHECK_INT(want, commas(line));
+}
+
+// 2026-11-04: repeat and evidence lines, the repeat throttle, and evidence paths.
+void repeat_and_evidence_lines_fill_their_columns()
+{
+    SdRecord r;
+    r.kind = SdRecordKind::Repeat;
+    r.uptimeMs = 30000;
+    r.event.eventId = 17;
+    r.event.confidence = layertime::Confidence::High;
+    r.event.sourceKind = SourceKind::Wifi;
+    strcpy(r.event.sourceId, "AA:BB:CC:DD:EE:FF");
+    strcpy(r.event.detail, "Deauth flood");
+    r.event.rssi = -55;
+    r.event.channel = 6;
+    r.event.band = Band::Band2_4GHz;
+    r.event.count = 9;
+    char line[256];
+    formatSdRecord(r, 2, "DEAUTH", line, sizeof(line));
+    CHECK_STR("2,30000,\"repeat\",17,\"DEAUTH\",\"high\",\"wifi\",\"AA:BB:CC:DD:EE:FF\","
+              "\"Deauth flood\",-55,6,\"2.4GHz\",9\r\n",
+              line);
+    SdRecord e;
+    e.kind = SdRecordKind::Evidence;
+    e.uptimeMs = 41000;
+    e.event.eventId = 17;
+    strcpy(e.text, "ev_0007/event_00017.pcap");
+    e.evidence.kept = 49;
+    e.evidence.seen = 51;
+    e.evidence.dropped = 2;
+    formatSdRecord(e, 2, "", line, sizeof(line));
+    CHECK_STR("2,41000,\"evidence\",17,,,,,\"ev_0007/event_00017.pcap kept=49 seen=51 dropped=2 truncated=0 collecting=0\",,,,49\r\n",
+              line);
+}
+
+void repeat_and_evidence_lines_have_the_headers_column_count()
+{
+    auto commas = [](const char *s) {
+        int n = 0;
+        bool quoted = false;
+        for (; *s; ++s) {
+            if (*s == '"') quoted = !quoted;
+            else if (*s == ',' && !quoted) ++n;
+        }
+        return n;
+    };
+    char line[256];
+    SdRecord r;
+    r.kind = SdRecordKind::Repeat;
+    formatSdRecord(r, 1, "X", line, sizeof(line));
+    CHECK_INT(12, commas(line));
+    r.kind = SdRecordKind::Evidence;
+    strcpy(r.text, "ev_0001/event_00001.pcap");
+    formatSdRecord(r, 1, "", line, sizeof(line));
+    CHECK_INT(12, commas(line));
+}
+
+void evidence_paths_sit_beside_their_log()
+{
+    char out[kEvidencePathSize];
+    CHECK_TRUE(evidenceFolderName(7, out, sizeof(out)));
+    CHECK_STR("ev_0007", out);
+    CHECK_TRUE(evidencePath(7, 42, out, sizeof(out)));
+    CHECK_STR("ev_0007/event_00042.pcap", out);
+    CHECK_TRUE(evidencePath(9999, 4294967295u, out, sizeof(out)));
+    CHECK_STR("ev_9999/event_4294967295.pcap", out);
+    CHECK_FALSE(evidencePath(0, 1, out, sizeof(out)));
+    CHECK_FALSE(evidencePath(10000, 1, out, sizeof(out)));
+    CHECK_FALSE(evidencePath(1, 0, out, sizeof(out)));
+    CHECK_FALSE(evidencePath(1, 1, out, 10));
+    CHECK_FALSE(evidenceFolderName(0, out, sizeof(out)));
+}
+
+void a_repeat_is_logged_at_most_every_ten_seconds_per_event()
+{
+    RepeatThrottle t;
+    CHECK_TRUE(t.due(5, 1000));       // the first repeat
+    CHECK_FALSE(t.due(5, 5000));
+    CHECK_FALSE(t.due(5, 10999));
+    CHECK_TRUE(t.due(5, 11000));      // 10 s after the last logged one
+    CHECK_TRUE(t.due(6, 11001));      // another event is separate
+    CHECK_FALSE(t.due(0, 20000));     // no event id
+    // Past kTracked events, the one logged longest ago is replaced.
+    RepeatThrottle full;
+    for (uint32_t id = 1; id <= RepeatThrottle::kTracked; ++id) CHECK_TRUE(full.due(id, id * 10));
+    CHECK_TRUE(full.due(1000, 2000)); // replaces event 1 (logged at 10 ms)
+    CHECK_TRUE(full.due(1, 2001));    // event 1 is new again
+    CHECK_FALSE(full.due(1000, 2002));
+    // Survives millis wraparound.
+    RepeatThrottle w;
+    CHECK_TRUE(w.due(9, 0xFFFFF000u));
+    CHECK_FALSE(w.due(9, 0x00000100u));
+    CHECK_TRUE(w.due(9, 0x00002000u));
+    w.clear();
+    CHECK_TRUE(w.due(9, 0x00002001u));
+}
+
+// 2026-11-04: pulling the card's files over USB serial.
+void only_the_hunters_own_file_names_are_served()
+{
+    CHECK_TRUE(cardNameServed("hunter_0007.log"));
+    CHECK_TRUE(cardNameServed("ev_0007/event_00042.pcap"));
+    CHECK_TRUE(cardNameServed("ev_9999/event_4294967295.pcap"));
+    CHECK_FALSE(cardNameServed("hunter_0000.log"));       // serial 0 is never written
+    CHECK_FALSE(cardNameServed("HUNTER_0007.LOG"));
+    CHECK_FALSE(cardNameServed("/hunter_0007.log"));
+    CHECK_FALSE(cardNameServed("layerwand_0007.log")); // renamed on the card before it is served
+    CHECK_FALSE(cardNameServed("ev_0007/../secrets.txt"));
+    CHECK_FALSE(cardNameServed("ev_0007/event_0042.pcap"));  // 4 digits: never written
+    CHECK_FALSE(cardNameServed("ev_0007/event_00042.pcap.txt"));
+    CHECK_FALSE(cardNameServed("ev_007/event_00042.pcap"));
+    CHECK_FALSE(cardNameServed("ev_0007\\event_00042.pcap"));
+    CHECK_FALSE(cardNameServed("System Volume Information"));
+    CHECK_FALSE(cardNameServed(""));
+    CHECK_FALSE(cardNameServed(nullptr));
+}
+
+void card_commands_parse_strictly()
+{
+    char name[kCardNameSize];
+    CHECK_INT(static_cast<int>(CardCommand::List), static_cast<int>(parseCardCommand("card list\r", name, sizeof(name))));
+    CHECK_INT(static_cast<int>(CardCommand::Get), static_cast<int>(parseCardCommand("card get ev_0007/event_00042.pcap", name, sizeof(name))));
+    CHECK_STR("ev_0007/event_00042.pcap", name);
+    CHECK_INT(static_cast<int>(CardCommand::Bad), static_cast<int>(parseCardCommand("card get ../boot.txt", name, sizeof(name))));
+    CHECK_STR("", name);
+    CHECK_INT(static_cast<int>(CardCommand::Bad), static_cast<int>(parseCardCommand("card delete hunter_0001.log", name, sizeof(name))));
+    CHECK_INT(static_cast<int>(CardCommand::Bad), static_cast<int>(parseCardCommand("card", name, sizeof(name))));
+    CHECK_INT(static_cast<int>(CardCommand::None), static_cast<int>(parseCardCommand("hello", name, sizeof(name))));
+    CHECK_INT(static_cast<int>(CardCommand::None), static_cast<int>(parseCardCommand("", name, sizeof(name))));
+    char tiny[8];
+    CHECK_INT(static_cast<int>(CardCommand::Bad), static_cast<int>(parseCardCommand("card get hunter_0001.log", tiny, sizeof(tiny))));
+}
+
+void base64_and_crc32_match_the_standards()
+{
+    char out[16];
+    const uint8_t f[] = {'f', 'o', 'o', 'b', 'a', 'r'};
+    CHECK_INT(0, static_cast<int>(base64Encode(f, 0, out, sizeof(out))));
+    CHECK_STR("", out);
+    base64Encode(f, 1, out, sizeof(out)); CHECK_STR("Zg==", out);
+    base64Encode(f, 2, out, sizeof(out)); CHECK_STR("Zm8=", out);
+    base64Encode(f, 3, out, sizeof(out)); CHECK_STR("Zm9v", out);
+    base64Encode(f, 6, out, sizeof(out)); CHECK_STR("Zm9vYmFy", out);
+    CHECK_INT(0, static_cast<int>(base64Encode(f, 6, out, 8)));  // no room for the terminator
+    char line[kCardLineSize];
+    uint8_t full[kCardDataBytes];
+    for (size_t i = 0; i < sizeof(full); ++i) full[i] = static_cast<uint8_t>(0xFF - i);
+    CHECK_INT(64, static_cast<int>(base64Encode(full, sizeof(full), line, sizeof(line))));
+    // CRC-32 check value of "123456789" is CBF43926; chunked gives the same.
+    const uint8_t nine[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    CHECK_INT(static_cast<int>(0xCBF43926u), static_cast<int>(crc32Update(0, nine, 9)));
+    CHECK_INT(static_cast<int>(0xCBF43926u), static_cast<int>(crc32Update(crc32Update(0, nine, 4), nine + 4, 5)));
+    CHECK_INT(0, static_cast<int>(crc32Update(0, nine, 0)));
+}
+
+void a_line_that_does_not_fit_is_refused_whole()
+{
+    SdRecord r;
+    strcpy(r.event.detail, "012345678901234567890123456789012345678"); // 39, the most it holds
+    char line[40];
+    CHECK_INT(0, static_cast<int>(formatSdRecord(r, 1, "X", line, sizeof(line))));
+    CHECK_STR("", line);
+}
+
+int main(int argc, char **argv)
+{
+    CHECK_MAIN(argc, argv);
+    CASE(apa102_frame_is_start_led_end);
+    CASE(apa102_brightness_is_clamped_to_five_bits);
+    CASE(led_cycle_is_red_green_blue_repeating);
+    CASE(a_clean_press_counts_once_after_the_debounce_time);
+    CASE(a_bounce_shorter_than_the_debounce_time_is_ignored);
+    CASE(release_rearms_and_the_next_press_counts_again);
+    CASE(the_debouncer_survives_millis_wraparound);
+    CASE(a_short_press_reports_short_once_after_the_release_settles);
+    CASE(a_long_press_reports_long_once_while_held_and_nothing_on_release);
+    CASE(a_bounce_shorter_than_the_debounce_time_is_not_a_press);
+    CASE(a_release_bounce_does_not_end_the_press);
+    CASE(gestures_survive_millis_wraparound);
+    CASE(repeat_and_evidence_lines_fill_their_columns);
+    CASE(repeat_and_evidence_lines_have_the_headers_column_count);
+    CASE(evidence_paths_sit_beside_their_log);
+    CASE(a_repeat_is_logged_at_most_every_ten_seconds_per_event);
+    CASE(only_the_hunters_own_file_names_are_served);
+    CASE(card_commands_parse_strictly);
+    CASE(base64_and_crc32_match_the_standards);
+    CASE(a_unit_is_kind_chip_and_five_base32_characters_from_its_address);
+    CASE(the_base32_id_uses_crockford_letters_and_covers_every_address);
+    CASE(unit_names_fit_the_link_and_fail_cleanly);
+    CASE(unit_commands_parse_strictly);
+    CASE(a_hunter_without_a_saved_list_runs_every_sensor_but_the_trackers);
+    CASE(whole_mib_rounds_down);
+    CASE(the_eye_follows_the_link_and_the_cheek_the_mesh);
+    CASE(only_the_owls_green_counts_as_green);
+    CASE(a_red_eye_is_pure_red_and_keeps_its_shading);
+    CASE(a_blue_lens_is_blue);
+    CASE(green_and_non_green_pixels_are_left_alone);
+    CASE(only_green_pixels_inside_the_box_change);
+    CASE(the_eye_and_cheek_boxes_do_not_overlap);
+    CASE(events_count_toward_their_band);
+    CASE(band_totals_add_up);
+    CASE(a_peer_heard_again_counts_once);
+    CASE(a_peer_not_heard_for_five_minutes_is_not_counted);
+    CASE(when_full_a_new_peer_takes_the_slot_heard_longest_ago);
+    CASE(peer_sightings_survive_millis_wraparound);
+    CASE(the_plan_is_5_ghz_first_then_2_4_ghz_each_lowest_to_highest);
+    CASE(every_candidate_accepted_gives_28_then_14_in_order);
+    CASE(no_5_ghz_accepted_leaves_only_2_4_ghz_and_none_accepted_leaves_nothing);
+    CASE(the_plan_stops_at_capacity);
+    CASE(a_write_is_due_when_half_the_ring_waits);
+    CASE(a_link_change_writes_whatever_waits);
+    CASE(a_tiny_ring_never_divides_to_zero);
+    CASE(log_file_names_parse_and_format);
+    CASE(the_ring_keeps_order_and_counts_what_it_drops);
+    CASE(untrusted_text_is_quoted_and_escaped_without_loss);
+    CASE(an_event_line_has_every_column);
+    CASE(link_mode_and_boot_lines_leave_event_columns_empty);
+    CASE(every_line_has_the_headers_column_count);
+    CASE(a_line_that_does_not_fit_is_refused_whole);
+    CHECK_SUMMARY();
+}

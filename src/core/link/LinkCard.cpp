@@ -66,7 +66,7 @@ bool fileName(const FileId &id, char *out, size_t size)
     out[0] = '\0';
     if (!validFileId(id)) return false;
     int n;
-    if (id.kind == kKindLog) n = snprintf(out, size, "layerwand_%04u.log", static_cast<unsigned>(id.serial));
+    if (id.kind == kKindLog) n = snprintf(out, size, "hunter_%04u.log", static_cast<unsigned>(id.serial));
     else
         n = snprintf(out, size, "ev_%04u/event_%05lu.pcap", static_cast<unsigned>(id.serial),
                      static_cast<unsigned long>(id.eventId));
@@ -82,7 +82,7 @@ bool fileIdFromName(const char *name, FileId &out)
     if (name == nullptr) return false;
     const size_t len = strlen(name);
     uint32_t v = 0, e = 0;
-    if (len == 18 && strncmp(name, "layerwand_", 10) == 0 && strcmp(name + 14, ".log") == 0 && digitsAt(name + 10, 4, v)) {
+    if (len == 15 && strncmp(name, "hunter_", 7) == 0 && strcmp(name + 11, ".log") == 0 && digitsAt(name + 7, 4, v)) {
         FileId id;
         id.kind = kKindLog;
         id.serial = static_cast<uint16_t>(v);
@@ -112,6 +112,13 @@ size_t encodeCardList(uint8_t reqId, uint8_t *out)
     out[0] = kOpCardList;
     out[1] = reqId;
     return kCardListSize;
+}
+
+size_t encodeCardClear(uint8_t reqId, uint8_t *out)
+{
+    out[0] = kOpCardClear;
+    out[1] = reqId;
+    return kCardClearSize;
 }
 
 size_t encodeCardRead(uint8_t reqId, const FileId &id, uint32_t offset, uint8_t *out)

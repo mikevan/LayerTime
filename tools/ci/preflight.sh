@@ -9,7 +9,7 @@
 #   --full    everything in --host PLUS a build of the required firmware
 #             targets, each from its own device project (see PROJECT below).
 #   --targets a,b   firmware environments --full builds (default: twatch_ultra).
-#             Known: twatch_ultra, twatch_s3plus, tdongle_c5_wand. Any other
+#             Known: twatch_ultra, twatch_s3plus, tdongle_c5_hunter. Any other
 #             name stops the run before anything is built.
 #
 # A required check that cannot run is reported NOT RUN and FAILS the profile.
@@ -37,7 +37,7 @@ IFS=',' read -r -a TARGETS <<< "$targets"
 declare -A PROJECT=(
   [twatch_ultra]=devices/lilygo-tultra
   [twatch_s3plus]=devices/lilygo-s3plus
-  [tdongle_c5_wand]=devices/lilygo-layerwand
+  [tdongle_c5_hunter]=devices/lilygo-hunter
 )
 [ "${#TARGETS[@]}" -gt 0 ] || { echo "pre-flight: --targets is empty." >&2; exit 2; }
 for t in "${TARGETS[@]}"; do

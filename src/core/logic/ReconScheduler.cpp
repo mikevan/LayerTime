@@ -29,7 +29,7 @@ namespace recon {
 // each radio call replaced by the port call that does the same thing. The
 // order of radio calls within each transition is kept, and so is every point
 // at which the reference read the clock for itself. The channel plan,
-// SweepMode::FullPass, and the random rest are LayerWand additions
+// SweepMode::FullPass, and the random rest are Hunter additions
 // (2026-10-02); with the reference plan, Timed mode, and no random source,
 // every call and every timestamp is as it was.
 
@@ -70,7 +70,7 @@ void ReconScheduler::startWifi()
     _lastChannelHopMs = _clock();
     _passStartMs = _lastChannelHopMs;
     // FullPass ALL: the last channel of this pass dwells a little longer, so
-    // two LayerWands cannot stay locked in step.
+    // two Hunters cannot stay locked in step.
     const bool mixedManual = _status.monitoring && needsWifi(_status.selected) && needsBle(_status.selected);
     _lastChannelExtraMs = _mode == SweepMode::FullPass && mixedManual ? jitter(kPassJitterMaxMs) : 0;
 }

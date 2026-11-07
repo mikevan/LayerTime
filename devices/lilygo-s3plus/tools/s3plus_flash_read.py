@@ -6,7 +6,7 @@
 # It READS flash and writes nothing to the watch. It talks only to the
 # registered T-Watch S3 Plus (the port whose USB serial number is in the
 # upload guard's list, confirmed by MAC before anything is read), so it can
-# never touch the T-Watch Ultra or a LayerWand. Close the serial monitor
+# never touch the T-Watch Ultra or a Hunter. Close the serial monitor
 # first; the port must be free.
 #
 # What it captures, into devices/lilygo-s3plus/bin/flashdump/ (git-ignored):

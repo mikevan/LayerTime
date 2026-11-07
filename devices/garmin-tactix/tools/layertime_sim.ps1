@@ -93,7 +93,7 @@ if ($Preview) {
     Write-Host 'STALE WEATHER, MISSING DATA) and names it in a toast. START on the Recon entry opens the Recon page;'
     Write-Host 'MENU opens the Controls. The preview build is for the simulator only.'
 } else {
-    Write-Host 'With no LayerWand in range the Recon entry shows NO LAYERWAND / SEARCHING. START on the Recon entry'
+    Write-Host 'With no Hunter in range the Recon entry shows NO HUNTER / SEARCHING. START on the Recon entry'
     Write-Host 'opens the Recon page; MENU opens the Controls (Link diagnostics is the last item); BACK returns home.'
 }
 exit 0

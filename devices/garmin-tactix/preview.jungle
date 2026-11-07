@@ -2,7 +2,7 @@
 # sources and manifest as monkey.jungle, but keeps the (:preview) scenarios
 # in source/Preview.mc and drops the (:nopreview) functions in source/Env.mc,
 # so the simulator shows fixed home-screen states (normal, alert,
-# disconnected, stale weather, missing data) without a LayerWand, weather or
+# disconnected, stale weather, missing data) without a Hunter, weather or
 # GPS. A tap on the LAYERTIME title moves to the next scenario. For the
 # simulator only; never install it on the watch.
 project.manifest = manifest.xml

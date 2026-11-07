@@ -3,13 +3,13 @@ package com.projectrevivesolutions.layertime.controller.card
 /**
  * Reads the Hunter's SD card log (Michael, 2026-11-04), pure and host-tested.
  *
- * The format is the Hunter's own (devices/lilygo-layerwand/src/SdLogLogic.h):
+ * The format is the Hunter's own (devices/lilygo-hunter/src/SdLogLogic.h):
  * a header line, then one CSV line per record with the columns
  * boot,uptime_ms,record,event_id,detector,confidence,source,source_id,detail,rssi,channel,band,count.
  * Text fields are quoted; a quote is doubled, and a backslash or control byte is
  * written as \\ or \xNN. Records: boot, event, repeat, evidence, link, mode.
  *
- * The evidence windows saved during layerwand_NNNN.log are in ev_NNNN beside it,
+ * The evidence windows saved during hunter_NNNN.log are in ev_NNNN beside it,
  * one pcap per detection (event_EEEEE.pcap). An evidence line names its file.
  */
 object HunterCardLog {
@@ -47,11 +47,30 @@ object HunterCardLog {
         val unreadLines: Int,
     )
 
-    /** The serial in "layerwand_NNNN.log" (any case), or null. */
+    /**
+     * The serial in "hunter_NNNN.log" (any case), or null. Cards written before 2026-11-06
+     * named their logs "layerwand_NNNN.log"; a card read through a USB card reader may still
+     * hold them (the Hunter renames them the next time it mounts the card), so both count.
+     */
     fun logSerial(name: String): Int? =
-        Regex("^layerwand_(\\d{4})\\.log$", RegexOption.IGNORE_CASE).find(name.trim())?.groupValues?.get(1)?.toIntOrNull()
+        Regex("^(?:hunter|layerwand)_(\\d{4})\\.log$", RegexOption.IGNORE_CASE).find(name.trim())?.groupValues?.get(1)?.toIntOrNull()
 
-    /** The evidence folder for a log file name ("layerwand_0007.log" to "ev_0007"), or null. */
+    /** "hunter_0007.log" for an old "layerwand_0007.log" (any case), or null for any other name. */
+    fun currentName(name: String): String? =
+        Regex("^layerwand_(\\d{4})\\.log$", RegexOption.IGNORE_CASE).find(name.trim())?.groupValues?.get(1)?.let { "hunter_$it.log" }
+
+    /**
+     * Renames the old-spelling logs pulled into [dir] to the current spelling, keeping the
+     * number, so the next pull finds them up to date instead of downloading them again.
+     * A file whose new name is already taken is left as it is. Returns how many were renamed.
+     */
+    fun renameLegacyLogs(dir: java.io.File): Int =
+        (dir.listFiles() ?: emptyArray()).count { f ->
+            val to = currentName(f.name)?.let { java.io.File(dir, it) }
+            f.isFile && to != null && !to.exists() && f.renameTo(to)
+        }
+
+    /** The evidence folder for a log file name ("hunter_0007.log" to "ev_0007"), or null. */
     fun evidenceFolder(logName: String): String? = logSerial(logName)?.let { "ev_%04d".format(it) }
 
     /** One CSV line's fields, quotes and escapes undone. */
