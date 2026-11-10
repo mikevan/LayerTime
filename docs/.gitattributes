@@ -1,0 +1,4 @@
+# Documentation provenance records hash exact original/reference-copy bytes.
+*.md -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+*.docx -text
+ai-development/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

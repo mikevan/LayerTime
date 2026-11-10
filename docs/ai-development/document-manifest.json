@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Central documentation for AI, Builder, training process, data review and acceptance",
+  "policy": "Originals remain authoritative at their existing paths; reference copies have relative links adjusted for this collection.",
+  "documents": [
+    {
+      "sourcePath": "tools/ai-training/acceptance/v2/RESULTS.md",
+      "collectedPath": "acceptance/v2/RESULTS.md",
+      "sourceSha256": "412b9e95b5f98527a1e4a7aee6f22012b9cdd31d7a3f4e09672caef5b18ec76b",
+      "collectedSha256": "b7f0371ada1d43aec2cd9cb729ead538c1160f111bbd68f5527c2be87aea153c",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/ble-feature-knowledge-v1/FEATURE_MEANINGS.md",
+      "collectedPath": "datasets/ble-feature-knowledge-v1/FEATURE_MEANINGS.md",
+      "sourceSha256": "4f94b83f580c10d078b1ae7eccb970599d870b96fc7eb07bbf0fae6a3848f245",
+      "collectedSha256": "24159f3dcf795a30036979e5354795eab85c956383da75076297c8c2b18b512c",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/eapol-semantic-teaching-v1/ATTRIBUTION.md",
+      "collectedPath": "datasets/eapol-semantic-teaching-v1/ATTRIBUTION.md",
+      "sourceSha256": "41d96ed2a59ea5d87f9e2fa57a2ede803ba57ebfe4c5e305d69d6f8ef80f571f",
+      "collectedSha256": "c159611ff6b613626ada9a1446055c601d8446eca95e7804f21fb1f46dfd719f",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/eapol-semantic-teaching-v1/REVIEW.md",
+      "collectedPath": "datasets/eapol-semantic-teaching-v1/REVIEW.md",
+      "sourceSha256": "5294ad419ef0a57c30e34b0c5686912d7d840b4173eb1a1b292a3a21611c3cc0",
+      "collectedSha256": "13326c28f3a52efe837deb0ed8cdab7023adba7c208f55147b9e054f241bc551",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/evidence-contrast-v1/REVIEW.md",
+      "collectedPath": "datasets/evidence-contrast-v1/REVIEW.md",
+      "sourceSha256": "59c9ed84aba179eac2931a23de78a78381af7ab18a1dc6ec3cd551a10adb879e",
+      "collectedSha256": "a169909e105a347f717e40459d8a3658fc3cbcff313b724da896fb74f6594245",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/pilot-v3-curriculum/REVIEW.md",
+      "collectedPath": "datasets/pilot-v3-curriculum/REVIEW.md",
+      "sourceSha256": "c28a6b8f478408daeae9b2b9c33d5e90cd5462b1ff6d814c7fde0c34669daa1a",
+      "collectedSha256": "cae8e9af0fcbf302e17bd140002129ecbfb951ac30a9882161fb792687940724",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/v1/README.md",
+      "collectedPath": "datasets/v1/README.md",
+      "sourceSha256": "ad7b4c06d663e9ec0adf925febeadaf7d891ae083d913e0538a98a3af43a89f6",
+      "collectedSha256": "6bf5b5227232aaa310b304a308620a7da2d7981318452b5a15f5010fb0d1d8ef",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/v1/REVIEW_SAMPLES.md",
+      "collectedPath": "datasets/v1/REVIEW_SAMPLES.md",
+      "sourceSha256": "c5be308ba184ec60b614f141d7feb9a5ce021add192c0564b1da507a5e0073cb",
+      "collectedSha256": "29c84edd7f54e15b714422970b0ea6d0220c99c8c4da5981d535a873f9be5038",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/v2/README.md",
+      "collectedPath": "datasets/v2/README.md",
+      "sourceSha256": "f733f906564b79c7def79fe23447bfc50b9106e1b4b46e2c021ca2b258b86c98",
+      "collectedSha256": "462ac5cdf539b6dc0a55e15dd15f1b4092cd957a3fa00e4bc8848a0690900d1f",
+      "sourceEncoding": "cp1252",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/v2/REVIEW_SAMPLES.md",
+      "collectedPath": "datasets/v2/REVIEW_SAMPLES.md",
+      "sourceSha256": "cb189f5fd2ac30d2f15474b23ba829301636f90ac0555498da4f2a7682795c8e",
+      "collectedSha256": "8ab7559ddacbc3b0f25e65acae01960ac7d786e220adea9df43f7a556c7bed83",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/domain-data/wireshark-field-teaching-v1/ATTRIBUTION.md",
+      "collectedPath": "datasets/wireshark-field-teaching-v1/ATTRIBUTION.md",
+      "sourceSha256": "a3fb4a798fa78b1581654ef13fd28cc655e7f0734bf21d986bb96eb44bda577f",
+      "collectedSha256": "a69b15c5b6171be2355d34f28781444f6e46e342f41831fe8b03cd7310459f43",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-toolkit-evaluation/README.md",
+      "collectedPath": "guides/toolkit-evaluation-guide.md",
+      "sourceSha256": "c2dbbc5cdc1c1c0d1aed0af4bc4b2f80a58022fba703bdaecd41ca0ed10e6001",
+      "collectedSha256": "3876f52c46099924ca20c3d4d989bcc07828e0df846e91440f84ee63c46146fa",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "tools/ai-training/README.md",
+      "collectedPath": "guides/training-guide.md",
+      "sourceSha256": "d3033f3c810030754c37587155857a7b654f3a8d0e7b2b199c616ff4a92d46e2",
+      "collectedSha256": "35ffb5f969f61cadde0a8bdaecfa3ffc837c2fe3388b4f8620e555a1f2e7ebc6",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/LayerTime AI architecture and training proposal v2.docx",
+      "collectedPath": "records/LayerTime AI architecture and training proposal v2.docx",
+      "sourceSha256": "2c4091292f72e864ff69c8778da0ffb0fa33a09abff20ca287e0b3685dc79c87",
+      "collectedSha256": "2c4091292f72e864ff69c8778da0ffb0fa33a09abff20ca287e0b3685dc79c87",
+      "sourceEncoding": "binary",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/LayerTime AI architecture and training proposal.docx",
+      "collectedPath": "records/LayerTime AI architecture and training proposal.docx",
+      "sourceSha256": "f287119108c781708917421747232e9eb30c76c30ac86c670358d38d6633b706",
+      "collectedSha256": "f287119108c781708917421747232e9eb30c76c30ac86c670358d38d6633b706",
+      "sourceEncoding": "binary",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-additional-source-audit-2026-11-10.md",
+      "collectedPath": "records/ai-additional-source-audit-2026-11-10.md",
+      "sourceSha256": "b4eb392df25f445a0dc92d0732c42a909c428b07b0b1c428d566f066b5893f03",
+      "collectedSha256": "cf7649bd9985c7976e6adcda405c3f5329c2fb12936b73c3359917391b2049b9",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-builder-intent-cycle-2026-11-10.md",
+      "collectedPath": "records/ai-builder-intent-cycle-2026-11-10.md",
+      "sourceSha256": "27235987167f4413e723cb97027465758cd20b33401046d4881928151c864e78",
+      "collectedSha256": "45bbfbec37e826be8eeaa8c426e69476345ef454854e0e94531c30f0c11c0ed2",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-comparison-review-provenance-2026-11-10.md",
+      "collectedPath": "records/ai-comparison-review-provenance-2026-11-10.md",
+      "sourceSha256": "0c9bfa76568ccc527db25b617ecb5e41581226f621d388539ca3891d818322a6",
+      "collectedSha256": "aabb323a65b6ec9ce36cc2c7f7ff0e70647901bdd7dd6494e0b574043e202dfd",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-development-checkpoint-and-acceptance-2026-11-10.md",
+      "collectedPath": "records/ai-development-checkpoint-and-acceptance-2026-11-10.md",
+      "sourceSha256": "9e83badc95ebe852e0ffd406165bbeaa8129f78f733a425f02a74e370756bd49",
+      "collectedSha256": "95ae81637db9bf08dad016bed06922e52ae0260e36ec2e9b32a24496ff2818a0",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-grounded-reporting-2026-11-10.md",
+      "collectedPath": "records/ai-grounded-reporting-2026-11-10.md",
+      "sourceSha256": "ce23556deef344b436a5f2d2341732cde184e5457988a2213303b723641ac656",
+      "collectedSha256": "2b5279debf4563292ac2ed51fb895b03e53800612eb7504a47679eca5edd65f0",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-grounded-training-cycle-2026-11-10.md",
+      "collectedPath": "records/ai-grounded-training-cycle-2026-11-10.md",
+      "sourceSha256": "186193bda1b7af2873c66c4d9d777a1129c1f35c759af5e90e8f6229c2c4822e",
+      "collectedSha256": "e340e113e9c41d779bc5cd9ce8bcb7ba392e7f1edc6c87ea40aade2438e1e95f",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-multimodel-research-2026-11-10.md",
+      "collectedPath": "records/ai-multimodel-research-2026-11-10.md",
+      "sourceSha256": "ef8118e8e40eb8b9e5f2f35b4f1e5e3ae32dee36bf293fe971583a12399229ec",
+      "collectedSha256": "c08859fcfdb101ec6f376c535e93aca86b043b0a8fca6b0ad4f709974a1210a6",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-next-training-plan-2026-11-10.md",
+      "collectedPath": "records/ai-next-training-plan-2026-11-10.md",
+      "sourceSha256": "7e091078820a555cdc2c3e5d22fc513c6c5f869d7e03ca649eaf05190a50cfc6",
+      "collectedSha256": "4003cdcfc377615752135887156aef6e18b488777988f9f22cf01166668483d0",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-overnight-completion-audit-2026-11-10.md",
+      "collectedPath": "records/ai-overnight-completion-audit-2026-11-10.md",
+      "sourceSha256": "0723c50b3fd0a42521a4ac73a534f720f9a819a7dc34281fd5f92b6567e5e162",
+      "collectedSha256": "416135f2dd0add499f49527cab8c8d5d6cbafdfeed5fc12d689536e56e64916d",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-overnight-work-log-2026-11-10.md",
+      "collectedPath": "records/ai-overnight-work-log-2026-11-10.md",
+      "sourceSha256": "5b25f6b27c11204cfe8f74be9b36f9503b4707ed74cff437e467048feb4c7ca8",
+      "collectedSha256": "95fe31177fefc085ffd69a70429e31aac4cfe71ae0bf5fe63be00b8797ac5e06",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-policy-comparison-protocol-2026-11-10.md",
+      "collectedPath": "records/ai-policy-comparison-protocol-2026-11-10.md",
+      "sourceSha256": "29311512cc99cc23b5154880f9f43d642c832cb9242e8b807bde1f3dbc8cb039",
+      "collectedSha256": "9d8bfb8b8713f9320c5a30b8d5d95444a8446322f3dd8aee1f5d4f7a751de8f7",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-quantity-extraction-cycle-2026-11-10.md",
+      "collectedPath": "records/ai-quantity-extraction-cycle-2026-11-10.md",
+      "sourceSha256": "6ac69852898028a658be8945005e8a137042d22e968f0ff7e35146e02a26f4ea",
+      "collectedSha256": "43d4bd65454b999d8a10c3b1d1bff230de0d3fc19bae450454dc71620a61b672",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-training-process-and-transparency.md",
+      "collectedPath": "records/ai-training-process-and-transparency.md",
+      "sourceSha256": "501d9284e7ecc90c277ece845ba5779b660fe1767c363af8dc7196c8d9fbb70e",
+      "collectedSha256": "1053b28d07134d1f3573d9e62877943f45764fb365c8c40f11189f664b4f816a",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-training-progress-2026-11-10.md",
+      "collectedPath": "records/ai-training-progress-2026-11-10.md",
+      "sourceSha256": "f9092d40f7c5b140852f4a3b64484a24adcf17fac70293e859e5ec62fd7acd1b",
+      "collectedSha256": "6b2d7f39cbbcf7137a7ffe475e53f4bfc684de36fe86624892f1086745882528",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/ai-unit-clarification-cycle-2026-11-10.md",
+      "collectedPath": "records/ai-unit-clarification-cycle-2026-11-10.md",
+      "sourceSha256": "d281836354751ceacc4d85ffaa449cdf10ecb4546c7ba3a1d18e58dcb56197e3",
+      "collectedSha256": "96c6d8526f7fa01840915a1265aecce9c59de13589c300ddfa267401f34ce31d",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/blue-team-domain-baseline-2026-11-10.md",
+      "collectedPath": "records/blue-team-domain-baseline-2026-11-10.md",
+      "sourceSha256": "292030186d5ee8de4d907a2a2f0fb1a569c666dd250658c9e9aa821eab8e63b7",
+      "collectedSha256": "058fbb089ca1cd0d9ded36ff320d574967a360f9518a2a7366bb1a8098c68043",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/blue-team-domain-review-and-source-intake-2026-11-10.md",
+      "collectedPath": "records/blue-team-domain-review-and-source-intake-2026-11-10.md",
+      "sourceSha256": "baf5899ca6f0e891871af4393e2a2ad191f7712e1069d005d5dab3ff6acd732f",
+      "collectedSha256": "cce7b3516cbe511c6f317cf809c31245e91ed0445751ddd6f1204d9f03db5077",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/blue-team-eapol-semantic-expansion-2026-11-10.md",
+      "collectedPath": "records/blue-team-eapol-semantic-expansion-2026-11-10.md",
+      "sourceSha256": "21d0e2c8aa95ec14558e6d9794080abb5e1970259f67a07c233990cd4104f3bc",
+      "collectedSha256": "0a6fd4c0fbc5a0738523799fb061ebaa55a59638cf6268732085cfa90fd03aed",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/blue-team-evidence-contrast-expansion-2026-11-10.md",
+      "collectedPath": "records/blue-team-evidence-contrast-expansion-2026-11-10.md",
+      "sourceSha256": "695ac06fec4ca0ff3e54cb361fdaae0fd9c0f33adb1e8baca00d336b1eb893e3",
+      "collectedSha256": "33ec83b7eca083eed6ff39b54d059a3c962eaa8c3f995e470642763b0166471a",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/blue-team-ontology-dataset-and-training-plan-2026-11-10.md",
+      "collectedPath": "records/blue-team-ontology-dataset-and-training-plan-2026-11-10.md",
+      "sourceSha256": "5b1e8bd6ada0a1c9e3e42ff91a9b2138ef05539c0c38d91228aa54e81f52f565",
+      "collectedSha256": "be7069b8f232f1edb75dbf67e600ce78d2ab19c82f61d8fa73e906d3bfd4521a",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/builder-behavior-reporting.md",
+      "collectedPath": "records/builder-behavior-reporting.md",
+      "sourceSha256": "2c957e90f20675fe7a7c042f666a33b79aca2287ca9b5891941fce5bad62a2c2",
+      "collectedSha256": "52ea35aec1fa3d5430f5b967991bbf15d4bd202714f5d37ec4530b1dbf4d6191",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    },
+    {
+      "sourcePath": "docs/layerscope-visual-design.md",
+      "collectedPath": "records/layerscope-visual-design.md",
+      "sourceSha256": "0e65db3a97d5e26ec38ac210396455c7300785e3bf0cda8c29bfde27aa5981e7",
+      "collectedSha256": "f81178476c1d208565c2a9580bea41f0b2714615383a554f2e5f9aa5ea1bb8b0",
+      "sourceEncoding": "utf-8-sig",
+      "referenceCopy": true
+    }
+  ],
+  "excluded": [
+    "Downloaded source libraries, model weights, captures, caches, copied bulk transparency archives and construction drafts.",
+    "Unrelated glasses shopping research and deployment-site firmware/index assets."
+  ],
+  "refresh": "python tools/ai-training/collect_development_docs.py --refresh; edited collected copies must first be reconciled."
+}

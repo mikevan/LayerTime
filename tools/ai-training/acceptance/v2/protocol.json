@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "status": "corrected-fixtures-frozen-before-v2-baseline",
+  "examples": 12,
+  "model": "Qwen3-4B-Instruct-2507",
+  "adapter": null,
+  "maxContextTokens": 4096,
+  "maxOutputTokens": 384,
+  "sampling": "One greedy response per case; no repair or retries",
+  "trainingApproved": false,
+  "gates": {
+    "allCasesRequired": true,
+    "structureAndReferencesRequired": true,
+    "allCriticalCriteriaRequired": true,
+    "maxHeadlineCharacters": 140,
+    "maxHeadlineWords": 22,
+    "maxExplanationWords": 160,
+    "maxCompleteResponseSecondsDesktop": 30
+  },
+  "semanticReview": "Explicit per-criterion human/agent review bound to exact output hashes; missing review fails closed.",
+  "independence": "Corrected inputs after v1 diagnostic exposure; reusable development acceptance, not a fresh independent benchmark.",
+  "androidGate": "Separate saved-capture checks, immediate deterministic summary, latency/memory/thermal/cancellation checks required before operational use.",
+  "files": {
+    "examples.jsonl": "d739ab240fa0462648cf6c6b6e80f66abe41b95dacd2ea4edc0f23aa4e04e641",
+    "rubrics.jsonl": "7f331bc4622f51b7f5b49a0fac46486d8b3649a199fe5e50520a2fbac606c9a7"
+  },
+  "generatorSha256": "02263b55ed259235d11be7236c3b3d6d19732f6a0f33dd5017ba6c6c8f506a5b",
+  "predecessorProtocolSha256": "455995576a3c7833c64de768c238393e14b39b00bc12ac6ca32e2e03f62d17f0",
+  "correction": "V1 omitted explicit frame types and radio domains in some inputs; preserve its run but do not use it as a readiness score.",
+  "parentGeneratorSha256": "33b3153a3f8ecadc9c461bd2bc1b0dda465e2700a5c09b22c53fa32ff43a4050"
+}

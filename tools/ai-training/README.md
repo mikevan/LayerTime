@@ -1,5 +1,9 @@
 # LayerTime local AI training
 
+The central documentation index and comprehensive check-in note are in [docs/ai-development](../../docs/ai-development/README.md). Reference copies preserve historical context; current acceptance results and check-in ownership are summarized there.
+
+Current work is the frozen development acceptance loop in `acceptance/v2`; dataset expansion is paused. See `../../docs/ai-development-checkpoint-and-acceptance-2026-11-10.md`. Checkpoint `3ec4e41` predates the user's instruction that they will run all further check-ins and pushes. Leave subsequent work uncommitted. `checkpoint-and-push.ps1 -Acceptance` previews the selected changes; the user can add `-Execute` to commit and push them. No domain training or Android qualification is implied by the checkpoint.
+
 The current objective is the broader blue-team ontology and dataset, **before more model training**. See [the concrete dataset and proposed plan](../../docs/blue-team-ontology-dataset-and-training-plan-2026-11-10.md) and `domain-data/v1/README.md`. This candidate pool has 84 concepts and 13,756 examples with explicit source/variant limits. Admission flags remain false. Do not resume narrow Builder training or concatenate candidate split files as a substitute for the reviewed domain plan.
 
 The subsequent [review and real Wi-Fi source intake](../../docs/blue-team-domain-review-and-source-intake-2026-11-10.md) is in `domain-data/v2` and `domain-data/wifi-reference-v1`: 98 concepts, 13,834 candidates, corrected model-visible identities/times with shortcut controls removed, explicit task contracts, and a 925-example proposed pilot. The separate real Wi-Fi campaign remains external-review-only. No model training occurred. Use only each record's messages as model input; reviewer/generator metadata is not model context.

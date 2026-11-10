@@ -1,0 +1,5 @@
+{
+  "status": "fixture-diagnostic-not-readiness-score",
+  "reason": "Missing explicit frame types and BLE domain labels; superseded by acceptance/v2 with original thresholds.",
+  "trainingPerformed": false
+}

@@ -39,5 +39,15 @@ class AcceptanceTests(unittest.TestCase):
             self.assertEqual('acceptance',r['split']);self.assertFalse(r['trainingApproved'])
             self.assertNotIn('criticalCriteria',r['messages'][1]['content'])
 
+    def test_corrected_fixtures_declare_domains_and_frame_roles(self):
+        suite=Path(__file__).parent/'acceptance/v2'
+        for record in lines(suite/'examples.jsonl'):
+            evidence=json.loads(record['messages'][1]['content'].split('\n',1)[1])['facts'][0]['value']
+            self.assertTrue(evidence['domain'])
+            if 'requests' in evidence:
+                self.assertEqual('802.11 deauthentication request',evidence['requests']['kind'])
+                self.assertIn('recipient',evidence['requests']['targetRole'])
+                self.assertEqual('observed EAPOL packet',evidence['exchange']['kind'])
+
 
 if __name__=='__main__':unittest.main()
