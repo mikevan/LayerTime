@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "trendyol-357544e",
+  "revision": "357544e7576607d88eaeac9b0adb07e9fd8bb2bb",
+  "decision": "quarantine-corpus-before-training",
+  "approvedExamples": 0,
+  "reviewType": "targeted manual sample; not an exhaustive audit",
+  "findings": [
+    {
+      "sourceLine": 3296,
+      "decision": "reject",
+      "reason": "Answer identifies T1547 as wireless network cracking. MITRE identifies T1547 as Boot or Logon Autostart Execution.",
+      "verification": "https://attack.mitre.org/techniques/T1547/"
+    },
+    {
+      "sourceLine": 40858,
+      "decision": "reject",
+      "reason": "Answer misnames T1499.003 as Application or System Exploitation; the authoritative name is Application Exhaustion Flood. Wireless mechanism claims also require separate verification.",
+      "verification": "https://attack.mitre.org/techniques/T1499/003/"
+    },
+    {
+      "sourceLine": 7157,
+      "decision": "reject",
+      "reason": "Question requests exploitation details; response instead discusses enterprise authentication and contains broad unsupported security claims. Not a suitable defensive interpretation target."
+    },
+    {
+      "sourceLine": 7264,
+      "decision": "reject",
+      "reason": "Question requests key-extraction measurement procedures. Outside the approved product's passive defensive task mixture."
+    },
+    {
+      "sourceLine": 9498,
+      "decision": "requires-primary-source-review",
+      "reason": "Answer introduces an ambiguous CDP interpretation and unsupported Bluetooth technique mappings. Do not adopt as ground truth."
+    }
+  ]
+}

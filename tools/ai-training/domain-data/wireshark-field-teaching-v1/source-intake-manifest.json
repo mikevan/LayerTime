@@ -1,0 +1,44 @@
+{
+  "repository": "https://github.com/wireshark/wireshark",
+  "revision": "55b5def4b5f19e91f56abfd9621f4ffbca938dce",
+  "createdUtc": "2026-11-10T21:34:34.628089+00:00",
+  "files": [
+    {
+      "path": "COPYING",
+      "bytes": 17984,
+      "gitBlobSha1": "9efa6fbc962836e243e20f7f23db062e2c077d28",
+      "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6",
+      "url": "https://github.com/wireshark/wireshark/blob/55b5def4b5f19e91f56abfd9621f4ffbca938dce/COPYING"
+    },
+    {
+      "path": "epan/dissectors/packet-ieee80211.c",
+      "bytes": 2463024,
+      "gitBlobSha1": "04917476d2078d41caf556b2f3887556fc991744",
+      "sha256": "32eea0e7e7302da32539d7627a919f4a22f5259e5e436933644d845e326564ed",
+      "url": "https://github.com/wireshark/wireshark/blob/55b5def4b5f19e91f56abfd9621f4ffbca938dce/epan/dissectors/packet-ieee80211.c"
+    },
+    {
+      "path": "epan/dissectors/packet-eapol.c",
+      "bytes": 11370,
+      "gitBlobSha1": "182401d5e4e0c2fa2d40a58d3e3bcca760ebc8b3",
+      "sha256": "eaa008dfd94de8dafc065bcb020e7956185eeab1f969d5e8e8a3a3fc49495aea",
+      "url": "https://github.com/wireshark/wireshark/blob/55b5def4b5f19e91f56abfd9621f4ffbca938dce/epan/dissectors/packet-eapol.c"
+    },
+    {
+      "path": "epan/dissectors/packet-eapol.h",
+      "bytes": 1349,
+      "gitBlobSha1": "5af9f6bb83c8fa0b0e1a193d95380873d1f30926",
+      "sha256": "71c82b8a9f34ec04d098470e06a8326dc1667ac4ea2b07aeefa940c3a329f84d",
+      "url": "https://github.com/wireshark/wireshark/blob/55b5def4b5f19e91f56abfd9621f4ffbca938dce/epan/dissectors/packet-eapol.h"
+    }
+  ],
+  "purpose": "Passive decoder semantics and source-linked teaching review; no source execution",
+  "status": "reference-intake-not-training-admission",
+  "trainingApproved": false,
+  "trainingPerformed": false,
+  "limitations": [
+    "Inspect file-level licence notices and preserve attribution before deriving teaching cards.",
+    "Decoder implementation is not itself a complete protocol standard or evidence of hostile intent.",
+    "Do not include attack scripts, exploit examples, decryptor routines or key recovery instruction in teaching exports."
+  ]
+}

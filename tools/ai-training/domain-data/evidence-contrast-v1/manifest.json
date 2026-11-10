@@ -1,0 +1,31 @@
+{
+  "status": "case-specific-teaching-candidates-not-admitted",
+  "examples": 32,
+  "pairedContexts": 16,
+  "exactDistinctAnswers": 32,
+  "splits": {
+    "train": 28,
+    "validation": 2,
+    "test": 2
+  },
+  "sourceFiles": {
+    "domain-data\\wireshark-field-teaching-v1\\cards.jsonl": "0f887ddffb0357f73883513df985d191a04e4220e18dc72eb81a14564a7986f2",
+    "domain-data\\ble-feature-knowledge-v1\\definitions.jsonl": "a8c8431e300e966ade6961ed83a88a007380f0f7f1f64cae4770633bda4c418a",
+    "domain-data\\evidence-meaning-teaching-v1\\principles.jsonl": "715a7ff41fb07cb4fb7942806f11915d2e5f5f3ae8f05bb7178916eb94d9104a"
+  },
+  "trainingPerformed": false,
+  "trainingApproved": false,
+  "releaseEligible": false,
+  "limitations": [
+    "Each pair changes one field; pairs and principles are not independent field environments.",
+    "Validation/test families are not train families, but share explicitly supplied concepts and sources.",
+    "Supplementary definitions are input context; success could reflect contextual reasoning rather than memorized knowledge.",
+    "Source labels support definitions; concrete scenarios and interpretation targets are project-authored.",
+    "No new model weights were trained or qualified by this build."
+  ],
+  "files": {
+    "candidates.jsonl": "f530cb873e073561b951cecde9e55101138becfa4f039d2943548c0d81a6c578",
+    "REVIEW.md": "59c9ed84aba179eac2931a23de78a78381af7ab18a1dc6ec3cd551a10adb879e",
+    "source-registry.json": "7174249cd56b5e023a9718ce94fc7f1e64f12533e4170d8d43940584b2ca2fad"
+  }
+}

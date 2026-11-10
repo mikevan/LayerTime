@@ -1,0 +1,46 @@
+{
+  "status": "proposed-development-curriculum-not-admitted",
+  "trainingPerformed": false,
+  "trainingApproved": false,
+  "releaseEligible": false,
+  "examples": 982,
+  "supplementExamples": 57,
+  "sourceFidelityAudit": {
+    "candidateEvidenceTransformationsChecked": 13450,
+    "pilotMembershipChecked": 925,
+    "taskCounts": {
+      "EXPLAIN_BLE_OBSERVATIONS": 120,
+      "EXPLAIN_DEFENSIVE_CONCEPT": 72,
+      "ANSWER_SOURCED_DEFENSIVE_QUESTION": 13,
+      "EXPLAIN_DEFENSIVE_PATTERN": 720
+    },
+    "structureAndSourceFidelityPassed": true,
+    "proseAccuracyMeasured": false,
+    "independentExpertReview": false,
+    "trainingPerformed": false,
+    "manifestSha256": "6e378fcdd36484a5c1e6843390ee1a970a4df7771152ea23ea52b23d6129a5c6"
+  },
+  "sourceFileSha256": {
+    "domain-data\\ble-feature-knowledge-v1\\definitions.jsonl": "a8c8431e300e966ade6961ed83a88a007380f0f7f1f64cae4770633bda4c418a",
+    "domain-data\\ble-feature-knowledge-v1\\counterexamples.jsonl": "99d47ac0ebb4d232053a8bf9cfd3a5c9db53eb46b4b0d036d755b47099182fb9",
+    "domain-data\\evidence-meaning-teaching-v1\\principles.jsonl": "715a7ff41fb07cb4fb7942806f11915d2e5f5f3ae8f05bb7178916eb94d9104a",
+    "domain-data\\evidence-meaning-teaching-v1\\counterexamples.jsonl": "20f8278af7ce48b4d5499acb6fd1a788edaeaca7663ebd78c7652e854637b647"
+  },
+  "taskCounts": {
+    "EXPLAIN_BLE_OBSERVATIONS": 120,
+    "EXPLAIN_DEFENSIVE_CONCEPT": 72,
+    "ANSWER_SOURCED_DEFENSIVE_QUESTION": 13,
+    "EXPLAIN_DEFENSIVE_PATTERN": 720,
+    "EXPLAIN_FEATURE_OR_EVIDENCE_MEANING": 57
+  },
+  "limitations": [
+    "57 supplement items comprise 25 definitions/principles and 32 paired questions over 16 toy contexts.",
+    "Counts are teaching items, not independent incidents or environments.",
+    "Source fidelity and schema validation do not establish prose accuracy or independent expert review.",
+    "Reserved families, sessions, real Wi-Fi campaign and new NIST Bluetooth cards are excluded from this training proposal."
+  ],
+  "files": {
+    "proposed-train.jsonl": "5162eae4fcd0789400dc09d9c233fce9379a8239cc9fbce640b07613d89b1a0b",
+    "supplements.jsonl": "f68e8694553e304a25568de869134748f9e5195e7e37552c3ef899117092fccc"
+  }
+}

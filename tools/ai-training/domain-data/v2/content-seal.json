@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "status": "review-only-no-training",
+  "files": {
+    "build-environment.json": "c5dd94e4f9d65dd2da0dbb16e9e94083a7f473c4b928e67ac5e62123c9143253",
+    "candidates.jsonl": "954b0d888074934a054eea661a8aa03fff9e6101ce72ec02f57ddec6ded7df17",
+    "changes-from-v1.jsonl": "03bcf1090b2dfc3b48d3991f29694de0f5c5ff2e5c45eb0df78a96f030bc9ed5",
+    "generator-source/audit_blue_team_review.py": "9e3c56062dff977d6b50e363d24fb10d3b77995b3440fff5eb0fdd9eb861975f",
+    "generator-source/blue_team_contracts.py": "b4ffe7e159f7c6ff234955c914544cbd5861fbef99cc5a3be347afaadd5aebfe",
+    "generator-source/blue_team_source_cards.py": "fbea93615080d82f96c61060e46c6f638bf949ec19ae81f96613666b3e57295b",
+    "generator-source/build_blue_team_review.py": "ce0ed0376637a9c451524cc7bbe1dfd876bcdec999f9d8bbb33df1e58a5d92dd",
+    "generator-source/fetch_wifi_domain_reference.py": "b9e151ba0cbc868bd257a5c9ec1883d22aea207373b2fe971b04f8596e744a0a",
+    "generator-source/test_blue_team_contracts.py": "d02842293eb235f87ecf188abfd359b8aa836c534545f02e860f406034679c7f",
+    "generator-source/wifi_domain_reference.py": "2be3f7c6a07a843a0122ae2a4e6694cde4460152e715d36ccad76085478d2557",
+    "integrity-audit.json": "19494c113942d5025b01098ca4bf20acdaaa5db969ac416a26d49334ba4a31bb",
+    "manifest.json": "fd77daaf9512613c2f972ee74db793df7324e67c3b7b38ed37c8e5d1457eff4c",
+    "model-visible-id-map.jsonl": "d70b4c673cc623d1d62a4ec27ecf6a716b42aeaac885cbb1924382f281165e88",
+    "ontology.json": "57bdf2387170ea22e027a18292278c8c292c6d82a50c46098decdf8f1efe6746",
+    "proposed-pilot-selection.jsonl": "8b9f1a2186bbfa13334bc2b3d45e7e8bb79dce6a3a350754a46610619cfc560d",
+    "proposed-pilot-token-budget.json": "ab03c156aa00389e8bad372bd804ecf09dc19c23a18924996091df78c338774b",
+    "README.md": "f733f906564b79c7def79fe23447bfc50b9106e1b4b46e2c021ca2b258b86c98",
+    "review-queue.jsonl": "c69334de757054d3417eb383c6ba34bbd42bf6db71ed84e4092c4db485d97a7b",
+    "REVIEW_SAMPLES.md": "cb189f5fd2ac30d2f15474b23ba829301636f90ac0555498da4f2a7682795c8e",
+    "source-backed-cards.jsonl": "912b99b8b48db79a1630430ebbe283da146184fccb7273e5ea7a37cea050bbdf",
+    "task-contracts.json": "e14f1900074100b3f39c06f1c0830c3b68e35e56108f81d870b8f0d93b9f5e3d",
+    "test.jsonl": "c14bbc78b8b89619e779a38c4e55837c4fdb2ff17606e2f3ae3c863b1e6f4b84",
+    "train.jsonl": "398890db9e79f92cd23bdbfabf3ae2d731b94bb781b0cd01eff9169c504d5abf",
+    "validation.jsonl": "add6b767d6a120506dce88552b9e8b433c283af1508a368c05d1c716ac125eae"
+  }
+}

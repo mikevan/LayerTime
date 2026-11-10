@@ -1,0 +1,22 @@
+{
+  "status": "source-linked-teaching-candidates-not-admitted",
+  "cards": 24,
+  "questions": 48,
+  "exactDistinctAnswers": 24,
+  "revision": "55b5def4b5f19e91f56abfd9621f4ffbca938dce",
+  "trainingPerformed": false,
+  "trainingApproved": false,
+  "releaseEligible": false,
+  "limitations": [
+    "Two question formulations share one target per field; 48 rows are only 24 teaching facts.",
+    "Field registrations support decoded labels; interpretation limits are explicitly project-authored.",
+    "No raw capture labels, incident detection performance or full protocol-standard coverage are established."
+  ],
+  "files": {
+    "ATTRIBUTION.md": "a3fb4a798fa78b1581654ef13fd28cc655e7f0734bf21d986bb96eb44bda577f",
+    "candidates.jsonl": "4d944788e119961b9c5e7b698335a68315d4ca2e7228491c8c9faf30567ccd87",
+    "cards.jsonl": "0f887ddffb0357f73883513df985d191a04e4220e18dc72eb81a14564a7986f2",
+    "source-intake-manifest.json": "1d2cb3011eecb0702d050f371006780f42b5349ff4534d4134295dfeb00a4447",
+    "SOURCE-LICENSE.txt": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "candidateEvidenceTransformationsChecked": 13450,
+  "pilotMembershipChecked": 925,
+  "taskCounts": {
+    "EXPLAIN_BLE_OBSERVATIONS": 120,
+    "EXPLAIN_DEFENSIVE_CONCEPT": 72,
+    "ANSWER_SOURCED_DEFENSIVE_QUESTION": 13,
+    "EXPLAIN_DEFENSIVE_PATTERN": 720
+  },
+  "structureAndSourceFidelityPassed": true,
+  "proseAccuracyMeasured": false,
+  "independentExpertReview": false,
+  "trainingPerformed": false,
+  "manifestSha256": "6e378fcdd36484a5c1e6843390ee1a970a4df7771152ea23ea52b23d6129a5c6"
+}

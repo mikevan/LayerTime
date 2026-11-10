@@ -1,0 +1,16 @@
+{
+  "sourceCodeSha256": "0aaf3fce2e5edb5cfbbace99aae8b679d86ffd0253e6ccf9d3a0d2fd982b7db9",
+  "definitionCards": 17,
+  "contrastScenarios": 8,
+  "pairedTeachingQuestions": 16,
+  "trainingApproved": false,
+  "modelTrainingPerformed": false,
+  "independentExpertReview": false,
+  "note": "Supplement prompted by diagnostic interpretation failures. Not added to the frozen v2 corpus or evaluated as fresh data.",
+  "files": {
+    "counterexamples.jsonl": "99d47ac0ebb4d232053a8bf9cfd3a5c9db53eb46b4b0d036d755b47099182fb9",
+    "definitions.jsonl": "a8c8431e300e966ade6961ed83a88a007380f0f7f1f64cae4770633bda4c418a",
+    "extractor-source.py": "0aaf3fce2e5edb5cfbbace99aae8b679d86ffd0253e6ccf9d3a0d2fd982b7db9",
+    "FEATURE_MEANINGS.md": "4f94b83f580c10d078b1ae7eccb970599d870b96fc7eb07bbf0fae6a3848f245"
+  }
+}

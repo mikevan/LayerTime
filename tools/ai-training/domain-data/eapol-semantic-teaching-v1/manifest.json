@@ -1,0 +1,24 @@
+{
+  "status": "source-linked-semantic-teaching-candidates-not-admitted",
+  "sourceFacts": 18,
+  "examples": 34,
+  "authoredEvidenceCases": 16,
+  "exactDistinctAnswers": 34,
+  "sourceRevision": "55b5def4b5f19e91f56abfd9621f4ffbca938dce",
+  "trainingApproved": false,
+  "modelTrainingPerformed": false,
+  "releaseEligible": false,
+  "limitations": [
+    "Definitions are unassigned; fourteen case families are training candidates, one validation and one test.",
+    "Splits share supplied source concepts and are not independent field qualification.",
+    "Source behavior is versioned, and project reporting limits are not attributed to Wireshark as incident verdicts.",
+    "The captured campaign header review remains separate and external-review-only."
+  ],
+  "files": {
+    "ATTRIBUTION.md": "41d96ed2a59ea5d87f9e2fa57a2ede803ba57ebfe4c5e305d69d6f8ef80f571f",
+    "candidates.jsonl": "58f1019b61e5f8005ac2bd563051f776a5bb510f4725b682fbd6a26722cf037c",
+    "cards.jsonl": "2771e266cb163f0969b39c7f9ebd06db9e6034ffb901b14f92d7b0076a12b896",
+    "REVIEW.md": "5294ad419ef0a57c30e34b0c5686912d7d840b4173eb1a1b292a3a21611c3cc0",
+    "SOURCE-LICENSE.txt": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+  }
+}

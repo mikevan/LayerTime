@@ -1,0 +1,37 @@
+{
+  "flood_then_evil_twin-page-1": {
+    "outputSha256": "515777384b0fccf0f35dbf24ce920b9cd30e1c23eaf540b9620513c977e86557",
+    "status": "fail",
+    "findings": [
+      "Returns no issues despite repeated deauthentication frames in the supplied page."
+    ]
+  },
+  "flood_then_evil_twin-page-2": {
+    "outputSha256": "35e8b1822659ea6c354fa419c09aef585093c5ffd320a7986668266468f8cb3d",
+    "status": "fail",
+    "findings": [
+      "Corrects the observed count and reason code meaning, but adds unsupported evil-twin/rogue-AP explanations and treats absent EAPOL as evidence about reconnection."
+    ]
+  },
+  "flood_then_evil_twin-page-3": {
+    "outputSha256": "1254104c339d829605429ad3d09f395c2919ae72939f90e4a4baa3c40e308a33",
+    "status": "fail",
+    "findings": [
+      "Overstates evil-twin identification and successful client connection. Includes an issue with no supporting frame references. Treats page-local absence as recording-wide absence."
+    ]
+  },
+  "flood_without_beacons-page-1": {
+    "outputSha256": "515777384b0fccf0f35dbf24ce920b9cd30e1c23eaf540b9620513c977e86557",
+    "status": "fail",
+    "findings": [
+      "Returns no issues despite a sustained broadcast deauthentication sequence."
+    ]
+  },
+  "flood_without_beacons-page-2": {
+    "outputSha256": "c251b76f540da429fed8e81ee57ee7c9e40e8333a3f233bb37f45ca08a7d786e",
+    "status": "fail",
+    "findings": [
+      "Corrects eight-frame count and reason meaning, but overinterprets absent EAPOL as a failure to reconnect."
+    ]
+  }
+}

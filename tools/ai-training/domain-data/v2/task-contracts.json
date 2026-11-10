@@ -1,0 +1,345 @@
+{
+  "version": "1.0.0",
+  "contracts": {
+    "EXPLAIN_DEFENSIVE_CONCEPT": {
+      "type": "object",
+      "properties": {
+        "conceptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "definition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "definitionKind": {
+          "const": "project-authored-scoped-definition"
+        }
+      },
+      "required": [
+        "conceptId",
+        "definition",
+        "definitionKind"
+      ],
+      "additionalProperties": false
+    },
+    "ANSWER_SOURCED_DEFENSIVE_QUESTION": {
+      "type": "object",
+      "properties": {
+        "answer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pdfPage": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceSha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "answer",
+        "sourceId",
+        "pdfPage",
+        "sourceSha256",
+        "scope"
+      ],
+      "additionalProperties": false
+    },
+    "REVIEW_DEFENSIVE_EVIDENCE": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "headline": {
+          "type": "string",
+          "minLength": 1
+        },
+        "significance": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observedFacts": {
+          "type": "object",
+          "properties": {
+            "capturedRecords": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "duplicateRecords": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "uniqueDisconnectRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "observedExchanges": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "linkedExchanges": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "links": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "exchangeId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "delayMs": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "exchangeId",
+                  "delayMs"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "followOnWindowMs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "identityGroups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "target": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "network": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "disconnectRequestIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "exchangeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "target",
+                  "network",
+                  "disconnectRequestIds",
+                  "exchangeIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "capturedRecords",
+            "duplicateRecords",
+            "uniqueDisconnectRequests",
+            "observedExchanges",
+            "linkedExchanges",
+            "links",
+            "followOnWindowMs",
+            "identityGroups"
+          ],
+          "additionalProperties": false
+        },
+        "uncertainty": {
+          "type": "string",
+          "minLength": 1
+        },
+        "passiveNextStep": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidenceReferences": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "reviewPosture": {
+          "enum": [
+            "PROMPT_SEQUENCE_REVIEW",
+            "REVIEW_DISCONNECT_PATTERN",
+            "CHECK_CAPTURE_HEALTH",
+            "CHECK_CROSS_RADIO_ALIGNMENT",
+            "ASK_FOR_TIME_UNIT",
+            "RECONCILE_EVIDENCE",
+            "REVIEW_CONTEXT_AND_BASELINE"
+          ]
+        },
+        "postureBasis": {
+          "const": "draft-product-review-policy-not-incident-ground-truth"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "headline",
+        "significance",
+        "observedFacts",
+        "uncertainty",
+        "passiveNextStep",
+        "evidenceReferences",
+        "reviewPosture",
+        "postureBasis"
+      ],
+      "additionalProperties": false
+    },
+    "PROPOSE_PASSIVE_ANALYTIC_RECIPE": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "kind": {
+          "const": "passive-training-recipe-proposal-not-app-workflow"
+        },
+        "executable": {
+          "const": false
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operators": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "assess_visibility",
+              "filter",
+              "group_by",
+              "order_by_time",
+              "temporal_join",
+              "aggregate",
+              "summarize",
+              "compare_baseline",
+              "explain"
+            ]
+          },
+          "minItems": 1
+        },
+        "linkIdentity": {
+          "enum": [
+            "DEVICE_AP_PAIR",
+            null
+          ]
+        },
+        "countScope": {
+          "enum": [
+            "DEVICE_AP_PAIR",
+            "RECORDING"
+          ]
+        },
+        "followOnWindowMs": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "limitations": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "executable",
+        "goal",
+        "operators",
+        "linkIdentity",
+        "countScope",
+        "followOnWindowMs",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "EXPLAIN_BLE_OBSERVATIONS": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidenceReference": {
+          "type": "object",
+          "properties": {
+            "sourceId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sessionId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "featureRow": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "captureSha256": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "sourceId",
+            "sessionId",
+            "featureRow",
+            "captureSha256"
+          ],
+          "additionalProperties": false
+        },
+        "incidentVerdict": {
+          "const": "NOT_ESTABLISHED"
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "explanation",
+        "evidenceReference",
+        "incidentVerdict",
+        "scope"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "proseSemanticReviewRequired": true
+}

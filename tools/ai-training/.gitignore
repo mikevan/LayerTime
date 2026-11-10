@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+models/
+runs/
+external-data/
+*.tmp.html
+*.tmp.json
+*.safetensors
+transparency/
+.scapy-config/
+.scapy-cache/
+checkpoint-paths.txt
+*-console.log
+*.zip
+*.npz
+*.pt

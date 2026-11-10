@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Bounded clean-model diagnostic before domain training, not full domain qualification",
+  "examples": 16,
+  "examplesSha256": "b1046726bdd91572f96965536b4a3453d895ce4aff54adbecc17df3adac5bd68",
+  "baseModel": "Qwen3-4B-Instruct-2507",
+  "baseIntakeSha256": "9cf816d7331a17e05a3e9fc2c3ed618eb6f6274700f1ea97786e082be0c2651a",
+  "adapter": null,
+  "maxContextTokens": 4096,
+  "maxOutputTokens": 1024,
+  "maxInputTokens": 2061,
+  "sampling": "One greedy response per frozen question; no repairs or retries",
+  "metrics": [
+    "Strict structure and supplied evidence/reference agreement, separately by task/role",
+    "Agent prose interpretation review bound to exact output hashes; not independent expert review",
+    "Latency, output length, token-limit hits and peak GPU memory"
+  ],
+  "limitations": [
+    "16 authored diagnostic questions cannot establish broad domain or field quality.",
+    "Training-family diagnostics and held-out families are reported separately.",
+    "BLE task is descriptive, not incident classification.",
+    "Real Wi-Fi source campaign and recipes excluded pending their separate review.",
+    "No weights updated; no deployment or production enablement."
+  ],
+  "trainingPerformed": false,
+  "releaseEligible": false
+}
