@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,7 +49,11 @@ fun WiresharkScreen(onBack: () -> Unit) {
     val all = done?.result?.kept.orEmpty()
     // A finding can ask for just the frames behind it (TriageSession.focusFrames); CLEAR shows everything again.
     val focus by com.projectrevivesolutions.layertime.controller.flow.TriageSession.focusFrames.collectAsState()
-    val frames = remember(all, focus) { focus?.let { set -> all.filterIndexed { i, _ -> i in set } } ?: all }
+    val details by PcapImport.details.collectAsState()
+    val context=LocalContext.current
+    LaunchedEffect(done?.captureId,focus) { if(done!=null && focus!=null) PcapImport.selectDetails(context,focus!!) }
+    val selected=details?.takeIf { it.captureId==done?.captureId }
+    val frames = remember(all, focus, selected) { if(focus==null) all else selected?.frames?.toSortedMap()?.values?.toList().orEmpty() }
     val shown = remember(frames, filter) {
         frames.filter { f ->
             WiresharkFilter.matches(f.title, f.addresses, f.fields.map { "${it.name} ${it.shown}" }, filter)
@@ -57,7 +63,7 @@ fun WiresharkScreen(onBack: () -> Unit) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SciFiOutline("‹ BACK", enabled = true) { onBack() }
+                if(com.projectrevivesolutions.layertime.controller.DeviceKind.isLokmatWatch) SciFiOutline("‹ BACK", enabled = true) { onBack() }
                 Text("WIRESHARK  //  CAPTURE DECODE", color = LtColors.ConsoleEdge,
                     fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp, style = glowText())
             }
@@ -81,6 +87,7 @@ fun WiresharkScreen(onBack: () -> Unit) {
                     SciFiPrimary("IMPORT CAPTURE FILE", enabled = true, large = true) { capture.pick() }
                 }
                 is PcapImport.State.Done -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if(st.training) Text("TRAINING DATA - generated example, not live evidence.",color=LtColors.Amber,fontSize=13.sp)
                     Text("${st.fileName}  ·  Wireshark ${st.wiresharkVersion}  ·  " +
                         "%,d frames (%,d decoded with full tree)".format(st.result.totalFrames, st.result.kept.size),
                         color = LtColors.Ivory, fontSize = 12.sp, fontFamily = ConsoleFonts.mono)
@@ -103,8 +110,13 @@ fun WiresharkScreen(onBack: () -> Unit) {
                     Text("Showing ${shown.size} of ${frames.size} frames.  Text filter over the title, " +
                         "addresses, and every decoded field; space-separated terms are ANDed.",
                         color = LtColors.Grey, fontSize = 12.sp)
+                    selected?.let {
+                        if(it.loading) Text("Loading supporting packet details�", color=LtColors.Amber,fontSize=12.sp)
+                        it.error?.let { error -> Text(error,color=LtColors.Red,fontSize=12.sp) }
+                    }
                     focus?.let { set ->
-                        Text("Only the ${set.size} frames behind the finding are listed, out of ${all.size} in the capture.", color = LtColors.Amber, fontSize = 12.sp)
+                        SciFiOutline("LOAD EVIDENCE DETAILS",enabled=true) { PcapImport.selectDetails(context,set) }
+                        Text("Requested ${set.size} supporting frames; ${frames.size} full packet details loaded (display limit ${PcapImport.KEEP_LIMIT}).", color = LtColors.Amber, fontSize = 12.sp)
                         SciFiOutline("SHOW THE WHOLE CAPTURE", enabled = true) { com.projectrevivesolutions.layertime.controller.flow.TriageSession.focusFrames.value = null }
                     }
                 }

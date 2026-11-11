@@ -1,0 +1,9 @@
+{
+  "supervisedRecords": 592,
+  "evaluationRecords": 96,
+  "maxFullSupervisedTokens": 387,
+  "maxEvaluationInputTokens": 458,
+  "maxOutputTokens": 128,
+  "maxContextTokens": 2048,
+  "truncated": false
+}

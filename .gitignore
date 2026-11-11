@@ -13,3 +13,9 @@ devices/garmin-tactix/developer_key
 tools/ci/logs/
 # Native (NDK) build cache from the Android controller build; rebuilds itself.
 .ndk-cache/
+# Pinned external inference source; restored by tools/ai/fetch-runtime.ps1.
+third_party/llama.cpp/
+# Private field evidence stays local.
+diagnostic-artifacts/field-review-*/
+# Generated development weights and manifest are reproduced from the training run.
+devices/layertime-controller-android/app/src/debug/assets/ai/development/

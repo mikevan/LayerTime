@@ -65,7 +65,7 @@ class BuilderEditingTest {
         var d = rebuiltTriage()
         val r = DraftEdits.connect(d, "event", "verdict", "features")
         assertTrue(r is ConnectResult.Refused)
-        assertEquals("\"Verdict\" takes feature here, but \"Detection\" produces frames.", (r as ConnectResult.Refused).sentence)
+        assertEquals("\"Report\" takes feature here, but \"Detection\" produces frames.", (r as ConnectResult.Refused).sentence)
         assertTrue(DraftEdits.connect(d, "rate", "rate", "frames") is ConnectResult.Refused)
         assertTrue(DraftEdits.connect(d, "verdict", "rate", "frames") is ConnectResult.Refused) // finding into frames
         // A one-connection input is re-pointed, not doubled.

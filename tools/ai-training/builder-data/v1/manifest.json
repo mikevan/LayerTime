@@ -1,0 +1,23 @@
+{
+  "examples": 8,
+  "originalGoalFamilies": 5,
+  "sha256": "c217dfa843a97c21508bc191e72e96f77f9cce81f297b74e6b0a95c156c817b3",
+  "sourceSha256": {
+    "devices\\layertime-controller-android\\app\\src\\test\\java\\com\\projectrevivesolutions\\layertime\\controller\\AiAuthoringTrainingSeedTest.kt": "10495538d9954b3a9e2bd4e5d4e280812b5f584b9dbc0b0f0213649122fbf1b3",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ai\\AnalyticAuthoring.kt": "96ce351f3401d6416d038d068f8676f47e8165c3237633633cccb5a207e13040",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\flow\\StepRegistry.kt": "66cc81e5c3648d1eac3915a350110327a900e87d0d746b060e012803abd2b7ae",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\flow\\BuilderPractice.kt": "f819e907845bd4fdc74a0c24ceb9cd2aa495c7bc73c46cad87fd80858914cf15",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\flow\\TargetBehavior.kt": "353c59ddc03ca115a08600510aa85ff7a473b6bd7956a69d8710f87eebb2c817",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\flow\\DeauthSteps.kt": "33319f236b1bb7541b8191c2c01e3c0b02ce6871bf190d41880382b89399f3f9"
+  },
+  "engineCasesVerified": 8,
+  "junitTests": 1,
+  "trainingApproved": false,
+  "releaseEligible": false,
+  "limitations": [
+    "Engine and typed-decoder checks do not establish broad prompt-authoring competence.",
+    "Eight authored candidates from five related goal families; no independent field labels.",
+    "Candidates are excluded from the currently running reporting-model training.",
+    "No Builder authoring feature was enabled or deployed to the phone."
+  ]
+}

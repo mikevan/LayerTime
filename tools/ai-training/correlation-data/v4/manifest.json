@@ -1,0 +1,25 @@
+{
+  "examples": 19,
+  "originalScenarioFamilies": 14,
+  "sha256": "9e2a7dc115f562ee886833fd54df2d759c648ac32ad4a2926d5aaba0a2fb9a27",
+  "sourceSha256": {
+    "devices\\layertime-controller-android\\app\\src\\test\\java\\com\\projectrevivesolutions\\layertime\\controller\\AiCorrelationTrainingSeedTest.kt": "915d586d3b12f0cf49fcf9952fd6c57fc06658dca7aa6fbcb8fd1a2433228b54",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ai\\CaptureReview.kt": "e75aa71e45a168bff69115b3d1104b4ec0aca4a60bf59b776f8040ac0f1794b7",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ai\\AiEvidenceWire.kt": "b11344d7bd8190d84411bcf8a82c79809d51863bf23e9342b2e2f19863e3319a",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ai\\AiReviewTasks.kt": "bea0a73c40062d42b337ee88ca9ada7b39ce5ea220618bfca1fbf2dabbf944af",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\flow\\TargetBehavior.kt": "353c59ddc03ca115a08600510aa85ff7a473b6bd7956a69d8710f87eebb2c817",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\flow\\NetworkComparison.kt": "3d2145992db7dc0dbe3acf152ab45ba2b9f1cce6cf6d122bfca06a4f60dea9ee"
+  },
+  "trainingApproved": false,
+  "releaseEligible": false,
+  "supersedesCandidate": "v3",
+  "changes": [
+    "Synthetic beacon destinations use broadcast, preserving realistic name-observation framing.",
+    "Retains v3 explicit timestamp/different-client/name explanations and current scalar evidence."
+  ],
+  "limitations": [
+    "Same 14 scenarios, not new independent recordings or added field ground truth.",
+    "Not used to replace frozen v2 evaluation inputs or revise measured outcomes.",
+    "Source/decoder checks are not independent expert or intended-user validation."
+  ]
+}

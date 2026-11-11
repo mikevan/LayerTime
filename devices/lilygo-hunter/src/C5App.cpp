@@ -1471,6 +1471,11 @@ void setup()
     // The boot look above decided this; the loop keeps it current.
     gServer.setMemoryOnly(!gSdLog.hasCardLog());
 
+#if defined(LAYERTIME_DIAG_WIFI_OFF)
+    // Connection isolation only: retain the full app but release Wi-Fi before BLE.
+    gRadio.suspendWifiForHunt();
+    Serial.println("DIAGNOSTIC: Wi-Fi off before BLE; do not start monitoring");
+#endif
     gHeapOk = heapIntact();
     Serial.printf("Heap before BLE init: %s, free %lu\n", gHeapOk ? "intact" : "CORRUPT",
                   static_cast<unsigned long>(ESP.getFreeHeap()));

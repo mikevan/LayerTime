@@ -1,0 +1,22 @@
+{
+  "examples": 19,
+  "originalScenarioFamilies": 14,
+  "sha256": "495ee55bfe7325d7496a9fcd68255a3815233737274453030a05ee0dc9712a82",
+  "sourceSha256": {
+    "devices\\layertime-controller-android\\app\\src\\test\\java\\com\\projectrevivesolutions\\layertime\\controller\\AiCorrelationTrainingSeedTest.kt": "4a242780ac6b0072d3a1d49eb45dd5eedca92adc4a8d034614f1d7fa5e511e7e",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ai\\CaptureReview.kt": "e75aa71e45a168bff69115b3d1104b4ec0aca4a60bf59b776f8040ac0f1794b7",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ai\\AiEvidenceWire.kt": "99e3ff55a03146a957a1d3bcb52dafb40cc9e6347abe67eff8d2e2d78b64d2d5",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ai\\AiReviewTasks.kt": "14688088b59793b52d2f5ca36b62372b411290dfbcb8b773a19822b49dfa9e68",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\flow\\TargetBehavior.kt": "353c59ddc03ca115a08600510aa85ff7a473b6bd7956a69d8710f87eebb2c817",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\flow\\NetworkComparison.kt": "3d2145992db7dc0dbe3acf152ab45ba2b9f1cce6cf6d122bfca06a4f60dea9ee"
+  },
+  "trainingApproved": false,
+  "releaseEligible": false,
+  "labelScope": "Timeline device/access-point matching and temporal linkage; not burst-only policy or attack ground truth",
+  "limitations": [
+    "Normalized synthetic observations, not independent field captures.",
+    "Multiple pages from one scenario are not independent examples or environments.",
+    "Source engine checks and schema/reference validation are not independent expert review of prose.",
+    "Not included in the currently running policy-reporting model training."
+  ]
+}

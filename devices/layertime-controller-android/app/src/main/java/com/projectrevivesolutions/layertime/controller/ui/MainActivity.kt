@@ -16,6 +16,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -95,6 +97,7 @@ import com.projectrevivesolutions.layertime.controller.diag.Exporter
 import com.projectrevivesolutions.layertime.controller.hunt.HuntSession
 import com.projectrevivesolutions.layertime.controller.link.LinkClient
 import com.projectrevivesolutions.layertime.controller.mission.EvidenceHold
+import com.projectrevivesolutions.layertime.controller.mission.MissionPrefs
 import com.projectrevivesolutions.layertime.controller.mission.SensorSelection
 import com.projectrevivesolutions.layertime.controller.link.LinkConstants
 import com.projectrevivesolutions.layertime.controller.link.LinkMeasure
@@ -197,51 +200,6 @@ private val logFmt = SimpleDateFormat("HH:mm:ss", Locale.US)
 internal object NavRequest { val page = kotlinx.coroutines.flow.MutableStateFlow<String?>(null) }
 
 /**
- * The mission setup, saved on the watch so a restart or Android recreating the screen
- * does not reset it: the sensor checkboxes (sent to the Hunter as SetSensors since
- * build 87). The Recon target is no longer stored: it follows the sensor list (ONLY
- * DEAUTH when the list is Deauth alone, ALL otherwise). "target" stays in the prefs
- * file, unread.
- */
-internal object MissionPrefs {
-    private const val PREFS = "layertime_mission"
-    fun readTarget(ctx: Context): Int = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        .getInt("target", LinkConstants.ReconTarget.ALL)
-    fun writeTarget(ctx: Context, t: Int) { ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("target", t).apply() }
-    // "sensors_v2" marks the one-time move to the Hunter-wired list (2026-11-04):
-    // SensorSelection.migrate turns the old, never-sent list into every sensor on
-    // unless the operator had checked real sensors. After that the stored list is
-    // used as is (presets expanded), and an empty one means every sensor off.
-    private const val V2 = "sensors_v2"
-    // "trackers_off_once" (Michael, 2026-11-06): one time, on the first run of build 100 or
-    // later, the trackers are unchecked in a list saved before trackers-off became the default.
-    // After that the operator's choices are left alone; checking a tracker again sticks.
-    private const val TRACKERS_OFF_ONCE = "trackers_off_once"
-    fun readSensors(ctx: Context): Set<Int> {
-        val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val stored = p.getStringSet("sensors", null)?.mapNotNull { it.toIntOrNull() }?.toSet()
-        var selection = if (!p.getBoolean(V2, false)) SensorSelection.migrate(stored)
-            else SensorSelection.normalize(stored ?: emptySet())
-        if (!p.getBoolean(TRACKERS_OFF_ONCE, false)) {
-            selection = SensorSelection.withoutTrackers(selection)
-            writeSensors(ctx, selection)
-            p.edit().putBoolean(TRACKERS_OFF_ONCE, true).apply()
-        } else if (!p.getBoolean(V2, false)) writeSensors(ctx, selection)
-        return selection
-    }
-    fun writeSensors(ctx: Context, on: Set<Int>) {
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putStringSet("sensors", on.map { it.toString() }.toSet()).putBoolean(V2, true).apply()
-    }
-    // The evidence hold in seconds (SetEvidenceHold, 2026-11-04). 10 until the operator picks one.
-    fun readEvidenceHold(ctx: Context): Int = EvidenceHold.normalize(
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt("evidence_hold", EvidenceHold.DEFAULT_SEC))
-    fun writeEvidenceHold(ctx: Context, sec: Int) {
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt("evidence_hold", EvidenceHold.normalize(sec)).apply()
-    }
-}
-
-/**
  * Text size for the data panel. Android sizes text by the density a device
  * declares; the LOKMAT watch declares 160 dpi for both the logical and the
  * physical density, so its true (much finer) pitch is unknown to the system
@@ -329,10 +287,12 @@ private fun ControllerScreen() {
     var afterPermission by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     var showLog by remember { mutableStateOf(false) }
-    var page by remember { mutableStateOf("main") }
+    val navigation=remember {PageNavigation()}
+    var page by navigation
+    val backDispatcher=androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    fun goBack(){if(DeviceKind.isLokmatWatch)navigation.back() else backDispatcher?.onBackPressed()}
+    androidx.activity.compose.BackHandler(enabled=!DeviceKind.isLokmatWatch){navigation.back()}
     var selectedEvent by remember { mutableStateOf<EventRow?>(null) }
-    // The list ATTACK DETAIL was opened from, so BACK returns there.
-    var detailFrom by remember { mutableStateOf("attacks") }
     val sensorsOn = remember { mutableStateMapOf<Int, Boolean>().apply { MissionPrefs.readSensors(context).forEach { put(it, true) } } }
     var battery by remember { mutableIntStateOf(batteryPct(context)) }
     var btOn by remember { mutableStateOf(bluetoothOn(context)) }
@@ -404,13 +364,17 @@ private fun ControllerScreen() {
         connect(h.address, h.name)
     }
     confirmClear?.let { h ->
-        AlertDialog(
-            onDismissRequest = { confirmClear = null },
-            title = { Text("Clear Card") },
-            text = { Text(CardClear.confirmText(h.name)) },
-            confirmButton = { TextButton(onClick = { confirmClear = null; eraseCard(h) }) { Text("Erase") } },
-            dismissButton = { TextButton(onClick = { confirmClear = null }) { Text("Cancel") } },
-        )
+        androidx.compose.ui.window.Dialog(onDismissRequest={confirmClear=null}) {
+            OpsConnectionHousing(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(18.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                    FrameBackControl(onBack={confirmClear=null})
+                    Text("Clear Card",color=LtColors.Cyan,fontSize=18.sp)
+                    Text(CardClear.confirmText(h.name),color=LtColors.Ivory,fontSize=15.sp)
+                    SciFiPrimary("Erase",true){confirmClear=null;eraseCard(h)}
+                    FrameBackControl(bottom=true,onBack={confirmClear=null})
+                }
+            }
+        }
     }
 
     val active = conn == ConnState.CONNECTED
@@ -585,12 +549,10 @@ private fun ControllerScreen() {
                 LocalSystemScreen provides (!onHull && page == "system")) {
             ProvideTextStyle(TextStyle(fontFamily = if (onHull) ConsoleFonts.body else FontFamily.SansSerif)) {
             Box(
-                (if (onHull || page == "main" || page == "system" || page == "config" || page == "tools" || page == "attacks" || page == "builder") Modifier.fillMaxSize() else Modifier.fillMaxSize()
-                    .consoleFrame(surface = LtColors.ConsoleBg, radius = 20.dp, elevation = 10.dp)
-                    .drawWithContent { drawContent() })
-                    .clip(RoundedCornerShape(20.dp))
-                    .padding(if (!onHull && (page == "main" || page == "system" || page == "config" || page == "tools" || page == "attacks" || page == "builder")) 0.dp else CONSOLE_BAND)
+                Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp))
+                    .padding(if(onHull) CONSOLE_BAND else 0.dp)
             ) {
+                SectionWindow(framed=!onHull,onBack={goBack()}) {
                 when (page) {
                     "config" -> {
                         if (!onHull) {
@@ -691,7 +653,7 @@ private fun ControllerScreen() {
                         if (!onHull) {
                             EventsScreen(events, emptyEventsMessage(active, status),
                                 onImport = { page = "capture" },
-                                onOpen = { selectedEvent = it; detailFrom = "attacks"; page = "detail" },
+                                onOpen = { selectedEvent = it; page = "detail" },
                                 onImportCard = { page = "card" })
                         } else {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -714,7 +676,7 @@ private fun ControllerScreen() {
                                     Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 3.dp)
                                         .hudPanel(edge = LtColors.Amber, radius = 16.dp, elevation = 4.dp)
                                         .clip(ConsoleShape)
-                                        .clickable { selectedEvent = e; detailFrom = "attacks"; page = "detail" }
+                                        .clickable { selectedEvent = e; page = "detail" }
                                         .padding(21.dp)
                                 ) {
                                     Column {
@@ -731,17 +693,17 @@ private fun ControllerScreen() {
 
                     "builder" -> BuilderScreen(onWireshark = { page = "wireshark" }, onTimeline = { page = "timeline" })
 
-                    "capture" -> CaptureOnlyScreen(onBack = { page = "attacks" }, onOpenWireshark = { page = "wireshark" })
+                    "capture" -> CaptureOnlyScreen(onBack = { goBack() }, onOpenWireshark = { page = "wireshark" })
 
-                    "wireshark" -> WiresharkScreen { page = "tools" }
-                    "card" -> HunterCardScreen(onBack = { page = "attacks" }, onOpenWireshark = { page = "wireshark" })
+                    "wireshark" -> WiresharkScreen { goBack() }
+                    "card" -> HunterCardScreen(onBack = { goBack() }, onOpenWireshark = { page = "wireshark" })
 
-                    "timeline" -> AttackTimelineScreen { page = "tools" }
+                    "timeline" -> AttackTimelineScreen(onBack = { goBack() }, onOpenWireshark = { page="wireshark" })
 
                     "detail" -> {
                         // The live row, so QUICK LOOK follows updates while it is open.
                         val ev = selectedEvent?.let { sel -> events.firstOrNull { it.eventId == sel.eventId && it.sessionId == sel.sessionId } ?: sel }
-                        if (ev != null) EventDetailScreen(ev, deviceLabel, conn, onBack = { page = detailFrom }, onOpenWireshark = { page = "wireshark" })
+                        if (ev != null) EventDetailScreen(ev, deviceLabel, conn, onBack = { goBack() }, onOpenWireshark = { page = "wireshark" })
                         else LazyColumn(Modifier.fillMaxSize()) { item { Text("No detection selected.", color = LtColors.Grey) } }
                     }
 
@@ -1003,6 +965,7 @@ private fun ControllerScreen() {
                         }
                     }
                 }
+                }
             }
             }
             }
@@ -1012,6 +975,7 @@ private fun ControllerScreen() {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         if (huntOpen) {
             // HUNT v1 takes the whole screen until STOP HUNT.
+            SectionWindow(framed=!DeviceKind.isLokmatWatch,onBack={goBack()}) {
             HuntScreen(
                 onStop = { LinkForegroundService.active?.huntStop(); HuntSession.end() },
                 onAgain = {
@@ -1019,6 +983,7 @@ private fun ControllerScreen() {
                     LinkForegroundService.active?.huntStart()
                 },
             )
+            }
             return@BoxWithConstraints
         }
         // The watch layout of the design standard (claude/android_watch_design_standard.md).

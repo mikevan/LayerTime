@@ -21,6 +21,7 @@
 #if defined(LAYERTIME_TARGET_TDONGLE_C5)
 
 #include "C5Link.h"
+#include "C5ConnectionTrace.h"
 #include "BringUpLogic.h"
 
 #include <Arduino.h>
@@ -60,10 +61,12 @@ public:
     void onConnect(NimBLEServer *, NimBLEConnInfo &info) override
     {
         if (gLink) gLink->onConnected(info.getAddress().toString().c_str(), info.getMTU());
+        c5ConnectionTrace("connected");
     }
-    void onDisconnect(NimBLEServer *, NimBLEConnInfo &, int) override
+    void onDisconnect(NimBLEServer *, NimBLEConnInfo &, int reason) override
     {
         if (gLink) gLink->onDisconnected();
+        c5ConnectionTrace("disconnected-before-auto-advertise", reason);
         // advertiseOnDisconnect(true) restarts advertising; nothing to do here.
     }
     void onMTUChange(uint16_t mtu, NimBLEConnInfo &) override
@@ -155,11 +158,20 @@ bool C5Link::begin(uint16_t capabilities)
     adv->setAdvertisementData(primary);
     adv->setScanResponseData(scanResponse);
     adv->enableScanResponse(true);
-    return adv->start();
+    const bool started = adv->start();
+    c5ConnectionTrace("advertise-start", started);
+    return started;
 }
 
 void C5Link::service(uint32_t nowMs)
 {
+#if defined(LAYERTIME_DIAG_CONNECTION_TRACE)
+    static uint32_t lastTraceMs = 0;
+    if (nowMs - lastTraceMs >= 10000) {
+        lastTraceMs = nowMs;
+        c5ConnectionTrace("periodic");
+    }
+#endif
     if (nowMs - _lastBeatMs >= kHeartbeatMs) {
         _lastBeatMs = nowMs;
         lockIo();

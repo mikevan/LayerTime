@@ -27,7 +27,7 @@ import com.projectrevivesolutions.layertime.controller.model.ConnState
 import com.projectrevivesolutions.layertime.controller.model.LogEntry
 import com.projectrevivesolutions.layertime.controller.mission.SensorSelection
 import com.projectrevivesolutions.layertime.controller.state.ControllerRepository
-import com.projectrevivesolutions.layertime.controller.ui.MissionPrefs
+import com.projectrevivesolutions.layertime.controller.mission.MissionPrefs
 import java.util.ArrayDeque
 import java.util.UUID
 
@@ -63,8 +63,7 @@ class LinkClient(private val appContext: Context) {
     private fun nextReqId(): Int { reqIdCounter = (reqIdCounter % 254) + 1; return reqIdCounter }
 
     // GATT-level operation serialisation (Android allows one op at a time).
-    private val gattOps = ArrayDeque<() -> Unit>()
-    private var gattBusy = false
+    private val gattQueue = GattOperationQueue()
 
     // Link-level one-outstanding-request gate.
     private data class Pending(val reqId: Int, val kind: Int) // kind = op byte
@@ -181,8 +180,8 @@ class LinkClient(private val appContext: Context) {
                 gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
                 gatt = null; control = null; statusCh = null; dataCh = null
                 stopHealthCheck()
-                handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
-                linkQueue.clear(); gattOps.clear(); textTargets.clear(); summaries.clear(); textFrags.clear()
+                handshakeDone = false; linkBusy = false; gattQueue.reset(); dropEvidence(); dropCard(); dropClear()
+                linkQueue.clear(); textTargets.clear(); summaries.clear(); textFrags.clear()
                 requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
                 repo.reset()
             }
@@ -197,8 +196,8 @@ class LinkClient(private val appContext: Context) {
         if (!handshakeDone) {
             gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
             gatt = null; control = null; statusCh = null; dataCh = null
-            linkBusy = false; gattBusy = false
-            linkQueue.clear(); gattOps.clear(); textTargets.clear()
+            linkBusy = false; gattQueue.reset()
+            linkQueue.clear(); textTargets.clear()
         }
         wantConnected = true
         reconnectAttempts = 0
@@ -236,8 +235,8 @@ class LinkClient(private val appContext: Context) {
         stopScan()
         gatt?.let { g -> g.disconnect(); g.close() }
         gatt = null; control = null; statusCh = null; dataCh = null
-        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
-        linkQueue.clear(); gattOps.clear(); textTargets.clear(); summaries.clear(); textFrags.clear()
+        handshakeDone = false; linkBusy = false; gattQueue.reset(); dropEvidence(); dropCard(); dropClear()
+        linkQueue.clear(); textTargets.clear(); summaries.clear(); textFrags.clear()
         currentAddress = null; currentName = null; targetAddress = null; targetName = null
         repo.setConn(ConnState.IDLE)
     }
@@ -298,8 +297,8 @@ class LinkClient(private val appContext: Context) {
         stopHealthCheck()
         gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
         gatt = null; control = null; statusCh = null; dataCh = null
-        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
-        linkQueue.clear(); gattOps.clear(); textTargets.clear()
+        handshakeDone = false; linkBusy = false; gattQueue.reset(); dropEvidence(); dropCard(); dropClear()
+        linkQueue.clear(); textTargets.clear()
         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
         repo.noteBackgroundDisconnect()
         repo.setConn(ConnState.DISCONNECTED, "$name stalled")
@@ -314,8 +313,8 @@ class LinkClient(private val appContext: Context) {
         repo.log(LogEntry.Category.ERROR, "link lost: no Status for ${silenceMs / 1000} s; dropping and reconnecting")
         gatt?.let { g -> runCatching { g.disconnect() }; runCatching { g.close() } }
         gatt = null; control = null; statusCh = null; dataCh = null
-        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
-        linkQueue.clear(); gattOps.clear(); textTargets.clear()
+        handshakeDone = false; linkBusy = false; gattQueue.reset(); dropEvidence(); dropCard(); dropClear()
+        linkQueue.clear(); textTargets.clear()
         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
         repo.noteBackgroundDisconnect()
         repo.setConn(ConnState.DISCONNECTED, "no Status for ${silenceMs / 1000} s")
@@ -334,8 +333,8 @@ class LinkClient(private val appContext: Context) {
         reconnectPending = Runnable {
             gatt?.let { g -> runCatching { g.close() } }
             gatt = null; control = null; statusCh = null; dataCh = null
-            handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
-            linkQueue.clear(); gattOps.clear(); textTargets.clear()
+            handshakeDone = false; linkBusy = false; gattQueue.reset(); dropEvidence(); dropCard(); dropClear()
+            linkQueue.clear(); textTargets.clear()
             start(autoStartTarget)
         }.also { handler.postDelayed(it, delay) }
     }
@@ -460,10 +459,10 @@ class LinkClient(private val appContext: Context) {
                         if (pingBurstLeft > 0) { pingBurstLeft = 0; LinkMeasure.addLine("PING burst stopped: the link dropped.") }
                         bulkRun?.let { reportBulk(it, null, "the link dropped.") }
                         LinkMeasure.setMtu(23)
-                        handshakeDone = false; linkBusy = false; gattBusy = false; dropEvidence(); dropCard(); dropClear()
+                        handshakeDone = false; linkBusy = false; gattQueue.reset(); dropEvidence(); dropCard(); dropClear()
                         huntPollOutstanding = false
                         if (huntWanted) HuntSession.setProblem("The link to the Hunter dropped. Reconnecting.")
-                        linkQueue.clear(); gattOps.clear(); textTargets.clear()
+                        linkQueue.clear(); textTargets.clear()
                         requestTimeout?.let { handler.removeCallbacks(it) }; requestTimeout = null
                         repo.noteBackgroundDisconnect()
                         repo.setConn(ConnState.DISCONNECTED, "gattStatus=$status")
@@ -553,14 +552,8 @@ class LinkClient(private val appContext: Context) {
 
     // ---- GATT op queue ----
 
-    private fun enqueueGatt(op: () -> Unit) { gattOps.add(op); drainGatt() }
-    private fun drainGatt() {
-        if (gattBusy) return
-        val op = gattOps.poll() ?: return
-        gattBusy = true
-        op()
-    }
-    private fun gattOpComplete() { gattBusy = false; drainGatt() }
+    private fun enqueueGatt(op: () -> Unit) = gattQueue.enqueue(op)
+    private fun gattOpComplete() = gattQueue.complete()
 
     private fun enableNotify(ch: BluetoothGattCharacteristic) = enqueueGatt {
         val g = gatt ?: return@enqueueGatt gattOpComplete()
@@ -587,13 +580,23 @@ class LinkClient(private val appContext: Context) {
 
     private fun sendControl(frame: ByteArray) {
         val g = gatt; val c = control
-        if (g == null || c == null) { gattOpComplete(); return }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (g == null || c == null) {
+            stepStalled("Control write", REQUEST_TIMEOUT_MS, "Control characteristic unavailable")
+            return
+        }
+        val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             g.writeCharacteristic(c, frame, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
         } else {
             @Suppress("DEPRECATION") c.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
             @Suppress("DEPRECATION") c.value = frame
-            @Suppress("DEPRECATION") g.writeCharacteristic(c)
+            @Suppress("DEPRECATION") val accepted = g.writeCharacteristic(c)
+            if (accepted) 0 else -1
+        }
+        if (result != 0) {
+            // A local refusal has no completion callback. Reset the session through
+            // the existing recovery path; never replay a possibly destructive command.
+            stepStalled("Control write", REQUEST_TIMEOUT_MS,
+                "request #${pending?.reqId} op=${pending?.kind} rejected locally, status=$result")
         }
     }
 
@@ -621,8 +624,8 @@ class LinkClient(private val appContext: Context) {
             // FIFO at once; binding at queue time would let a later one overwrite it.
             textTargets.remove(reqId)?.let { textEventId = it.first; textField = it.second }
         }
-        enqueueGatt { sendControl(frame) }
         armRequestTimeout(reqId, kind)
+        enqueueGatt { sendControl(frame) }
     }
 
     private fun armRequestTimeout(reqId: Int, kind: Int) {
@@ -631,6 +634,10 @@ class LinkClient(private val appContext: Context) {
             if (linkBusy && pending?.reqId == reqId) {
                 repo.log(LogEntry.Category.ERROR,
                     "request #$reqId op=0x%02X timed out after ${REQUEST_TIMEOUT_MS}ms; freeing link gate".format(kind))
+                if (gattQueue.busy) {
+                    stepStalled("Control write callback", REQUEST_TIMEOUT_MS, "request #$reqId timed out while GATT was busy")
+                    return@Runnable
+                }
                 finishLink()
                 if (kind == LinkConstants.Op.PING && pingBurstLeft > 0) onBurstPing(null)
                 if (kind == LinkMeasure.OP_BULK) bulkRun?.let { reportBulk(it, null, "timed out") }

@@ -63,6 +63,14 @@ class WiresharkCaptureImportTest {
     }
 
     @Test
+    fun analyticNetworkNameUsesDecodedSsidRatherThanHexBytes() {
+        val decoded=WiresharkDecoder.parseFrame(record+"\n1\twlan.ssid\t43:61:6d:70:20:57:69:46:69\t0\t9\tSSID: Camp WiFi")!!
+        assertEquals("Camp WiFi",com.projectrevivesolutions.layertime.controller.flow.AnalyticFrame.fromPcap(0,decoded).ssid)
+        val literal=WiresharkDecoder.parseFrame(record+"\n1\twlan.ssid\t34:31:3a:34:32\t0\t5\tSSID: 41:42")!!
+        assertEquals("41:42",com.projectrevivesolutions.layertime.controller.flow.AnalyticFrame.fromPcap(0,literal).ssid)
+    }
+
+    @Test
     fun hexDumpHasOffsetsAndSixteenBytesPerLine() {
         val f = WiresharkDecoder.parseFrame(record)!!
         val lines = WiresharkDecoder.hexDump(f.hex)
@@ -106,6 +114,29 @@ class WiresharkCaptureImportTest {
         assertEquals(2, r.malformedFrames)
         assertFalse(r.cancelled)
         assertNull(r.readError)
+    }
+
+    @Test fun targetCorrelationFindsEapolBeyondDisplayCache() {
+        val ap="00:11:22:33:44:55";val client="02:11:22:33:44:66"
+        fun field(n:String,v:String)=WiresharkDecoder.Field(0,n,v,0,0)
+        val packets=(1..700).map { n -> frame(n,n.toLong()).copy(epochSeconds=1700000000L,nanos=n*1000000,
+            fields=listOf(field("wlan.fc.type_subtype",if(n==600) "0x0c" else "0x20"),
+                field("wlan.sa",ap),field("wlan.da",client),field("wlan.bssid",ap)) +
+                if(n==650) listOf(field("eapol.type","3")) else emptyList()) }
+        val r=CaptureDecodeLoop.run(FakeSource(packets,700),500,{false},{0L},onBeat={})
+        assertEquals(500,r.kept.size)
+        val report=com.projectrevivesolutions.layertime.controller.flow.TargetBehavior.analyze(r.observations).single()
+        assertEquals(listOf(599),report.disconnectFrames)
+        assertEquals(listOf(649),report.followOnFrames)
+    }
+
+    @Test fun analyticObservationsContinueBeyondDisplayLimitAndExposeAnalysisLimit() {
+        val src = FakeSource((1..700).map { frame(it, it.toLong()) },700)
+        val result = CaptureDecodeLoop.run(src,5,{false},{0L},onBeat={},analysisLimit=600)
+        assertEquals(5,result.kept.size)
+        assertEquals(600,result.observations.size)
+        assertEquals(599,result.observations.last().index)
+        assertEquals(700,result.totalFrames)
     }
 
     @Test

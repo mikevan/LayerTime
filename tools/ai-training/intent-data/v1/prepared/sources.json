@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "layertime-authored-intents-v1": {
+      "license": "Project-authored original development examples",
+      "allowedForTraining": true,
+      "approvedSeedSha256": "dd1d0c9f025995f2fd021b23e2d5002cf7b7d581f6c5ff1229f4f4b36cde5fbc",
+      "validationProfile": "analytic-intent-v1"
+    }
+  }
+}

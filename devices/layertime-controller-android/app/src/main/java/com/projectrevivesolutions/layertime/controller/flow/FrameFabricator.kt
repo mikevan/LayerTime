@@ -56,7 +56,15 @@ class FrameFabricator {
     /** An EAPOL-Key frame (a password handshake message). */
     fun eapol(atNanos: Long, from: String, to: String, bssid: String, seq: Int, channel: Int, rssi: Int, msg: Int = 1): FrameFabricator {
         val llc = byteArrayOf(0xAA.toByte(), 0xAA.toByte(), 0x03, 0, 0, 0, 0x88.toByte(), 0x8E.toByte())
-        val eapol = byteArrayOf(0x02, 0x03, 0x00, 0x5F) + ByteArray(95) // version 2, EAPOL-Key, length 95
+        val key=ByteArray(95)
+        key[0]=2 // RSN EAPOL-Key descriptor, not an unspecified all-zero descriptor.
+        val info=when(msg) { 1->0x008a; 2->0x010a; 3->0x13ca; 4->0x030a; else->0x008a }
+        key[1]=(info shr 8).toByte();key[2]=info.toByte()
+        key[4]=16 // Key length, network byte order.
+        key[12]=1 // Replay counter.
+        if(msg!=4) for(i in 13..44) key[i]=(i+1).toByte()
+        if(msg!=1) for(i in 77..92) key[i]=(i+1).toByte()
+        val eapol = byteArrayOf(0x02, 0x03, 0x00, 0x5F) + key // version 2, EAPOL-Key, length 95
         return add(atNanos, AnalyticFrame.DATA, da = to, sa = from, bssid = bssid, seq = seq, body = llc + eapol, channel = channel, rssi = rssi,
             extra = { it.copy(eapol = true, eapolMsg = msg) })
     }
@@ -86,17 +94,8 @@ class FrameFabricator {
 
     companion object {
         /** Radiotap: flags, channel, antenna signal (present 0x2A); 16 bytes. */
-        fun radiotap(channel: Int, rssi: Int): ByteArray {
-            val freq = AnalyticFrame.freqOf(channel)
-            val chanFlags = if (channel <= 14) 0x0480 else 0x0140 // 2 GHz + CCK, or 5 GHz + OFDM
-            return byteArrayOf(0, 0, 16, 0, 0x2A, 0, 0, 0,
-                0,                                   // flags: no FCS
-                0,                                   // pad to align the channel field
-                (freq and 0xFF).toByte(), (freq shr 8).toByte(),
-                (chanFlags and 0xFF).toByte(), (chanFlags shr 8).toByte(),
-                rssi.toByte(),
-                0)                                   // pad
-        }
+        fun radiotap(channel: Int, rssi: Int): ByteArray =
+            com.projectrevivesolutions.layertime.controller.capture.Radiotap.header(channel, rssi)
 
         /** An 802.11 management or data frame: control, duration, three addresses, sequence control, body. */
         fun dot11(typeSubtype: Int, da: String, sa: String, bssid: String, seq: Int, retry: Boolean, body: ByteArray): ByteArray {

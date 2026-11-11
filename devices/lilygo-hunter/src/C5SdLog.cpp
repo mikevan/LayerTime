@@ -269,6 +269,12 @@ bool C5SdLog::beginClear(bool &usedBus)
 {
     usedBus = false;
     if (!_c.fileOpen || _reading || _clearing) return false;
+    if (_clearBuffers == nullptr) {
+        void *storage = heap_caps_malloc(sizeof(ClearBuffers), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        // Refuse before touching the card if external memory is unavailable.
+        if (storage == nullptr) return false;
+        _clearBuffers = new (storage) ClearBuffers{};
+    }
     usedBus = true;
     startBus();
     _file.flush();
@@ -283,14 +289,15 @@ bool C5SdLog::beginClear(bool &usedBus)
 bool C5SdLog::clearSkipped(const char *path) const
 {
     for (uint8_t i = 0; i < _clearSkipCount; ++i)
-        if (strcmp(_clearSkip[i], path) == 0) return true;
+        if (strcmp(_clearBuffers->skipped[i], path) == 0) return true;
     return false;
 }
 
 void C5SdLog::skipInClear(const char *path)
 {
     _clearClean = false;
-    if (_clearSkipCount < kClearSkipMax) copyText(_clearSkip[_clearSkipCount++], sizeof(_clearSkip[0]), path);
+    if (_clearSkipCount < kClearSkipMax)
+        copyText(_clearBuffers->skipped[_clearSkipCount++], sizeof(_clearBuffers->skipped[0]), path);
 }
 
 // One batch inside `dir` (a path starting with '/'): erase up to kClearBatchMax
@@ -301,9 +308,9 @@ void C5SdLog::skipInClear(const char *path)
 // stack out.
 int C5SdLog::clearIn(const char *dir, uint8_t depth)
 {
-    // The batch lives in the object: a level that finds files erases them and
+    // The batch lives in PSRAM: a level that finds files erases them and
     // returns before going deeper, so one buffer serves every level.
-    char (&files)[kClearBatchMax][kClearPathSize] = _clearFiles;
+    char (&files)[kClearBatchMax][kClearPathSize] = _clearBuffers->files;
     size_t fileCount = 0;
     char sub[kClearPathSize] = {0};
     fs::File d = SD.open(dir);
@@ -357,7 +364,7 @@ C5SdLog::ClearStep C5SdLog::stepClear(uint32_t nowMs, uint32_t bootCount, const 
 
 const char *C5SdLog::clearLeftover(uint8_t i) const
 {
-    return i < _clearSkipCount ? _clearSkip[i] : nullptr;
+    return _clearBuffers != nullptr && i < _clearSkipCount ? _clearBuffers->skipped[i] : nullptr;
 }
 
 bool C5SdLog::beginRead(const char *name, uint32_t &size, bool &usedBus)

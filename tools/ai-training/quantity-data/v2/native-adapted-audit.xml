@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.projectrevivesolutions.layertime.controller.AnalyticQuantityTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-11-10T18:50:39.037Z" hostname="DESKTOP-HI955UO" time="0.298">
+  <properties/>
+  <testcase name="unassignedTimesAndNumbersCannotSilentlyBecomeDefaults" classname="com.projectrevivesolutions.layertime.controller.AnalyticQuantityTest" time="0.005"/>
+  <testcase name="countCannotBeBorrowedFromAQuotedTime" classname="com.projectrevivesolutions.layertime.controller.AnalyticQuantityTest" time="0.005"/>
+  <testcase name="precisionAndMissingUnitsAreNotRoundedOrGuessed" classname="com.projectrevivesolutions.layertime.controller.AnalyticQuantityTest" time="0.005"/>
+  <testcase name="exportTemplateAndAuditDataOrSavedModelProposals" classname="com.projectrevivesolutions.layertime.controller.AnalyticQuantityTest" time="0.281"/>
+  <testcase name="protocolNamesAreNotMistakenForUnassignedSettings" classname="com.projectrevivesolutions.layertime.controller.AnalyticQuantityTest" time="0.0"/>
+  <testcase name="sharedQuantitiesAndDefaultRolesRemainExplicit" classname="com.projectrevivesolutions.layertime.controller.AnalyticQuantityTest" time="0.001"/>
+  <testcase name="exactFractionsAndDecimalsAreComputedByTheAtom" classname="com.projectrevivesolutions.layertime.controller.AnalyticQuantityTest" time="0.0"/>
+  <testcase name="inventedUnitsAndPartialNumbersAreRejected" classname="com.projectrevivesolutions.layertime.controller.AnalyticQuantityTest" time="0.001"/>
+  <system-out><![CDATA[Native quantity audit checked 120 actual model proposals.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

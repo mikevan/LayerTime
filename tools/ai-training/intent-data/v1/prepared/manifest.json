@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Bounded prompt-to-analytic intent experiment; no domain qualification",
+  "releaseEligible": false,
+  "seedSha256": "dd1d0c9f025995f2fd021b23e2d5002cf7b7d581f6c5ff1229f4f4b36cde5fbc",
+  "sourceRegistrySha256": "e5d5455e7afa486662da2caf455d001afa7f62b2ad5a363ef88877fa4a032e5c",
+  "splits": {
+    "train": {
+      "file": "train.jsonl",
+      "sha256": "0112a9ac94192f39666e09cbac8167a625f53b0adea08e3a11eb7dd412451da4",
+      "examples": 32,
+      "families": [
+        "ble_only",
+        "defaults",
+        "five_second",
+        "fixed_filter",
+        "four_pair",
+        "half_second",
+        "invalid_zero",
+        "maximum_time",
+        "merge_long",
+        "milliseconds",
+        "minimum_time",
+        "missing_unit",
+        "one_minute",
+        "pair_two",
+        "recording_short",
+        "recording_three"
+      ]
+    },
+    "validation": {
+      "file": "validation.jsonl",
+      "sha256": "e6d50a1d6bfc51237f5e9b73dd2c398784c063c5763ef4ae02f7a2b6832637f2",
+      "examples": 8,
+      "families": [
+        "conflict",
+        "password_proof",
+        "validation_pair",
+        "validation_recording"
+      ]
+    },
+    "test": {
+      "file": "test.jsonl",
+      "sha256": "c0d7f7cc568904e439f2780de4069415072b5e6f4f28ccfe63625fcd5634106f",
+      "examples": 16,
+      "families": [
+        "boundary_test",
+        "burst_only_test",
+        "fractional_test",
+        "missing_gap_unit_test",
+        "ninety_seconds_test",
+        "pair_scope_test",
+        "recording_scope_test",
+        "signal_test"
+      ]
+    }
+  }
+}

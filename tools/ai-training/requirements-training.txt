@@ -1,0 +1,11 @@
+# Conservative, reproducible trial versions. Install in a dedicated environment, not the app runtime.
+torch==2.8.0
+transformers==4.57.1
+peft==0.17.1
+datasets==4.3.0
+accelerate==1.11.0
+sentencepiece==0.2.1
+catboost==1.2.8
+scapy==2.6.1
+scikit-learn==1.7.2
+bitsandbytes==0.48.1

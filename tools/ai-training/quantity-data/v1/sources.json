@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "layertime-authored-quantity-extraction-v1": {
+      "license": "Project-authored synthetic requests; development only",
+      "allowedForTraining": true,
+      "approvedSeedSha256": "27ef0664fbe1ba095a8398d4647845a38ae566a3f60dc8b335d90d1bbacaa9cd",
+      "validationProfile": "analytic-quantity-extraction-v1"
+    }
+  }
+}

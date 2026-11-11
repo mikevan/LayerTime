@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Grounded contract adherence development; not learned forensic interpretation",
+  "releaseEligible": false,
+  "seedSha256": "bb10ffdd6c8aac8180bdb67a2a271a404d295cd11dc6576e2e08fd7981b6b3db",
+  "sourceRegistrySha256": "ab1a361e2b7c289e767e4bc1ba01949cc81e752aa49b4e20af62e88b436f3902",
+  "splits": {
+    "train": {
+      "file": "train.jsonl",
+      "sha256": "44f85719bd4fd2d4403bb9df1daa7a45bc72702bac1565985365e8629af6fbf3",
+      "examples": 56,
+      "families": [
+        "before",
+        "broadcast",
+        "malformed_request",
+        "one_request",
+        "ordinary_exchange_only",
+        "other_ap",
+        "other_client",
+        "reverse_exchange",
+        "same_pair",
+        "separate_episodes",
+        "unresolved_exchange_ap",
+        "untimed_exchange"
+      ]
+    },
+    "validation": {
+      "file": "validation.jsonl",
+      "sha256": "7c5949561bb6feebc7ceda3364e2a905c4fdf4dbc0780fd7def1dc814240496c",
+      "examples": 24,
+      "families": [
+        "equal_time",
+        "interleaved",
+        "two_targets",
+        "unknown_request_ap"
+      ]
+    },
+    "test": {
+      "file": "test.jsonl",
+      "sha256": "69cf5ab32d22ed96c4e81d468bfbc9b123c2b41cb7927c0539746c1d4a53573c",
+      "examples": 52,
+      "families": [
+        "all_request_clocks_invalid",
+        "boundary_follow_on",
+        "follow_on_expired",
+        "merged_requests_reversed_exchange",
+        "three_targets_overlapping",
+        "two_aps_shared_name",
+        "untimed_other_client",
+        "valid_plus_untimed"
+      ]
+    }
+  }
+}

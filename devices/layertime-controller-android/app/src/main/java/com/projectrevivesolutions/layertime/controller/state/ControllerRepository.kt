@@ -52,6 +52,8 @@ object ControllerRepository {
     private val _events = MutableStateFlow<List<EventRow>>(emptyList())
     val events: StateFlow<List<EventRow>> = _events.asStateFlow()
 
+    const val LOG_HISTORY_LIMIT = 2_000
+
     private val _log = MutableStateFlow<List<LogEntry>>(emptyList())
     val log: StateFlow<List<LogEntry>> = _log.asStateFlow()
 
@@ -83,7 +85,7 @@ object ControllerRepository {
     private fun now() = System.currentTimeMillis()
 
     fun log(category: LogEntry.Category, message: String) {
-        _log.update { it + LogEntry(now(), category, message) }
+        _log.update { it.takeLast(LOG_HISTORY_LIMIT - 1) + LogEntry(now(), category, message) }
         // Also to logcat (tag LayerScope), so a capture on the bench computer shows the app's own
         // view of the link next to Android's Bluetooth log (2026-11-06 diagnostics).
         runCatching { android.util.Log.i("LayerScope", "[$category] $message") }

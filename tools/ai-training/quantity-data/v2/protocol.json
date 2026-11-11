@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "seedSha256": "49519154f3a6e33e5016129cc0f4a9f51bf9ef848e3f3f02bf5a9c5b7eb928da",
+  "evaluationSha256": "d661f159cbf78a72cac4cdf262c7c49b422176cd23a34b398d14622ae71e232a",
+  "freshEvaluationSha256": "6588f836e6983842fa1f09c562ce55e287d64ffdb0a6b2565987c2756cef1afb",
+  "initialAdapterSha256": "332237f0ddec38d61e8057584b3483e83b7106a3175b074b915f0753f5e8f5bb",
+  "trainingUpdates": 768,
+  "trainingExamples": 768,
+  "additionalNewExamples": 256,
+  "validationExamples": 64,
+  "freshTestRequests": 24,
+  "knownRegressionRequests": 96,
+  "primaryGate": "All 24 new normalized intents correct and all 96 known requests correct; raw extraction scored separately.",
+  "training": "One pass, same NF4 FP16 rank8 q/v LoRA, seed42, fresh optimizer, loss scale256; checkpoint192 retain2.",
+  "evaluation": "One greedy response, unchanged native prompt and conversion atom, 2048 context and128 output tokens, no retries or repair. Control on24fresh requests; previous96 responses retained as known control, not resampled.",
+  "releaseEligible": false,
+  "androidDeviceTested": false,
+  "limitations": [
+    "Authored synthetic requests; not independent field or user qualification.",
+    "Additional train templates address exposed errors; old questions are known regressions.",
+    "Native arithmetic is not learned neural arithmetic."
+  ]
+}

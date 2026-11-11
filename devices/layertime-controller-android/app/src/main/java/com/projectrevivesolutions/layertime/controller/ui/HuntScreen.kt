@@ -117,7 +117,7 @@ fun HuntScreen(onStop: () -> Unit, onAgain: () -> Unit) {
     LaunchedEffect(Unit) { while (true) { nowMs = SystemClock.elapsedRealtime(); delay(200) } }
     val view = remember(nowMs) { HuntSession.view(nowMs) }
 
-    BackHandler { /* only STOP HUNT ends a hunt */ }
+    BackHandler { onStop() }
     val hostView = LocalView.current
     DisposableEffect(Unit) { hostView.keepScreenOn = true; onDispose { hostView.keepScreenOn = false } }
 

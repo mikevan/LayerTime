@@ -14,13 +14,16 @@ data class Feature(
     val lean: Lean,
     val reason: String,
     val frames: List<Int> = emptyList(),
+    val checkType: String = step,
+    val metrics: Map<String, Long> = emptyMap(),
+    val targetReports: List<TargetReport> = emptyList(),
 )
 
 enum class Verdict(val label: String) {
-    NOT_WORRISOME("NOT WORRISOME"),
-    WATCH("WATCH"),
-    LIKELY_ATTACK("LIKELY ATTACK"),
-    ATTACK_WITH_FOLLOW_ON("ATTACK WITH FOLLOW-ON"),
+    NOT_WORRISOME("NO ELEVATED POSTURE OBSERVED"),
+    WATCH("REVIEW POSTURE"),
+    LIKELY_ATTACK("SIGNIFICANT ATTACK POSTURE"),
+    ATTACK_WITH_FOLLOW_ON("SIGNIFICANT POSTURE WITH FOLLOW-ON"),
 }
 
 /**
@@ -33,6 +36,8 @@ data class Finding(
     val features: List<Feature>,
     val couldNotRun: List<Feature>,
     val frames: List<Int>,
+    val coverage: EvidenceCoverage? = null,
+    val assessmentLabel: String = verdict.label,
 ) {
     val suspicious get() = features.filter { it.lean == Lean.SUSPICIOUS }
     val benign get() = features.filter { it.lean == Lean.BENIGN }

@@ -1,0 +1,12 @@
+{
+  "candidateExamples": 13834,
+  "syntheticIdentitySummariesChecked": 3072,
+  "proposedPilotExamples": 925,
+  "independentWifiFrameLinksChecked": 664,
+  "independentDecoderChecks": 14886,
+  "wifiAdmission": "external_review_only",
+  "structureAndEvidencePassed": true,
+  "independentEnglishReview": false,
+  "modelTrainingPerformed": false,
+  "trainingApproved": false
+}

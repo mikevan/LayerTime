@@ -52,17 +52,18 @@ object WorkflowStore {
     fun open(ctx: Context, e: Entry): Draft? {
         val text = runCatching { if (e.shipped) ctx.assets.open(e.file).bufferedReader().use { it.readText() } else File(e.file).readText() }.getOrNull() ?: return null
         val w = runCatching { WorkflowLoader.parse(text) }.getOrNull() ?: return null
-        return DraftEdits.open(w, DraftEdits.layoutOf(text), e.shipped)
+        return runCatching { DraftEdits.open(w, DraftEdits.layoutOf(text), e.shipped).copy(authoring=AnalyticOrigin.fromJson(text)) }.getOrNull()
     }
 
     /** Saves the operator's draft as the next version of its name. Returns the saved draft (with its new version). */
+    @Synchronized
     fun save(ctx: Context, d: Draft): Draft {
-        val f = File(savedDir(ctx), slug(d.workflow.name) + ".json")
-        val previous = runCatching { WorkflowLoader.parse(f.readText()).version }.getOrNull() ?: 0
+        val previous = list(ctx).filter { !it.shipped && it.name == d.workflow.name }.maxOfOrNull { it.version } ?: 0
         val saved = d.copy(workflow = d.workflow.copy(version = previous + 1))
-        val tmp = File(f.path + ".part")
-        tmp.writeText(DraftEdits.write(saved))
-        if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
+        val hash = java.security.MessageDigest.getInstance("SHA-256").digest(d.workflow.name.toByteArray(Charsets.UTF_8))
+            .take(6).joinToString("") { "%02x".format(it) }
+        val f = File(savedDir(ctx), slug(d.workflow.name).take(80) + "-$hash-v${saved.workflow.version}.json")
+        WorkflowFileWriter().write(f, DraftEdits.write(saved))
         return saved
     }
 }

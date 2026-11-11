@@ -1,0 +1,49 @@
+{
+  "candidateSelectionOnly": true,
+  "trainingPerformed": false,
+  "examples": 1045,
+  "fullTokens": 971509,
+  "assistantTargetTokens": 199554,
+  "maxFullTokens": 1516,
+  "maxInputTokens": 1062,
+  "tasks": {
+    "EXPLAIN_DEFENSIVE_CONCEPT": {
+      "examples": 72,
+      "fullTokens": 20722,
+      "targetTokens": 2473,
+      "maxFullTokens": 313,
+      "maxInputTokens": 269
+    },
+    "ANSWER_SOURCED_DEFENSIVE_QUESTION": {
+      "examples": 13,
+      "fullTokens": 6366,
+      "targetTokens": 1528,
+      "maxFullTokens": 503,
+      "maxInputTokens": 378
+    },
+    "REVIEW_DEFENSIVE_EVIDENCE": {
+      "examples": 720,
+      "fullTokens": 765924,
+      "targetTokens": 164646,
+      "maxFullTokens": 1516,
+      "maxInputTokens": 1062
+    },
+    "PROPOSE_PASSIVE_ANALYTIC_RECIPE": {
+      "examples": 120,
+      "fullTokens": 66170,
+      "targetTokens": 11124,
+      "maxFullTokens": 612,
+      "maxInputTokens": 506
+    },
+    "EXPLAIN_BLE_OBSERVATIONS": {
+      "examples": 120,
+      "fullTokens": 112327,
+      "targetTokens": 19783,
+      "maxFullTokens": 973,
+      "maxInputTokens": 805
+    }
+  },
+  "proposedContextTokens": 4096,
+  "proposedMaxOutputTokens": 1024,
+  "truncated": false
+}

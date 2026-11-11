@@ -1,0 +1,12 @@
+{
+  "examples": 856,
+  "normalizedStatuses": {
+    "DRAFT": 536,
+    "CLARIFY": 228,
+    "UNSUPPORTED": 92
+  },
+  "goldDraftFixtureExecutions": 3216,
+  "nativeGoldTestsPassed": true,
+  "actualControlProposalsReplayed": 24,
+  "androidDeviceTested": false
+}

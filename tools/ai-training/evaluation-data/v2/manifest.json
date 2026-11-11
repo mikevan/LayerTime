@@ -1,0 +1,14 @@
+{
+  "examples": 8,
+  "sha256": "42ba6767e41ce74df421e74199f8844638326327b20b7e32a8ef6b3fcb11a11e",
+  "evaluationOnly": true,
+  "releaseEligible": false,
+  "limitations": [
+    "Synthetic project-authored diagnostic cases, not independent-environment evidence.",
+    "Expected facts require interpretation review, not keyword-only grading.",
+    "Assistant placeholders are not gold completions and must never be used for training.",
+    "Frozen before the multitask adapter was evaluated on these cases."
+  ],
+  "previousNormalizedTextSha256": "6e3c9e5705136b24621d14ceb164153496dc5358c848bf7d89c322c1523a754b",
+  "hashCorrection": "Corrected to hash actual on-disk bytes, including Windows CRLF. Data unchanged."
+}

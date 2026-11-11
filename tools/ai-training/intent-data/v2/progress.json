@@ -1,0 +1,7 @@
+{
+  "phase": "completed-primary-gate-failed",
+  "completedTrainingUpdates": 384,
+  "finiteGradientChecks": 384,
+  "checkpointRecoveryVerified": true,
+  "androidDeviceTested": false
+}

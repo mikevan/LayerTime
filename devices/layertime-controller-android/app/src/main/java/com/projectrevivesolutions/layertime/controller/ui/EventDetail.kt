@@ -99,7 +99,7 @@ fun EventDetailScreen(
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SciFiOutline("‹ BACK", enabled = true) { onBack() }
+                if(com.projectrevivesolutions.layertime.controller.DeviceKind.isLokmatWatch) SciFiOutline("‹ BACK", enabled = true) { onBack() }
                 Text("ATTACK DETAIL  //  #${e.eventId}  ${e.detectorName}", color = LtColors.ConsoleEdge,
                     fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp, style = glowText())
             }
@@ -375,7 +375,7 @@ fun CaptureOnlyScreen(onBack: () -> Unit, onOpenWireshark: () -> Unit = {}) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SciFiOutline("‹ BACK", enabled = true) { onBack() }
+                if(com.projectrevivesolutions.layertime.controller.DeviceKind.isLokmatWatch) SciFiOutline("‹ BACK", enabled = true) { onBack() }
                 Text("CAPTURE DECODE  //  NO DETECTION SELECTED", color = LtColors.ConsoleEdge,
                     fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp, style = glowText())
             }

@@ -6,7 +6,7 @@ package com.projectrevivesolutions.layertime.controller.flow
  * and its settings with defaults filled in, and keeps every step's output so the
  * Builder can light the steps up and a finding can point back at its evidence.
  */
-class RunContext(val event: DetectionEvent, val source: FrameSource)
+class RunContext(val event: DetectionEvent, val source: FrameSource, val coverage: EvidenceCoverage? = null)
 
 /** What one step type does when it runs. Registered by type name, beside the StepSpec. */
 fun interface StepRunner {
@@ -40,15 +40,28 @@ object Engine {
             for (p in spec.inputs) inputs[p.name] = w.edgesInto(id).filter { it.toPort == p.name }.mapNotNull { outputs[it.from] }
             val settings = LinkedHashMap<String, Any>()
             for (s in spec.settings) settings[s.key] = step.settings[s.key] ?: s.default
+            if(step.type=="event_source") {
+                val reachable=HashSet<String>()
+                fun visit(node:String) { if(reachable.add(node)) w.edgesFrom(node).forEach { visit(it.toStep) } }
+                visit(id)
+                val horizon=reachable.mapNotNull { node -> w.step(node) }.maxOfOrNull { downstream ->
+                    val ds=registry.spec(downstream.type)!!
+                    listOf("watch_ms","follow_on_ms").maxOf { key ->
+                        ((downstream.settings[key] ?: ds.setting(key)?.default) as? Number)?.toLong() ?: 0L
+                    }
+                } ?: 0L
+                settings["after_ms"]=maxOf((settings["after_ms"] as? Number)?.toLong() ?: 30000L,horizon)
+            }
             val out = try { runner.run(inputs, settings, ctx) } catch (e: Exception) {
                 results += StepResult(id, step.type, null, e.message ?: e.toString())
                 return RunResult(w, results, null)
             }
-            outputs[id] = out
-            results += StepResult(id, step.type, out, null)
+            val identified = if (out is Feature) out.copy(step = id, checkType = step.type) else out
+            outputs[id] = identified
+            results += StepResult(id, step.type, identified, null)
         }
-        val finding = outputs.values.filterIsInstance<Finding>().lastOrNull()
-        return RunResult(w, results, finding)
+        val finding = results.mapNotNull { it.output as? Finding }.lastOrNull()
+        return RunResult(w, results, finding?.copy(coverage = ctx.coverage))
     }
 }
 

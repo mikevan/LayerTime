@@ -50,6 +50,7 @@ fun TriageSection(e: EventRow, onOpenWireshark: () -> Unit) {
     val workflow by TriageSession.workflow.collectAsState()
     val problems by TriageSession.problems.collectAsState()
     val run by TriageSession.run.collectAsState()
+    val analyzing by TriageSession.running.collectAsState()
     val runFor by TriageSession.runFor.collectAsState()
     val error by TriageSession.error.collectAsState()
     val capture by PcapImport.state.collectAsState()
@@ -125,7 +126,7 @@ fun TriageSection(e: EventRow, onOpenWireshark: () -> Unit) {
                 if (mine) {
                     val f = run?.finding
                     if (f != null) FindingCard(f, onOpenWireshark)
-                    else Text(error ?: "The run produced no finding.", color = LtColors.Red, fontSize = 12.sp)
+                    else Text(error ?: if(analyzing) "Analyzing capture..." else "The run produced no finding.", color = LtColors.Red, fontSize = 12.sp)
                 }
             }
         }
@@ -134,19 +135,56 @@ fun TriageSection(e: EventRow, onOpenWireshark: () -> Unit) {
 
 @Composable
 fun FindingCard(f: Finding, onOpenWireshark: () -> Unit) {
-    val color = verdictColor(f.verdict)
-    Column(Modifier.fillMaxWidth().background(color.copy(alpha = .08f)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(f.verdict.label, color = color, fontWeight = FontWeight.Bold, fontSize = 20.sp, letterSpacing = 2.sp, style = glowText())
-        Text(f.summary, color = LtColors.Ivory, fontSize = 13.sp)
-        Text("EVIDENCE", color = LtColors.ConsoleEdge, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.sp)
-        for (x in f.features) FeatureRow(x)
-        if (f.couldNotRun.isNotEmpty()) {
-            Text("COULD NOT RUN", color = LtColors.Grey, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 2.sp)
-            for (x in f.couldNotRun) FeatureRow(x)
+    val color=verdictColor(f.verdict)
+    var details by remember(f) {mutableStateOf(false)}
+    val reports=(f.features+f.couldNotRun).flatMap {it.targetReports}
+    val readings=com.projectrevivesolutions.layertime.controller.flow.ReportReading.devices(reports)
+    val lead=readings.firstOrNull {it.setup.isNotEmpty()} ?: readings.firstOrNull()
+    var observations by remember(f) {mutableStateOf(false)}
+    androidx.activity.compose.BackHandler(enabled=details || observations){if(details)details=false else observations=false}
+    OpsConnectionHousing(Modifier.fillMaxWidth()) {
+    Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        if(f.coverage?.training==true)Text("PRACTICE - not a live warning",color=LtColors.Amber,fontSize=13.sp)
+        Text(lead?.action ?: f.assessmentLabel,color=LtColors.Amber,fontWeight=FontWeight.Bold,fontSize=23.sp)
+        Text(lead?.briefReason ?: f.summary,color=LtColors.Ivory,fontSize=17.sp)
+        readings.forEach {reading ->
+            Text(reading.networkComparison.headline,color=LtColors.Cyan,fontSize=16.sp,fontWeight=FontWeight.Bold)
+            Text(reading.networkComparison.order,color=LtColors.Ivory,fontSize=16.sp)
+            Text("Network name: ${reading.networkNames.joinToString().ifEmpty {"not captured"}}",color=LtColors.Ivory,fontSize=15.sp)
+            Text("Device: ${reading.device ?: "not established"}\nWi-Fi access point (BSSID): ${reading.network ?: "not established"}",color=LtColors.Ivory,fontSize=15.sp)
         }
-        if (f.frames.isNotEmpty()) SciFiOutline("OPEN THE ${f.frames.size} FRAMES IN WIRESHARK", enabled = true, large = true) {
-            TriageSession.focusFrames.value = f.frames.toSet(); onOpenWireshark()
+        SciFiOutline(if(observations)"HIDE WHAT WAS OBSERVED" else "WHAT WAS OBSERVED?",true){observations=!observations}
+        if(observations) readings.forEach {reading ->
+            Text("WHAT HAPPENED",color=LtColors.Cyan,fontSize=13.sp)
+            Text(reading.observation,color=LtColors.Ivory,fontSize=16.sp)
+            Text(reading.networkComparison.explanation,color=LtColors.Ivory,fontSize=15.sp)
+            if(reading.reports.any {it.eapolNetworkCandidates.isNotEmpty()})SciFiOutline("SHOW NETWORK COMPARISON FRAMES",true) {
+                TriageSession.focusFrames.value=reading.networkComparison.evidence.toSet();onOpenWireshark()
+            }
+            Text("WHY IT MATTERS",color=LtColors.Cyan,fontSize=13.sp)
+            Text(reading.significance,color=LtColors.Ivory,fontSize=16.sp)
+            if(reading.deauth.isNotEmpty())SciFiOutline("SHOW DEAUTH PACKETS (${reading.deauth.size})",true) {
+                TriageSession.focusFrames.value=reading.deauth.toSet();onOpenWireshark()
+            }
+            if(reading.disassociation.isNotEmpty())SciFiOutline("SHOW DISASSOCIATION PACKETS (${reading.disassociation.size})",true) {
+                TriageSession.focusFrames.value=reading.disassociation.toSet();onOpenWireshark()
+            }
+            if(reading.setup.isNotEmpty())SciFiOutline("SHOW CONNECTION SETUP / EAPOL (${reading.setup.size})",true) {
+                TriageSession.focusFrames.value=reading.setup.toSet();onOpenWireshark()
+            }
         }
+        SciFiOutline(if(details)"HIDE TECHNICAL DETAILS" else "TECHNICAL DETAILS AND RECORDING LIMITS",true){details=!details}
+        if(details) {
+            Text(f.assessmentLabel,color=color,fontSize=14.sp)
+            Text(f.summary,color=LtColors.Ivory,fontSize=14.sp)
+            f.coverage?.let {Text(it.sentence,color=LtColors.Amber,fontSize=13.sp)}
+            for(x in f.features)FeatureRow(x)
+            for(x in f.couldNotRun)FeatureRow(x)
+            if(f.frames.isNotEmpty())SciFiOutline("SHOW ALL SUPPORTING PACKETS",true) {
+                TriageSession.focusFrames.value=f.frames.toSet();onOpenWireshark()
+            }
+        }
+    }
     }
 }
 
@@ -171,6 +209,7 @@ fun CaptureTriageSection(onOpenWireshark: () -> Unit) {
     val workflow by TriageSession.workflow.collectAsState()
     val problems by TriageSession.problems.collectAsState()
     val run by TriageSession.run.collectAsState()
+    val analyzing by TriageSession.running.collectAsState()
     val runFor by TriageSession.runFor.collectAsState()
     val error by TriageSession.error.collectAsState()
     val capture by PcapImport.state.collectAsState()
@@ -189,7 +228,7 @@ fun CaptureTriageSection(onOpenWireshark: () -> Unit) {
                     TriageSession.captureSubject()?.let { Text("Transmitter: $it", color = LtColors.Cyan, fontSize = 12.sp) }
                     val f = run?.finding
                     if (f != null) FindingCard(f, onOpenWireshark)
-                    else Text(error ?: "The run produced no finding.", color = LtColors.Red, fontSize = 12.sp)
+                    else Text(error ?: if(analyzing) "Analyzing capture..." else "The run produced no finding.", color = LtColors.Red, fontSize = 12.sp)
                 }
             }
         }

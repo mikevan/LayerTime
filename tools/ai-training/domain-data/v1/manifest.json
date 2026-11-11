@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Broad blue-team dataset candidates for review before any training",
+  "trainingApproved": false,
+  "releaseEligible": false,
+  "modelTrainingPerformed": false,
+  "ontologyConcepts": 84,
+  "ontologyRelationships": 28,
+  "ontologyRules": 14,
+  "candidateExamples": 13756,
+  "tasks": {
+    "EXPLAIN_DEFENSIVE_CONCEPT": 252,
+    "ANSWER_SOURCED_DEFENSIVE_QUESTION": 72,
+    "REVIEW_DEFENSIVE_EVIDENCE": 3072,
+    "PROPOSE_PASSIVE_ANALYTIC_RECIPE": 384,
+    "EXPLAIN_BLE_OBSERVATIONS": 9976
+  },
+  "splits": {
+    "test": 1434,
+    "validation": 1406,
+    "train": 10916
+  },
+  "syntheticScenarioFamilies": 48,
+  "syntheticCaptureVariants": 3072,
+  "syntheticObservations": 786432,
+  "sourceBackedCards": 24,
+  "realBleWindows": 9976,
+  "realBleSessions": 7,
+  "independentBleTestbeds": 1,
+  "sourceFeatureMatrixSha256": "5f3a3593bccdebc79ba08c0407a3a3658d8d1e6adab82552f805b628faef8192",
+  "sourceFeatureManifestSha256": "35ddac96578967fc275ffe65e538756c08093efca154d6b059aa751a84c61385",
+  "bleSessionSplits": {
+    "24ab42e345f728ff": "train",
+    "13d1b44eac4e1aec": "train",
+    "04211874c52d0b5b": "train",
+    "488c18ef255bc079": "validation",
+    "8d0e192129eb5fd5": "validation",
+    "b0a619104a6c0159": "test",
+    "e8614374e3d646dc": "test"
+  },
+  "limitations": [
+    "Synthetic variants are not independent field captures.",
+    "BLE windows share seven sessions in one previously explored testbed; not prospective field qualification.",
+    "BLE validation sessions are spam-present only; they cannot measure benign validation false-warning performance.",
+    "Derived BLE answers and synthetic interpretations are agent-authored candidates, not independently reviewed expert labels.",
+    "No new independent Wi-Fi field corpus is available in this build.",
+    "Typed synthetic observations are not raw packet bytes and have not been validated by the native packet decoder.",
+    "Recipe outputs are proposals, not executable app workflows. Task adapters and source/semantic review are required before training."
+  ],
+  "files": {
+    "ble-feature-provenance.json": {
+      "bytes": 7730,
+      "sha256": "35ddac96578967fc275ffe65e538756c08093efca154d6b059aa751a84c61385"
+    },
+    "candidates.jsonl": {
+      "bytes": 34516843,
+      "sha256": "eff63d84e6c19bf8b589f0cc447faf78ceafae7a754a2c5df4fd7dab16fdac50"
+    },
+    "nist-reference-provenance.json": {
+      "bytes": 3550,
+      "sha256": "8793964890b258d0682ffb889946c6128dc52bcb121ac7486a0afd36cafd28a4"
+    },
+    "ontology.json": {
+      "bytes": 25453,
+      "sha256": "b0568ffe8780058b82a667e9146f95f62a0a73cc85a7802d5436764cd61fe7b3"
+    },
+    "source-backed-cards.jsonl": {
+      "bytes": 21522,
+      "sha256": "34096470e96ef712a33700ea3ea0082ba42d63e8034743a8340d53cc58034cbb"
+    },
+    "SOURCE-NOTICES.json": {
+      "bytes": 964,
+      "sha256": "a13dae82b22d3df72af5e10f246ffbd85b1f0fa4a5f25866e534e90088610fa8"
+    },
+    "synthetic-observations.jsonl": {
+      "bytes": 170629095,
+      "sha256": "9f73b8580f8fbe6b10fe0b25f446151ad8051183196869dc04f29909ff1e9497"
+    },
+    "test.jsonl": {
+      "bytes": 3460615,
+      "sha256": "69b6d8d14ea81fae92aca556a1e4c5153bf2932e302b16257a1f73eb8e57cbb7"
+    },
+    "train.jsonl": {
+      "bytes": 27665790,
+      "sha256": "5118e25fb04dd7b1ab4dea78aaa65b040ecd57d4f66df2a8b9bff32889058e0c"
+    },
+    "validation.jsonl": {
+      "bytes": 3390438,
+      "sha256": "d68e6fccdaf9b1548d5c1938d1f979cd4f5609435e622e8fb38a3efbdca81a7e"
+    }
+  }
+}

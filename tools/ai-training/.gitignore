@@ -14,3 +14,4 @@ checkpoint-paths.txt
 *.zip
 *.npz
 *.pt
+runtime/

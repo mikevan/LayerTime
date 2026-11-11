@@ -9,6 +9,6 @@ def completion_loss(model, inputs):
         raise ValueError('The training example contains no supervised completion')
     outputs=model(input_ids=inputs['input_ids'],attention_mask=inputs.get('attention_mask'),
                   logits_to_keep=positions,use_cache=False)
-    targets=labels[:,1:][:,positions]
+    targets=labels[:,1:][:,positions].to(outputs.logits.device)
     loss=torch.nn.functional.cross_entropy(outputs.logits.float().reshape(-1,outputs.logits.shape[-1]),targets.reshape(-1))
     return loss,outputs

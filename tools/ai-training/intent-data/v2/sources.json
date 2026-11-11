@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "layertime-authored-intents-v2": {
+      "license": "Project-authored synthetic request curriculum",
+      "allowedForTraining": true,
+      "approvedSeedSha256": "47c11e557a3c58e10a1ecf85b9f55869b7ab5db2d445fffab1d804d039e944df",
+      "validationProfile": "analytic-intent-curriculum-v2"
+    }
+  }
+}

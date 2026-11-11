@@ -1,0 +1,334 @@
+{
+  "model": "models\\qwen3-4b-instruct-2507",
+  "examples": 64,
+  "examplesSha256": "c9c0ea67a21f0ba7ae066c637543917547c431c2497d2d3f6ba4c6d8bd1351f1",
+  "maximumInputTokens": 516,
+  "reservedOutputTokens": 128,
+  "contextTokens": 2048,
+  "allFit": true,
+  "gpuUsed": false,
+  "leadingSystemMessagesMerged": false,
+  "renderedMessageContentRetentionChecked": true,
+  "results": [
+    {
+      "id": "intent-v2-test-00",
+      "inputTokens": 512,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-01",
+      "inputTokens": 497,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-02",
+      "inputTokens": 508,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-03",
+      "inputTokens": 508,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-04",
+      "inputTokens": 496,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-05",
+      "inputTokens": 496,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-06",
+      "inputTokens": 504,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-07",
+      "inputTokens": 498,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-08",
+      "inputTokens": 504,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-09",
+      "inputTokens": 499,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-10",
+      "inputTokens": 502,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-11",
+      "inputTokens": 516,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-12",
+      "inputTokens": 498,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-13",
+      "inputTokens": 507,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-14",
+      "inputTokens": 489,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-15",
+      "inputTokens": 495,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-16",
+      "inputTokens": 506,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-17",
+      "inputTokens": 504,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-18",
+      "inputTokens": 500,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-19",
+      "inputTokens": 497,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-20",
+      "inputTokens": 495,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-21",
+      "inputTokens": 500,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-22",
+      "inputTokens": 490,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-23",
+      "inputTokens": 489,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-24",
+      "inputTokens": 491,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-25",
+      "inputTokens": 490,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-26",
+      "inputTokens": 487,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-27",
+      "inputTokens": 491,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-28",
+      "inputTokens": 499,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-29",
+      "inputTokens": 493,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-30",
+      "inputTokens": 487,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-31",
+      "inputTokens": 493,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-32",
+      "inputTokens": 490,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-33",
+      "inputTokens": 490,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-34",
+      "inputTokens": 483,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-35",
+      "inputTokens": 491,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-36",
+      "inputTokens": 488,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-37",
+      "inputTokens": 488,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-38",
+      "inputTokens": 499,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-39",
+      "inputTokens": 490,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-40",
+      "inputTokens": 483,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-41",
+      "inputTokens": 487,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-42",
+      "inputTokens": 488,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-43",
+      "inputTokens": 490,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-44",
+      "inputTokens": 500,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-45",
+      "inputTokens": 487,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-46",
+      "inputTokens": 484,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-test-47",
+      "inputTokens": 487,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-fractional_test-0",
+      "inputTokens": 508,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-fractional_test-1",
+      "inputTokens": 507,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-boundary_test-0",
+      "inputTokens": 506,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-boundary_test-1",
+      "inputTokens": 503,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-ninety_seconds_test-0",
+      "inputTokens": 503,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-ninety_seconds_test-1",
+      "inputTokens": 509,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-pair_scope_test-0",
+      "inputTokens": 504,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-pair_scope_test-1",
+      "inputTokens": 509,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-recording_scope_test-0",
+      "inputTokens": 506,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-recording_scope_test-1",
+      "inputTokens": 505,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-missing_gap_unit_test-0",
+      "inputTokens": 492,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-missing_gap_unit_test-1",
+      "inputTokens": 497,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-burst_only_test-0",
+      "inputTokens": 494,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-burst_only_test-1",
+      "inputTokens": 493,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-signal_test-0",
+      "inputTokens": 487,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v2-dev-intent-v1-signal_test-1",
+      "inputTokens": 492,
+      "budgetFits": true
+    }
+  ]
+}

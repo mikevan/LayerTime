@@ -50,8 +50,8 @@ class DeauthTriageTest {
 
     @Test fun aFloodWithoutBeaconsReportsTheChecksItCouldNotRun() {
         val f = run(Fixtures.floodWithoutBeacons()).finding!!
-        assertEquals(setOf("seq", "signal", "mfp"), f.couldNotRun.map { it.step }.toSet())
-        assertTrue(f.summary, f.summary.endsWith("3 checks could not run."))
+        assertEquals(setOf("seq", "signal", "mfp", "after"), f.couldNotRun.map { it.step }.toSet())
+        assertTrue(f.summary, f.summary.endsWith("4 checks could not run."))
         assertEquals(Verdict.LIKELY_ATTACK, f.verdict)
     }
 
@@ -59,8 +59,8 @@ class DeauthTriageTest {
         val f = run(Fixtures.floodThenEvilTwin()).finding!!
         val after = f.features.first { it.step == "after" }
         assertEquals(Lean.SUSPICIOUS, after.lean)
-        assertTrue(after.reason, after.reason.contains("reappeared") && after.reason.contains("handshake"))
-        assertTrue(f.summary, f.summary.contains("handshake"))
+        assertTrue(after.reason, after.reason.contains("reappeared"))
+        assertTrue(f.summary, f.summary.contains("follow-on"))
         assertTrue(after.frames.isNotEmpty())
     }
 

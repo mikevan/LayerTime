@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.projectrevivesolutions.layertime.controller.AnalyticIntentTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-11-10T16:39:30.210Z" hostname="DESKTOP-HI955UO" time="0.662">
+  <properties/>
+  <testcase name="countsRecordingAndDeviceApPairSeparately" classname="com.projectrevivesolutions.layertime.controller.AnalyticIntentTest" time="0.172"/>
+  <testcase name="exportNativeRequestTemplateOrAuditAuthoredExamples" classname="com.projectrevivesolutions.layertime.controller.AnalyticIntentTest" time="0.485"/>
+  <testcase name="invalidAndInventedIntentFieldsCannotBecomeDrafts" classname="com.projectrevivesolutions.layertime.controller.AnalyticIntentTest" time="0.005"/>
+  <testcase name="auditActualModelIntentsThroughNativeCompiler" classname="com.projectrevivesolutions.layertime.controller.AnalyticIntentTest" time="0.0"/>
+  <testcase name="unsupportedAndAmbiguousRequestsProduceNoWiring" classname="com.projectrevivesolutions.layertime.controller.AnalyticIntentTest" time="0.0"/>
+  <testcase name="exportPairScopePracticePack" classname="com.projectrevivesolutions.layertime.controller.AnalyticIntentTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

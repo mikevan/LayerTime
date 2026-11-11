@@ -1,0 +1,216 @@
+{
+  "cycle": "grounded-contract-v1",
+  "completed": true,
+  "productionModelApproved": false,
+  "newCandidatePackaged": false,
+  "phoneInstalled": false,
+  "trainingSnapshotHashesVerified": true,
+  "finalApkHashesVerified": true,
+  "completedGenerations": 123,
+  "groundedBase": {
+    "examples": 52,
+    "exactAgreementPasses": 34,
+    "factBearingPages": 40,
+    "factBearingPasses": 25,
+    "suppliedFactOccurrences": 48,
+    "rawAuditPasses": 52,
+    "authoredFamilies": 8,
+    "familiesWithEveryPagePassing": 0,
+    "familyResults": {
+      "three_targets_overlapping": {
+        "pages": 12,
+        "passes": 11
+      },
+      "follow_on_expired": {
+        "pages": 4,
+        "passes": 3
+      },
+      "boundary_follow_on": {
+        "pages": 4,
+        "passes": 0
+      },
+      "untimed_other_client": {
+        "pages": 4,
+        "passes": 3
+      },
+      "valid_plus_untimed": {
+        "pages": 8,
+        "passes": 6
+      },
+      "all_request_clocks_invalid": {
+        "pages": 4,
+        "passes": 2
+      },
+      "merged_requests_reversed_exchange": {
+        "pages": 8,
+        "passes": 4
+      },
+      "two_aps_shared_name": {
+        "pages": 8,
+        "passes": 5
+      }
+    },
+    "medianGenerationSeconds": 12.218999999997322,
+    "maximumGenerationSeconds": 22.562000000005355,
+    "failures": [
+      {
+        "id": "grounded-v1-three_targets_overlapping-3-page-2",
+        "error": "Expecting ',' delimiter: line 1 column 624 (char 623)"
+      },
+      {
+        "id": "grounded-v1-follow_on_expired-1-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-boundary_follow_on-0-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-boundary_follow_on-1-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-boundary_follow_on-2-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-boundary_follow_on-3-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-untimed_other_client-0-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-valid_plus_untimed-1-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-valid_plus_untimed-2-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-all_request_clocks_invalid-0-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-all_request_clocks_invalid-1-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-merged_requests_reversed_exchange-0-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-merged_requests_reversed_exchange-0-page-2",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-merged_requests_reversed_exchange-3-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-merged_requests_reversed_exchange-3-page-2",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-two_aps_shared_name-1-page-1",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-two_aps_shared_name-1-page-2",
+        "error": "Recording/page mismatch"
+      },
+      {
+        "id": "grounded-v1-two_aps_shared_name-2-page-2",
+        "error": "Recording/page mismatch"
+      }
+    ],
+    "examplesSha256": "69cf5ab32d22ed96c4e81d468bfbc9b123c2b41cb7927c0539746c1d4a53573c",
+    "adapterSha256": null,
+    "releaseEligible": false,
+    "limitations": [
+      "Facts are supplied; this is contract adherence, not learned packet interpretation.",
+      "Relabeled pages are correlated, not independent trials or field environments.",
+      "Desktop generation time excludes model loading and does not measure Android latency."
+    ]
+  },
+  "groundedAdapted": {
+    "examples": 52,
+    "exactAgreementPasses": 51,
+    "factBearingPages": 40,
+    "factBearingPasses": 39,
+    "suppliedFactOccurrences": 48,
+    "rawAuditPasses": 52,
+    "authoredFamilies": 8,
+    "familiesWithEveryPagePassing": 7,
+    "familyResults": {
+      "three_targets_overlapping": {
+        "pages": 12,
+        "passes": 12
+      },
+      "follow_on_expired": {
+        "pages": 4,
+        "passes": 4
+      },
+      "boundary_follow_on": {
+        "pages": 4,
+        "passes": 3
+      },
+      "untimed_other_client": {
+        "pages": 4,
+        "passes": 4
+      },
+      "valid_plus_untimed": {
+        "pages": 8,
+        "passes": 8
+      },
+      "all_request_clocks_invalid": {
+        "pages": 4,
+        "passes": 4
+      },
+      "merged_requests_reversed_exchange": {
+        "pages": 8,
+        "passes": 8
+      },
+      "two_aps_shared_name": {
+        "pages": 8,
+        "passes": 8
+      }
+    },
+    "medianGenerationSeconds": 15.906000000002678,
+    "maximumGenerationSeconds": 33.0,
+    "failures": [
+      {
+        "id": "grounded-v1-boundary_follow_on-2-page-1",
+        "error": "Recording/page mismatch"
+      }
+    ],
+    "examplesSha256": "69cf5ab32d22ed96c4e81d468bfbc9b123c2b41cb7927c0539746c1d4a53573c",
+    "adapterSha256": "876ecac856cdcf6dbee29e426b13c911a7bf4b0cce19f58bea5bb9fe93d0db57",
+    "releaseEligible": false,
+    "limitations": [
+      "Facts are supplied; this is contract adherence, not learned packet interpretation.",
+      "Relabeled pages are correlated, not independent trials or field environments.",
+      "Desktop generation time excludes model loading and does not measure Android latency."
+    ]
+  },
+  "legacyInterfacePasses": 3,
+  "legacyFullTaskPasses": 0,
+  "successfulOptimizerUpdates": 56,
+  "finiteGradientChecks": 56,
+  "excludedAttempts": [
+    {
+      "path": "qwen4b-grounded-v1-adapter",
+      "reason": "Nonfinite gradients at initial scale 65536; stopped before update one"
+    },
+    {
+      "path": "qwen4b-grounded-v1-legacy-regression",
+      "reason": "Inherited CPU isolation; stopped before generation"
+    }
+  ],
+  "limitations": [
+    "Contract adherence is not learned forensic interpretation.",
+    "Synthetic and previously examined diagnostics; no independent field qualification."
+  ]
+}

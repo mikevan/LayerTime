@@ -58,21 +58,21 @@ object FrameCount {
 
     /** Every group of identical frames in [frames], the largest group first. */
     fun groups(frames: List<AnalyticFrame>): List<Group> =
-        frames.groupBy { listOf(it.typeSubtype, meaningOf(it), it.sa, it.da) }
+        frames.groupBy { listOf(it.typeSubtype, it.eapol, meaningOf(it), it.sa?.lowercase(), it.da?.lowercase(), it.bssid?.lowercase()) }
             .map { (_, fs) ->
                 val f = fs.first()
-                Group(f.typeSubtype, typeName(f.typeSubtype), meaningOf(f), f.sa, f.da, fs.size, fs.map { it.index })
+                Group(f.typeSubtype, if(f.eapol) "EAPOL" else typeName(f.typeSubtype), meaningOf(f), f.sa, f.da, fs.size, fs.map { it.index })
             }
             .sortedWith(compareByDescending<Group> { it.count }.thenBy { it.typeName }.thenBy { it.sa ?: "" })
 
     /** The largest group's size, or 0 when there are no frames. For a rule such as "any group >= N". */
     fun largest(frames: List<AnalyticFrame>): Int = frames
-        .groupingBy { listOf(it.typeSubtype, meaningOf(it), it.sa, it.da) }.eachCount().values.maxOrNull() ?: 0
+        .groupingBy { listOf(it.typeSubtype, it.eapol, meaningOf(it), it.sa?.lowercase(), it.da?.lowercase(), it.bssid?.lowercase()) }.eachCount().values.maxOrNull() ?: 0
 }
 
 /** Fills {blanks} in a sentence the operator wrote, from the facts the verdict has. */
 object Summary {
-    private val BLANK = Regex("\\{([^{}]+)}")
+    private val BLANK = Regex("\\{([^{}]+)\\}")
 
     /**
      * Replaces every {name} in [template] with vars[name]. A blank with no value is left as
@@ -108,13 +108,14 @@ sealed interface Cond {
     data class CountLeans(val lean: Lean, val atLeast: Int) : Cond
     /** The largest group of identical frames is at least [atLeast]. */
     data class GroupAtLeast(val atLeast: Int) : Cond
+    data class MetricAtLeast(val step: String, val metric: String, val atLeast: Long) : Cond
     data class All(val of: List<Cond>) : Cond
     data class Any(val of: List<Cond>) : Cond
     data class Not(val of: Cond) : Cond
     data object Always : Cond
 }
 
-data class VerdictRule(val cond: Cond, val verdict: Verdict, val summary: String)
+data class VerdictRule(val cond: Cond, val verdict: Verdict, val summary: String, val label: String? = null)
 
 class VerdictRuleSetError(message: String) : Exception(message)
 
@@ -127,23 +128,69 @@ data class VerdictRuleSet(val counted: List<String>, val rules: List<VerdictRule
         val present: Int get() = counted.count { feature(it) != null }
     }
 
-    private fun matches(c: Cond, v: View): Boolean = when (c) {
-        is Cond.CheckLeans -> v.feature(c.step)?.lean == c.lean
-        is Cond.ValueContains -> v.feature(c.step)?.value?.contains(c.text) == true
-        is Cond.CountLeans -> v.leans(c.lean) >= c.atLeast
+    private fun matches(c: Cond, v: View): Boolean? = when (c) {
+        is Cond.MetricAtLeast -> v.feature(c.step)?.metrics?.get(c.metric)?.let { it >= c.atLeast }
+        is Cond.CheckLeans -> v.feature(c.step)?.let { if(it.lean==Lean.UNKNOWN && c.lean!=Lean.UNKNOWN) null else it.lean == c.lean }
+        is Cond.ValueContains -> v.feature(c.step)?.let { it.value.contains(c.text) }
+        is Cond.CountLeans -> if(v.leans(c.lean)>=c.atLeast) true else if(v.present<v.counted.size) null else false
         is Cond.GroupAtLeast -> FrameCount.largest(v.frames) >= c.atLeast
-        is Cond.All -> c.of.all { matches(it, v) }
-        is Cond.Any -> c.of.any { matches(it, v) }
-        is Cond.Not -> !matches(c.of, v)
+        is Cond.All -> c.of.map { matches(it,v) }.let { if(false in it) false else if(null in it) null else true }
+        is Cond.Any -> c.of.map { matches(it,v) }.let { if(true in it) true else if(null in it) null else false }
+        is Cond.Not -> matches(c.of,v)?.not()
         Cond.Always -> true
+    }
+
+    fun needsFrames():Boolean {
+        fun needs(c:Cond):Boolean=when(c) {
+            is Cond.GroupAtLeast->true
+            is Cond.All->c.of.any {needs(it)}
+            is Cond.Any->c.of.any {needs(it)}
+            is Cond.Not->needs(c.of)
+            else->false
+        }
+        return rules.any {needs(it.cond)}
+    }
+
+    fun references(): Set<String> {
+        fun refs(c:Cond):Set<String> = when(c) {
+            is Cond.CheckLeans -> setOf(c.step)
+            is Cond.ValueContains -> setOf(c.step)
+            is Cond.MetricAtLeast -> setOf(c.step)
+            is Cond.All -> c.of.flatMap { refs(it) }.toSet()
+            is Cond.Any -> c.of.flatMap { refs(it) }.toSet()
+            is Cond.Not -> refs(c.of)
+            else -> emptySet()
+        }
+        return counted.toSet()+rules.flatMap { refs(it.cond) }
+    }
+
+    /** Bind shipped rules to actual block IDs. Explicit user rules always retain their own IDs. */
+    fun forFeatures(features: List<Feature>): VerdictRuleSet {
+        val aliases = mapOf("target" to "deauth_target", "rate" to "deauth_rate", "reason" to "deauth_reason",
+            "seq" to "seq_integrity", "signal" to "signal_match", "after" to "aftermath", "mfp" to "mgmt_protection")
+        fun id(name: String) = features.firstOrNull { it.checkType == aliases[name] }?.step ?: name
+        fun bind(c: Cond): Cond = when(c) {
+            is Cond.CheckLeans -> c.copy(step=id(c.step))
+            is Cond.ValueContains -> c.copy(step=id(c.step))
+            is Cond.MetricAtLeast -> c.copy(step=id(c.step))
+            is Cond.All -> Cond.All(c.of.map { bind(it) })
+            is Cond.Any -> Cond.Any(c.of.map { bind(it) })
+            is Cond.Not -> Cond.Not(bind(c.of))
+            else -> c
+        }
+        return copy(counted=counted.map { id(it) }, rules=rules.map { rule ->
+            var sentence=rule.summary
+            for (name in aliases.keys) sentence=sentence.replace("{$name}", "{${id(name)}}")
+            rule.copy(cond=bind(rule.cond),summary=sentence)
+        })
     }
 
     /** Runs the rules and builds the finding, the same shape every check and flow produces. */
     fun evaluate(features: List<Feature>, frames: List<AnalyticFrame> = emptyList()): Finding {
         val v = View(features, frames, counted)
         val couldNotRun = features.filter { it.lean == Lean.UNKNOWN }
-        val match = rules.firstOrNull { matches(it.cond, v) }
-        val verdict = match?.verdict ?: Verdict.NOT_WORRISOME
+        val match = rules.firstOrNull { matches(it.cond, v) == true }
+        val verdict = match?.verdict ?: Verdict.WATCH
         val vars = HashMap<String, String>()
         vars["suspicious"] = v.leans(Lean.SUSPICIOUS).toString()
         vars["benign"] = v.leans(Lean.BENIGN).toString()
@@ -153,16 +200,16 @@ data class VerdictRuleSet(val counted: List<String>, val rules: List<VerdictRule
         val groups = FrameCount.groups(frames)
         vars["top"] = groups.firstOrNull()?.line ?: "none"
         vars["groups"] = if (groups.isEmpty()) "none" else groups.joinToString("; ") { it.line }
-        for (f in features) vars[f.step] = f.value
+        for (f in features) { vars[f.step] = f.value; for ((name, value) in f.metrics) vars["${f.step}.$name"] = value.toString() }
         var summary = Summary.fill(match?.summary ?: "No rule matched these checks.", vars)
         if (couldNotRun.isNotEmpty()) summary += " ${couldNotRun.size} check${if (couldNotRun.size == 1) "" else "s"} could not run."
         val frameRefs = features.flatMap { it.frames }.distinct().sorted()
-        return Finding(verdict, summary, features.filter { it.lean != Lean.UNKNOWN }, couldNotRun, frameRefs)
+        return Finding(verdict, summary, features.filter { it.lean != Lean.UNKNOWN }, couldNotRun, frameRefs, assessmentLabel = match?.label ?: if (match == null) "INSUFFICIENT EVIDENCE / NO MATCHING RULE" else verdict.label)
     }
 
     fun toJson(): String = FlowJson.write(linkedMapOf(
         "counted" to counted,
-        "rules" to rules.map { r -> linkedMapOf("verdict" to r.verdict.label, "summary" to r.summary, "when" to condJson(r.cond)) },
+        "rules" to rules.map { r -> linkedMapOf("verdict" to r.verdict.label, "summary" to r.summary, "when" to condJson(r.cond), "label" to r.label) },
     ))
 
     companion object {
@@ -170,7 +217,7 @@ data class VerdictRuleSet(val counted: List<String>, val rules: List<VerdictRule
             "benign" -> Lean.BENIGN; "suspicious" -> Lean.SUSPICIOUS; "unknown" -> Lean.UNKNOWN
             else -> throw VerdictRuleSetError("\"$s\" is not benign, suspicious, or unknown.")
         }
-        private fun verdictOf(s: String): Verdict = Verdict.values().firstOrNull { it.label == s.trim() }
+        private fun verdictOf(s: String): Verdict = Verdict.values().firstOrNull { it.label == s.trim() || it.name == s.trim().replace(" ", "_").replace("-", "_") }
             ?: throw VerdictRuleSetError("\"$s\" is not a verdict. Use ${Verdict.values().joinToString(", ") { "\"${it.label}\"" }}.")
 
         /** The deauth triage, written as rules: the first analytic an operator can read and copy. */
@@ -178,22 +225,23 @@ data class VerdictRuleSet(val counted: List<String>, val rules: List<VerdictRule
             val core = listOf("target", "rate", "reason", "seq", "signal")
             fun count(n: Int) = Cond.CountLeans(Lean.SUSPICIOUS, n)
             return VerdictRuleSet(core, listOf(
+                VerdictRule(Cond.CountLeans(Lean.UNKNOWN, 5), Verdict.WATCH, "Too many checks lack evidence for a posture assessment.", "INSUFFICIENT EVIDENCE"),
                 VerdictRule(
                     Cond.All(listOf(Cond.ValueContains("rate", "1 frame"), Cond.CheckLeans("reason", Lean.BENIGN))),
-                    Verdict.NOT_WORRISOME, "A single ordinary disconnect; housekeeping."),
+                    Verdict.NOT_WORRISOME, "One disconnect with an ordinary reason code was observed. Review the surrounding evidence; this does not establish safety."),
                 VerdictRule(
                     Cond.All(listOf(count(3), Cond.CheckLeans("after", Lean.SUSPICIOUS),
                         Cond.Any(listOf(Cond.ValueContains("after", "clone"), Cond.ValueContains("after", "handshake"))))),
-                    Verdict.ATTACK_WITH_FOLLOW_ON, "A forged disconnect flood, and then what it was for: {after}."),
+                    Verdict.ATTACK_WITH_FOLLOW_ON, "Disconnect behavior and follow-on activity warrant review: {after}."),
                 VerdictRule(
                     Cond.All(listOf(count(3), Cond.ValueContains("mfp", "required"))),
                     Verdict.LIKELY_ATTACK,
-                    "{suspicious} of {counted} checks lean suspicious: a forged disconnect flood from a second radio. The network requires management frame protection, so the attack most likely failed."),
+                    "{suspicious} of {counted} checks lean suspicious: an elevated disconnect posture. Management protection is advertised; its enforcement and outcome are unknown."),
                 VerdictRule(count(3), Verdict.LIKELY_ATTACK,
-                    "{suspicious} of {counted} checks lean suspicious: a forged disconnect flood from a second radio."),
+                    "{suspicious} of {counted} checks lean suspicious: an elevated disconnect posture. Inspect the supporting observations."),
                 VerdictRule(count(1), Verdict.WATCH,
-                    "{suspicious} of {counted} checks lean suspicious; not enough to call an attack. Keep watching this transmitter."),
-                VerdictRule(Cond.Always, Verdict.NOT_WORRISOME, "Nothing in the disconnects points to an attack."),
+                    "{suspicious} of {counted} checks lean suspicious; review the evidence and follow-on behavior for this target."),
+                VerdictRule(Cond.Always, Verdict.NOT_WORRISOME, "No elevated posture was identified by these rules in the supplied evidence. This is not an assessment of safety."),
             ))
         }
 
@@ -209,18 +257,23 @@ data class VerdictRuleSet(val counted: List<String>, val rules: List<VerdictRule
                 val m = r as? Map<*, *> ?: throw VerdictRuleSetError("rules[$i] must be an object.")
                 val verdict = verdictOf(m["verdict"] as? String ?: throw VerdictRuleSetError("rules[$i] has no \"verdict\"."))
                 val summary = m["summary"] as? String ?: throw VerdictRuleSetError("rules[$i] has no \"summary\".")
-                VerdictRule(cond(m["when"], "rules[$i].when"), verdict, summary)
+                VerdictRule(cond(m["when"], "rules[$i].when"), verdict, summary, m["label"] as? String)
             }
             return VerdictRuleSet(counted, rules)
         }
 
         private fun cond(node: Any?, where: String): Cond {
             val m = node as? Map<*, *> ?: throw VerdictRuleSetError("$where must be a test object.")
-            fun intOf(k: String) = (m[k] as? Number)?.toInt() ?: throw VerdictRuleSetError("$where needs a number \"$k\".")
+            fun intOf(k: String): Int {
+                val n=m[k] as? Number ?: throw VerdictRuleSetError("$where needs a number $k.")
+                if(!n.toDouble().isFinite() || n.toDouble()!=n.toLong().toDouble() || n.toLong() !in 0..Int.MAX_VALUE.toLong()) throw VerdictRuleSetError("$where.$k must be a nonnegative whole number.")
+                return n.toInt()
+            }
             fun list(k: String) = (m[k] as? List<*>)?.mapIndexed { i, c -> cond(c, "$where.$k[$i]") }
                 ?: throw VerdictRuleSetError("$where.$k must be a list of tests.")
             return when {
-                m.containsKey("always") -> Cond.Always
+                m.containsKey("metric") -> Cond.MetricAtLeast(m["step"] as? String ?: throw VerdictRuleSetError("$where needs a step."), m["metric"].toString(), intOf("atLeast").toLong())
+                m.containsKey("always") -> if(m["always"]==true) Cond.Always else throw VerdictRuleSetError("$where.always must be true.")
                 m.containsKey("all") -> Cond.All(list("all"))
                 m.containsKey("any") -> Cond.Any(list("any"))
                 m.containsKey("not") -> Cond.Not(cond(m["not"], "$where.not"))
@@ -234,6 +287,7 @@ data class VerdictRuleSet(val counted: List<String>, val rules: List<VerdictRule
         }
 
         private fun condJson(c: Cond): Any = when (c) {
+            is Cond.MetricAtLeast -> linkedMapOf("step" to c.step, "metric" to c.metric, "atLeast" to c.atLeast)
             is Cond.CheckLeans -> linkedMapOf("lean" to c.step, "is" to c.lean.name.lowercase())
             is Cond.ValueContains -> linkedMapOf("value" to c.step, "contains" to c.text)
             is Cond.CountLeans -> linkedMapOf("count" to c.lean.name.lowercase(), "atLeast" to c.atLeast.toLong())

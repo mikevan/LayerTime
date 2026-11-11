@@ -31,7 +31,7 @@ enum class DataType(val wire: String) {
 data class PortSpec(val name: String, val type: DataType, val many: Boolean = false, val optional: Boolean = false)
 
 /** One setting a step declares, with its default. The validator refuses unknown keys and wrong kinds. */
-data class SettingSpec(val key: String, val default: Any, val description: String) {
+data class SettingSpec(val key: String, val default: Any, val description: String, val min: Long? = null, val max: Long? = null) {
     val kind: String get() = when (default) { is Boolean -> "boolean"; is String -> "text"; else -> "number" }
 }
 
@@ -136,6 +136,10 @@ object WorkflowValidator {
                 val ss = spec.setting(k)
                 if (ss == null) { problems += Problem(s.id, null, "\"${spec.title}\" has no setting \"$k\"."); continue }
                 val ok = when (ss.default) { is Boolean -> v is Boolean; is String -> v is String; else -> v is Number }
+                if (v is Number && (v.toDouble().isNaN() || v.toDouble().isInfinite() || v.toDouble() != v.toLong().toDouble() || (ss.min != null && v.toLong() < ss.min) || (ss.max != null && v.toLong() > ss.max)))
+                    problems += Problem(s.id, null, "Setting $k must be a whole number within ${ss.min ?: Long.MIN_VALUE}..${ss.max ?: Long.MAX_VALUE}.")
+                if (k in listOf("target_mac", "network_mac") && v is String && v.isNotBlank() && TargetBehavior.address(v) == null)
+                    problems += Problem(s.id, null, "Setting $k must be a MAC address or empty.")
                 if (!ok) problems += Problem(s.id, null, "Setting \"$k\" must be a ${ss.kind}.")
             }
         }
@@ -169,6 +173,20 @@ object WorkflowValidator {
                 if (n == 0 && !p.optional) problems += Problem(s.id, p.name, "Nothing feeds this input; \"${spec.title}\" needs ${p.type.wire} here.")
                 else if (n > 1 && !p.many) problems += Problem(s.id, p.name, "$n edges feed this input; it takes one.")
             }
+        }
+
+        for(step in w.steps.filter { it.type=="deauth_verdict" }) {
+            val text=step.settings["rules"] as? String ?: continue
+            if(text.isBlank()) continue
+            try {
+                val rules=VerdictRuleSet.parse(text)
+                if(rules.needsFrames() && w.edgesInto(step.id).none {it.toPort=="frames"})
+                    problems+=Problem(step.id,"frames","A frame-count condition needs frames connected to this report.")
+                val fedIds=w.edgesInto(step.id).filter { it.toPort=="features" }.map { it.from }.toSet()
+                for(ref in rules.references()-fedIds) problems+=Problem(step.id,"rules","Rule refers to $ref, but that block does not feed this report.")
+                val firstAlways=rules.rules.indexOfFirst { it.cond==Cond.Always }
+                if(firstAlways>=0 && firstAlways<rules.rules.lastIndex) problems+=Problem(step.id,"rules","Rules after an unconditional rule can never run. Move it to the end.")
+            } catch(e:VerdictRuleSetError) { problems+=Problem(step.id,"rules",e.message ?: "Invalid report rules.") }
         }
 
         // No cycles: a run order must exist.

@@ -1,0 +1,10 @@
+{
+  "sourceAndCodeSha256": {
+    "review_wifi_eapol_types.py": "9c204f30f8e9896b41b3b2e9d52ba6626a226c93dae0c5680b03163b1bab6ebb",
+    "wifi_domain_reference.py": "2be3f7c6a07a843a0122ae2a4e6694cde4460152e715d36ccad76085478d2557",
+    "external-data/wpa3-hsngccu-deauth-v1/intake-manifest.json": "e9b8aaba8599e78c9010eacdbde2a6367bc7ddabe5b10aa72e243463170ba671",
+    "external-data/wireshark-teaching-reference-v1/intake-manifest.json": "1d2cb3011eecb0702d050f371006780f42b5349ff4534d4134295dfeb00a4447",
+    "domain-data/wifi-reference-v1/manifest.json": "fdd9cc7a0a6b82bf2d3af8a2beac4c979542b1ed2e97a3e3d9dcea3eaeb3d4e8"
+  },
+  "trainingPerformed": false
+}

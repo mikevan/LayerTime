@@ -1,7 +1,8 @@
 # AI development documentation
 
-Start with [CHECKIN-NOTES.md](CHECKIN-NOTES.md) for the current scope, evidence, failures and next steps.
-Dataset expansion is paused. The unchanged model passed 1/12 overall development acceptance cases. No domain adapter or Android deployment is qualified.
+Start with [CURRENT-AI-STATUS.md](CURRENT-AI-STATUS.md) for the latest training outcome and phone measurements. [CHECKIN-NOTES.md](CHECKIN-NOTES.md) preserves the earlier checkpoint.
+The current source/data checkpoint is described in [CHECKIN-BUILD122.md](CHECKIN-BUILD122.md).
+The first trained candidate and the completed correction candidate each passed 2/12 overall development acceptance cases. Build 122 retains the first candidate with the faster runtime. No domain adapter or Android deployment is qualified.
 The owner controls all subsequent commits and pushes; the check-in script only acts when they run it with `-Execute`.
 
 ## Current reading path

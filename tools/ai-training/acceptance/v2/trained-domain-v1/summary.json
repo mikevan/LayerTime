@@ -1,0 +1,18 @@
+{
+  "trainingAppliedUpdates": 1090,
+  "trainingSkippedUpdates": 0,
+  "baseAcceptancePassed": 1,
+  "trainedAcceptancePassed": 2,
+  "acceptanceCases": 12,
+  "releaseEligible": false,
+  "phoneGenerationSeconds": [
+    74.838,
+    73.72
+  ],
+  "phoneCancellationReturnMs": 110,
+  "phonePssKiB": 3075391,
+  "phoneReview": {
+    "acceptance-02": "Still fails to identify the different BSSID",
+    "acceptance-10": "Asks for the missing unit without choosing one or claiming a saved rule"
+  }
+}

@@ -1,0 +1,274 @@
+{
+  "model": "tools\\ai-training\\models\\qwen3-4b-instruct-2507",
+  "examples": 52,
+  "examplesSha256": "69cf5ab32d22ed96c4e81d468bfbc9b123c2b41cb7927c0539746c1d4a53573c",
+  "maximumInputTokens": 614,
+  "reservedOutputTokens": 1024,
+  "contextTokens": 4096,
+  "allFit": true,
+  "gpuUsed": false,
+  "leadingSystemMessagesMerged": false,
+  "renderedMessageContentRetentionChecked": true,
+  "results": [
+    {
+      "id": "grounded-v1-three_targets_overlapping-0-page-1",
+      "inputTokens": 600,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-0-page-2",
+      "inputTokens": 605,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-0-page-3",
+      "inputTokens": 493,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-1-page-1",
+      "inputTokens": 606,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-1-page-2",
+      "inputTokens": 613,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-1-page-3",
+      "inputTokens": 497,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-2-page-1",
+      "inputTokens": 607,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-2-page-2",
+      "inputTokens": 614,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-2-page-3",
+      "inputTokens": 498,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-3-page-1",
+      "inputTokens": 606,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-3-page-2",
+      "inputTokens": 613,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-three_targets_overlapping-3-page-3",
+      "inputTokens": 497,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-follow_on_expired-0-page-1",
+      "inputTokens": 486,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-follow_on_expired-1-page-1",
+      "inputTokens": 491,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-follow_on_expired-2-page-1",
+      "inputTokens": 490,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-follow_on_expired-3-page-1",
+      "inputTokens": 490,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-boundary_follow_on-0-page-1",
+      "inputTokens": 496,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-boundary_follow_on-1-page-1",
+      "inputTokens": 500,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-boundary_follow_on-2-page-1",
+      "inputTokens": 500,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-boundary_follow_on-3-page-1",
+      "inputTokens": 500,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-untimed_other_client-0-page-1",
+      "inputTokens": 486,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-untimed_other_client-1-page-1",
+      "inputTokens": 488,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-untimed_other_client-2-page-1",
+      "inputTokens": 490,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-untimed_other_client-3-page-1",
+      "inputTokens": 488,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-valid_plus_untimed-0-page-1",
+      "inputTokens": 495,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-valid_plus_untimed-0-page-2",
+      "inputTokens": 382,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-valid_plus_untimed-1-page-1",
+      "inputTokens": 501,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-valid_plus_untimed-1-page-2",
+      "inputTokens": 382,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-valid_plus_untimed-2-page-1",
+      "inputTokens": 502,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-valid_plus_untimed-2-page-2",
+      "inputTokens": 383,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-valid_plus_untimed-3-page-1",
+      "inputTokens": 500,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-valid_plus_untimed-3-page-2",
+      "inputTokens": 381,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-all_request_clocks_invalid-0-page-1",
+      "inputTokens": 383,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-all_request_clocks_invalid-1-page-1",
+      "inputTokens": 383,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-all_request_clocks_invalid-2-page-1",
+      "inputTokens": 381,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-all_request_clocks_invalid-3-page-1",
+      "inputTokens": 383,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-merged_requests_reversed_exchange-0-page-1",
+      "inputTokens": 500,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-merged_requests_reversed_exchange-0-page-2",
+      "inputTokens": 500,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-merged_requests_reversed_exchange-1-page-1",
+      "inputTokens": 507,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-merged_requests_reversed_exchange-1-page-2",
+      "inputTokens": 507,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-merged_requests_reversed_exchange-2-page-1",
+      "inputTokens": 508,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-merged_requests_reversed_exchange-2-page-2",
+      "inputTokens": 508,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-merged_requests_reversed_exchange-3-page-1",
+      "inputTokens": 505,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-merged_requests_reversed_exchange-3-page-2",
+      "inputTokens": 505,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-two_aps_shared_name-0-page-1",
+      "inputTokens": 380,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-two_aps_shared_name-0-page-2",
+      "inputTokens": 491,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-two_aps_shared_name-1-page-1",
+      "inputTokens": 383,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-two_aps_shared_name-1-page-2",
+      "inputTokens": 502,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-two_aps_shared_name-2-page-1",
+      "inputTokens": 382,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-two_aps_shared_name-2-page-2",
+      "inputTokens": 501,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-two_aps_shared_name-3-page-1",
+      "inputTokens": 384,
+      "budgetFits": true
+    },
+    {
+      "id": "grounded-v1-two_aps_shared_name-3-page-2",
+      "inputTokens": 503,
+      "budgetFits": true
+    }
+  ]
+}

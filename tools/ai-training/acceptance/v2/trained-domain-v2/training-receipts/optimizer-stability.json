@@ -1,0 +1,2736 @@
+{
+  "recordedIterations": 682,
+  "appliedOptimizerUpdates": 682,
+  "skippedOptimizerUpdates": 0,
+  "note": "Mixed-precision loss scaling may skip updates after overflow. Requested iterations are not proof of applied updates.",
+  "steps": [
+    {
+      "iteration": 1,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 2,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 3,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 4,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 5,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 6,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 7,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 8,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 9,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 10,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 11,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 12,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 13,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 14,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 15,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 16,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 17,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 18,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 19,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 20,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 21,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 22,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 23,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 24,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 25,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 26,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 27,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 28,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 29,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 30,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 31,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 32,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 33,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 34,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 35,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 36,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 37,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 38,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 39,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 40,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 41,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 42,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 43,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 44,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 45,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 46,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 47,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 48,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 49,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 50,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 51,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 52,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 53,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 54,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 55,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 56,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 57,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 58,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 59,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 60,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 61,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 62,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 63,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 64,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 65,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 66,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 67,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 68,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 69,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 70,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 71,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 72,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 73,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 74,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 75,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 76,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 77,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 78,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 79,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 80,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 81,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 82,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 83,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 84,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 85,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 86,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 87,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 88,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 89,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 90,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 91,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 92,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 93,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 94,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 95,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 96,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 97,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 98,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 99,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 100,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 101,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 102,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 103,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 104,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 105,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 106,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 107,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 108,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 109,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 110,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 111,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 112,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 113,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 114,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 115,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 116,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 117,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 118,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 119,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 120,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 121,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 122,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 123,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 124,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 125,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 126,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 127,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 128,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 129,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 130,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 131,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 132,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 133,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 134,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 135,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 136,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 137,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 138,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 139,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 140,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 141,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 142,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 143,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 144,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 145,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 146,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 147,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 148,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 149,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 150,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 151,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 152,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 153,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 154,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 155,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 156,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 157,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 158,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 159,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 160,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 161,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 162,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 163,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 164,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 165,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 166,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 167,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 168,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 169,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 170,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 171,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 172,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 173,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 174,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 175,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 176,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 177,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 178,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 179,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 180,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 181,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 182,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 183,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 184,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 185,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 186,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 187,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 188,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 189,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 190,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 191,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 192,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 193,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 194,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 195,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 196,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 197,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 198,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 199,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 200,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 201,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 202,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 203,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 204,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 205,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 206,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 207,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 208,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 209,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 210,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 211,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 212,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 213,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 214,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 215,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 216,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 217,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 218,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 219,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 220,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 221,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 222,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 223,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 224,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 225,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 226,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 227,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 228,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 229,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 230,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 231,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 232,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 233,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 234,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 235,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 236,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 237,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 238,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 239,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 240,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 241,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 242,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 243,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 244,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 245,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 246,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 247,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 248,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 249,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 250,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 251,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 252,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 253,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 254,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 255,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 256,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 257,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 258,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 259,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 260,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 261,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 262,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 263,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 264,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 265,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 266,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 267,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 268,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 269,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 270,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 271,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 272,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 273,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 274,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 275,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 276,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 277,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 278,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 279,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 280,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 281,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 282,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 283,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 284,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 285,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 286,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 287,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 288,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 289,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 290,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 291,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 292,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 293,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 294,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 295,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 296,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 297,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 298,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 299,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 300,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 301,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 302,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 303,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 304,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 305,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 306,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 307,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 308,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 309,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 310,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 311,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 312,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 313,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 314,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 315,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 316,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 317,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 318,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 319,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 320,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 321,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 322,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 323,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 324,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 325,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 326,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 327,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 328,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 329,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 330,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 331,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 332,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 333,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 334,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 335,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 336,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 337,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 338,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 339,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 340,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 341,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 342,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 343,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 344,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 345,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 346,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 347,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 348,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 349,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 350,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 351,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 352,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 353,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 354,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 355,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 356,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 357,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 358,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 359,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 360,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 361,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 362,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 363,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 364,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 365,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 366,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 367,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 368,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 369,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 370,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 371,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 372,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 373,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 374,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 375,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 376,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 377,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 378,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 379,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 380,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 381,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 382,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 383,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 384,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 385,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 386,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 387,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 388,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 389,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 390,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 391,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 392,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 393,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 394,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 395,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 396,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 397,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 398,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 399,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 400,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 401,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 402,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 403,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 404,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 405,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 406,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 407,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 408,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 409,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 410,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 411,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 412,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 413,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 414,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 415,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 416,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 417,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 418,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 419,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 420,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 421,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 422,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 423,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 424,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 425,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 426,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 427,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 428,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 429,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 430,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 431,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 432,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 433,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 434,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 435,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 436,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 437,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 438,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 439,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 440,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 441,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 442,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 443,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 444,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 445,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 446,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 447,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 448,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 449,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 450,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 451,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 452,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 453,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 454,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 455,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 456,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 457,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 458,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 459,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 460,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 461,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 462,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 463,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 464,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 465,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 466,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 467,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 468,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 469,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 470,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 471,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 472,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 473,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 474,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 475,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 476,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 477,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 478,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 479,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 480,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 481,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 482,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 483,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 484,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 485,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 486,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 487,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 488,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 489,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 490,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 491,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 492,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 493,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 494,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 495,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 496,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 497,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 498,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 499,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 500,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 501,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 502,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 503,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 504,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 505,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 506,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 507,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 508,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 509,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 510,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 511,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 512,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 513,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 514,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 515,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 516,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 517,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 518,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 519,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 520,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 521,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 522,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 523,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 524,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 525,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 526,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 527,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 528,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 529,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 530,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 531,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 532,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 533,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 534,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 535,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 536,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 537,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 538,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 539,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 540,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 541,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 542,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 543,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 544,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 545,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 546,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 547,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 548,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 549,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 550,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 551,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 552,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 553,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 554,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 555,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 556,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 557,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 558,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 559,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 560,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 561,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 562,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 563,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 564,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 565,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 566,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 567,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 568,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 569,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 570,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 571,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 572,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 573,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 574,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 575,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 576,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 577,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 578,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 579,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 580,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 581,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 582,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 583,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 584,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 585,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 586,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 587,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 588,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 589,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 590,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 591,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 592,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 593,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 594,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 595,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 596,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 597,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 598,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 599,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 600,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 601,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 602,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 603,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 604,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 605,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 606,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 607,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 608,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 609,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 610,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 611,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 612,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 613,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 614,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 615,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 616,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 617,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 618,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 619,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 620,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 621,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 622,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 623,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 624,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 625,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 626,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 627,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 628,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 629,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 630,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 631,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 632,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 633,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 634,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 635,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 636,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 637,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 638,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 639,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 640,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 641,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 642,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 643,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 644,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 645,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 646,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 647,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 648,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 649,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 650,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 651,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 652,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 653,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 654,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 655,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 656,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 657,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 658,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 659,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 660,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 661,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 662,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 663,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 664,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 665,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 666,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 667,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 668,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 669,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 670,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 671,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 672,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 673,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 674,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 675,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 676,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 677,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 678,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 679,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 680,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 681,
+      "optimizerStepSkipped": false
+    },
+    {
+      "iteration": 682,
+      "optimizerStepSkipped": false
+    }
+  ]
+}

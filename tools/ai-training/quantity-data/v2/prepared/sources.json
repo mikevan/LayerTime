@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "layertime-authored-quantity-extraction-v1": {
+      "license": "Project-authored synthetic requests; development only",
+      "allowedForTraining": true,
+      "approvedSeedSha256": "49519154f3a6e33e5016129cc0f4a9f51bf9ef848e3f3f02bf5a9c5b7eb928da",
+      "validationProfile": "analytic-quantity-extraction-v1"
+    },
+    "layertime-authored-quantity-extraction-v2": {
+      "license": "Project-authored synthetic coverage-gap curriculum; development only",
+      "allowedForTraining": true,
+      "approvedSeedSha256": "49519154f3a6e33e5016129cc0f4a9f51bf9ef848e3f3f02bf5a9c5b7eb928da",
+      "validationProfile": "analytic-quantity-extraction-v1"
+    }
+  }
+}

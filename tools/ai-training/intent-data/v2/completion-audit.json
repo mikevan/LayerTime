@@ -1,0 +1,817 @@
+{
+  "status": "completed-primary-gate-failed",
+  "control": {
+    "groups": {
+      "fresh_test": {
+        "examples": 48,
+        "shapePasses": 47,
+        "exactIntentPasses": 28,
+        "supportedRequests": 24,
+        "supportedCorrect": 12,
+        "timeSettingsCorrect": 14,
+        "clarificationRequests": 16,
+        "clarificationsCorrect": 8,
+        "guessedDraftInsteadOfClarifying": 7,
+        "unsupportedRequests": 8,
+        "unsupportedCorrect": 8
+      },
+      "known_development": {
+        "examples": 16,
+        "shapePasses": 16,
+        "exactIntentPasses": 12,
+        "supportedRequests": 10,
+        "supportedCorrect": 8,
+        "timeSettingsCorrect": 9,
+        "clarificationRequests": 2,
+        "clarificationsCorrect": 0,
+        "guessedDraftInsteadOfClarifying": 2,
+        "unsupportedRequests": 4,
+        "unsupportedCorrect": 4
+      }
+    },
+    "primaryAuthoredTestGatePassed": false,
+    "examplesSha256": "c9c0ea67a21f0ba7ae066c637543917547c431c2497d2d3f6ba4c6d8bd1351f1",
+    "responsesSha256": "c82a5b7d0617dfa29b27095bfa9cd4b892d2c704f97399ede03ea16d18955e90",
+    "adapterSha256": "8b3a27ab1d1ecd7c09e8dd4b5a2ffc4191635f2fa81d731b7a596fba6331a8e6",
+    "failures": [
+      {
+        "id": "intent-v2-test-01",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 750,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 2250,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-02",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 12000,
+          "episodeGapMs": 14400,
+          "minLinkedEpisodes": 4,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 120000,
+          "episodeGapMs": 144000,
+          "minLinkedEpisodes": 4,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-06",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 25200,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 3,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-08",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 250,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 2500,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-09",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 150000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 150000,
+          "episodeGapMs": 150000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-11",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 4500,
+          "episodeGapMs": 1125,
+          "minLinkedEpisodes": 3,
+          "scope": "RECORDING"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 4500,
+          "episodeGapMs": 1125,
+          "minLinkedEpisodes": 3,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-12",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 150000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 150000,
+          "episodeGapMs": 15000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-13",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 3600,
+          "episodeGapMs": 500,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 1000,
+          "episodeGapMs": 500,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-15",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 6,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-16",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 3,
+          "episodeGapMs": 2,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-18",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 250,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 25000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-21",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 900,
+          "episodeGapMs": 325,
+          "minLinkedEpisodes": 4,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 325,
+          "episodeGapMs": 900,
+          "minLinkedEpisodes": 4,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-25",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 41,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-26",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 9000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-27",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 19000,
+          "episodeGapMs": 2000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-29",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 8,
+          "minLinkedEpisodes": 3,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-33",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 1250,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-34",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "predicted": null,
+        "error": "Invalid bounded intent setting"
+      },
+      {
+        "id": "intent-v2-test-36",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 2500,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-37",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-dev-intent-v1-pair_scope_test-0",
+        "evaluationRole": "known_development",
+        "expected": {
+          "episodeGapMs": 3000,
+          "followOnMs": 1000,
+          "minLinkedEpisodes": 2,
+          "schemaVersion": 1,
+          "scope": "DEVICE_AP_PAIR",
+          "status": "DRAFT"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-dev-intent-v1-pair_scope_test-1",
+        "evaluationRole": "known_development",
+        "expected": {
+          "episodeGapMs": 3000,
+          "followOnMs": 1000,
+          "minLinkedEpisodes": 2,
+          "schemaVersion": 1,
+          "scope": "DEVICE_AP_PAIR",
+          "status": "DRAFT"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 1000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-dev-intent-v1-missing_gap_unit_test-0",
+        "evaluationRole": "known_development",
+        "expected": {
+          "reason": "AMBIGUOUS_SETTINGS",
+          "schemaVersion": 1,
+          "status": "CLARIFY"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 7000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-dev-intent-v1-missing_gap_unit_test-1",
+        "evaluationRole": "known_development",
+        "expected": {
+          "reason": "AMBIGUOUS_SETTINGS",
+          "schemaVersion": 1,
+          "status": "CLARIFY"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 15,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      }
+    ],
+    "releaseEligible": false,
+    "limitations": [
+      "Authored controlled requests; no independent user or field qualification.",
+      "Known development cases are not fresh held-out tests.",
+      "Native executability does not establish request meaning."
+    ]
+  },
+  "candidate": {
+    "groups": {
+      "fresh_test": {
+        "examples": 48,
+        "shapePasses": 48,
+        "exactIntentPasses": 37,
+        "supportedRequests": 24,
+        "supportedCorrect": 13,
+        "timeSettingsCorrect": 14,
+        "clarificationRequests": 16,
+        "clarificationsCorrect": 16,
+        "guessedDraftInsteadOfClarifying": 0,
+        "unsupportedRequests": 8,
+        "unsupportedCorrect": 8
+      },
+      "known_development": {
+        "examples": 16,
+        "shapePasses": 16,
+        "exactIntentPasses": 13,
+        "supportedRequests": 10,
+        "supportedCorrect": 7,
+        "timeSettingsCorrect": 7,
+        "clarificationRequests": 2,
+        "clarificationsCorrect": 2,
+        "guessedDraftInsteadOfClarifying": 0,
+        "unsupportedRequests": 4,
+        "unsupportedCorrect": 4
+      }
+    },
+    "primaryAuthoredTestGatePassed": false,
+    "examplesSha256": "c9c0ea67a21f0ba7ae066c637543917547c431c2497d2d3f6ba4c6d8bd1351f1",
+    "responsesSha256": "8923cdf57cc4dd2e92262b16e7abd24154b18653508b6ce857045777ea30a35c",
+    "adapterSha256": "ff115f68288e522cdcb443d698d6f924af68f2efe7e39f36a9322704f9d5cae7",
+    "failures": [
+      {
+        "id": "intent-v2-test-01",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 750,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-02",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 12000,
+          "episodeGapMs": 14400,
+          "minLinkedEpisodes": 4,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 120000,
+          "episodeGapMs": 14400,
+          "minLinkedEpisodes": 4,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-07",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 375,
+          "minLinkedEpisodes": 4,
+          "scope": "RECORDING"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-09",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 150000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-11",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 4500,
+          "episodeGapMs": 1125,
+          "minLinkedEpisodes": 3,
+          "scope": "RECORDING"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 4500,
+          "episodeGapMs": 1125,
+          "minLinkedEpisodes": 3,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-12",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 150000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 1,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-13",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 3600,
+          "episodeGapMs": 500,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 3600000,
+          "episodeGapMs": 500,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-14",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 6,
+          "scope": "RECORDING"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-16",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 3,
+          "episodeGapMs": 2,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-21",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 900,
+          "episodeGapMs": 325,
+          "minLinkedEpisodes": 4,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 1500,
+          "episodeGapMs": 325,
+          "minLinkedEpisodes": 4,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-test-23",
+        "evaluationRole": "fresh_test",
+        "expected": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 30000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 2,
+          "scope": "RECORDING"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-dev-intent-v1-ninety_seconds_test-1",
+        "evaluationRole": "known_development",
+        "expected": {
+          "episodeGapMs": 2000,
+          "followOnMs": 90000,
+          "minLinkedEpisodes": 3,
+          "schemaVersion": 1,
+          "scope": "RECORDING",
+          "status": "DRAFT"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-dev-intent-v1-pair_scope_test-0",
+        "evaluationRole": "known_development",
+        "expected": {
+          "episodeGapMs": 3000,
+          "followOnMs": 1000,
+          "minLinkedEpisodes": 2,
+          "schemaVersion": 1,
+          "scope": "DEVICE_AP_PAIR",
+          "status": "DRAFT"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "DRAFT",
+          "followOnMs": 3000,
+          "episodeGapMs": 3000,
+          "minLinkedEpisodes": 2,
+          "scope": "DEVICE_AP_PAIR"
+        },
+        "error": "Intent differs from authored request meaning"
+      },
+      {
+        "id": "intent-v2-dev-intent-v1-recording_scope_test-0",
+        "evaluationRole": "known_development",
+        "expected": {
+          "episodeGapMs": 3000,
+          "followOnMs": 1000,
+          "minLinkedEpisodes": 2,
+          "schemaVersion": 1,
+          "scope": "RECORDING",
+          "status": "DRAFT"
+        },
+        "predicted": {
+          "schemaVersion": 1,
+          "status": "CLARIFY",
+          "reason": "AMBIGUOUS_SETTINGS"
+        },
+        "error": "Intent differs from authored request meaning"
+      }
+    ],
+    "releaseEligible": false,
+    "limitations": [
+      "Authored controlled requests; no independent user or field qualification.",
+      "Known development cases are not fresh held-out tests.",
+      "Native executability does not establish request meaning."
+    ]
+  },
+  "trainingAudit": "../../runs/qwen4b-intent-v2-adapter/continuation-audit.json",
+  "androidDeviceTested": false
+}

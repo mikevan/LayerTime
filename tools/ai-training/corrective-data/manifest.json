@@ -1,0 +1,17 @@
+{
+  "examples": 12,
+  "families": 12,
+  "sha256": "52a36adec49b17c6b8451729375c36e746d8328cdd7b78493cc1c8212418f9ee",
+  "purpose": "small corrective curriculum; not broad domain qualification",
+  "releaseEligible": false,
+  "trainingApproved": false,
+  "provenance": "Project-authored synthetic cases; no private capture data.",
+  "limitations": [
+    "No independent expert review.",
+    "All cases are training candidates; none are an independent evaluation set.",
+    "Reason-code reference does not validate every authored interpretation.",
+    "Some cases deliberately request a coverage clarification rather than an attack warning."
+  ],
+  "previousNormalizedTextSha256": "865ecbd219256445261aac358b3b1a25ddd6d9a0f43cd98dc8ebb516584be0ac",
+  "hashCorrection": "Corrected to hash actual on-disk bytes, including Windows CRLF. Data unchanged."
+}

@@ -1,0 +1,52 @@
+{
+  "name": "Wireshark and behavior posture",
+  "version": 1,
+  "steps": [
+    {
+      "id": "capture",
+      "type": "capture_source"
+    },
+    {
+      "id": "rate",
+      "type": "deauth_rate"
+    },
+    {
+      "id": "timeline",
+      "type": "target_behavior"
+    },
+    {
+      "id": "report",
+      "type": "deauth_verdict",
+      "settings": {
+        "rules": "{\"counted\":[],\"rules\":[{\"when\":{\"metric\":\"linked_episodes\",\"step\":\"timeline\",\"atLeast\":1},\"verdict\":\"SIGNIFICANT POSTURE WITH FOLLOW-ON\",\"label\":\"DISCONNECT WITH FOLLOW-ON ACTIVITY\",\"summary\":\"{timeline.linked_episodes} episodes link disconnects and later EAPOL activity for the same client and network. Inspect each episode and its supporting packets. The Wireshark rate check is supplementary and does not attribute activity across different targets.\"},{\"when\":{\"always\":true},\"verdict\":\"REVIEW POSTURE\",\"label\":\"REVIEW AVAILABLE EVIDENCE\",\"summary\":\"No linked disconnect/EAPOL episode was identified in the supplied evidence. Missing observations do not establish safety. Review the packet checks and capture limitations.\"}]}"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "capture",
+      "to": "rate.frames",
+      "carries": "frames"
+    },
+    {
+      "from": "capture",
+      "to": "timeline.frames",
+      "carries": "frames"
+    },
+    {
+      "from": "capture",
+      "to": "report.frames",
+      "carries": "frames"
+    },
+    {
+      "from": "rate",
+      "to": "report.features",
+      "carries": "feature"
+    },
+    {
+      "from": "timeline",
+      "to": "report.features",
+      "carries": "feature"
+    }
+  ]
+}

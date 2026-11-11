@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "modelId": "layertime-qwen3-4b-domain-development",
+  "modelVersion": "domain-v1-1090-q4km",
+  "weightsFile": "weights.gguf",
+  "sha256": "658a4d4bbc86efff54ace9663cdec230479d3c04ae1eca6f2a1c34a895631fce",
+  "promptFormat": "qwen3-instruct-2507-compact-v1",
+  "contextTokens": 4096,
+  "blueTeamTrained": true,
+  "releaseEligible": false,
+  "developmentOnly": true,
+  "tasks": [
+    "EXPLAIN_EVIDENCE"
+  ],
+  "trainingPerformed": true,
+  "trainingAppliedUpdates": 1090,
+  "trainingExamples": 1090,
+  "trainingAdapterSha256": "75881bc9f36e40b2540ec0ef86bce41dcfd62e25d452fb042c33279fd45d8b8b",
+  "trainingManifestSha256": "dbe3b288ed5df8c074d9bee366665117666d16576baa3da658801caa7ec81a7a",
+  "acceptanceExamplesSha256": "d739ab240fa0462648cf6c6b6e80f66abe41b95dacd2ea4edc0f23aa4e04e641",
+  "acceptanceRubricsSha256": "7f331bc4622f51b7f5b49a0fac46486d8b3649a199fe5e50520a2fbac606c9a7",
+  "qualification": "Actual domain-trained candidate; unqualified for live product assessments; explicit debug evaluation only",
+  "baseModel": {
+    "modelId": "Qwen/Qwen3-4B-Instruct-2507",
+    "license": "Apache-2.0",
+    "intakeSha256": "9cf816d7331a17e05a3e9fc2c3ed618eb6f6274700f1ea97786e082be0c2651a"
+  },
+  "quantization": "Q4_K_M",
+  "runtimeRevision": "3b4d6ab3f79651935fba1dd93732f29022a7f5f5"
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "version": "1.6.0",
+  "source": "MITRE D3FEND",
+  "sourceUrl": "https://d3fend.mitre.org/resources/ontology/",
+  "license": "MITRE D3FEND Terms of Use; retained in TERMS-OF-USE.html",
+  "termsSha256": "f98cbc7ef2dde495590749ff1c7cc94a4f9bf89eebb6f0a53c86e7f463814dcc",
+  "files": [
+    {
+      "file": "d3fend.csv",
+      "url": "https://d3fend.mitre.org/ontologies/d3fend/1.6.0/d3fend.csv",
+      "bytes": 38047,
+      "sha256": "979c5b82324893dd3f3c6bb2acbcd6b2a14b49566cbfb2052564665de13506c6"
+    },
+    {
+      "file": "d3fend.json",
+      "url": "https://d3fend.mitre.org/ontologies/d3fend/1.6.0/d3fend.json",
+      "bytes": 4833645,
+      "sha256": "e1546d432c6aa64d45b62dd9e9484b0774ae84de7ff3605ff9dd4e20278957bf"
+    }
+  ],
+  "csvRows": 271,
+  "copyright": "Copyright 2025 The MITRE Corporation. D3FEND is a trademark of The MITRE Corporation.",
+  "trainingApproved": false,
+  "releaseEligible": false,
+  "limitations": [
+    "Ontology concepts and inferred relationships are not field telemetry or evidence that an incident happened.",
+    "Imported ATT&CK, ATLAS and SPARTA material has separate terms; do not indiscriminately ingest imported technique text.",
+    "Select relevant passive defensive-analysis concepts before constructing training examples.",
+    "Retain the full copyright designation and license with derived copies."
+  ]
+}

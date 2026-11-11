@@ -1,0 +1,107 @@
+{
+  "model": "tools\\ai-training\\models\\smollm3-3b",
+  "examples": 19,
+  "examplesSha256": "495ee55bfe7325d7496a9fcd68255a3815233737274453030a05ee0dc9712a82",
+  "maximumInputTokens": 697,
+  "reservedOutputTokens": 1024,
+  "contextTokens": 10240,
+  "allFit": true,
+  "gpuUsed": false,
+  "results": [
+    {
+      "id": "correlation-v2-same_pair_reverse_exchange-page-1",
+      "inputTokens": 593,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-different_network-page-1",
+      "inputTokens": 590,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-different_client-page-1",
+      "inputTokens": 566,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-exchange_before_request-page-1",
+      "inputTokens": 591,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-equal_timestamps-page-1",
+      "inputTokens": 591,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-unresolved_network-page-1",
+      "inputTokens": 536,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-broadcast_target-page-1",
+      "inputTokens": 580,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-separate_episodes-page-1",
+      "inputTokens": 697,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-separate_episodes-page-2",
+      "inputTokens": 616,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-merged_episode-page-1",
+      "inputTokens": 597,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-merged_episode-page-2",
+      "inputTokens": 597,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-exchange_between_requests-page-1",
+      "inputTokens": 596,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-exchange_between_requests-page-2",
+      "inputTokens": 596,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-invalid_exchange_clock-page-1",
+      "inputTokens": 578,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-malformed_request-page-1",
+      "inputTokens": 525,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-shared_name_different_access_points-page-1",
+      "inputTokens": 565,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-shared_name_different_access_points-page-2",
+      "inputTokens": 643,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-multiple_names_one_access_point-page-1",
+      "inputTokens": 570,
+      "budgetFits": true
+    },
+    {
+      "id": "correlation-v2-multiple_names_one_access_point-page-2",
+      "inputTokens": 647,
+      "budgetFits": true
+    }
+  ]
+}

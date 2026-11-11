@@ -1,0 +1,35 @@
+{
+  "experimentComplete": true,
+  "releaseEligible": false,
+  "phoneInstalled": false,
+  "trainedTask": "PLAN_ANALYTIC",
+  "completedGenerations": 32,
+  "baseExactIntentPasses": 6,
+  "adapterExactIntentPasses": 11,
+  "testRequests": 16,
+  "adapterShapePasses": 16,
+  "clarificationPasses": 0,
+  "clarificationRequests": 2,
+  "finiteGradientChecks": 64,
+  "appliedUpdates": 64,
+  "adapterSha256": "8b3a27ab1d1ecd7c09e8dd4b5a2ffc4191635f2fa81d731b7a596fba6331a8e6",
+  "trainingSourceSnapshotsVerified": true,
+  "implementationSha256": {
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ai\\AnalyticIntent.kt": "fbff19e502c091d7e38c153f663d1a63a01476111f272e9eb3f8ee2e11de674c",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\flow\\DeauthSteps.kt": "f9a183cd96c322b245391b134ccd754efd3bc9f74fe68f04d885d45fe4768687",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ui\\ReportRuleEditor.kt": "9350ffa40e2eb2f2a330d878b0abac4091df6774553b988625d786b050a4aa7b",
+    "devices\\layertime-controller-android\\app\\src\\test\\java\\com\\projectrevivesolutions\\layertime\\controller\\AnalyticIntentTest.kt": "b1299a133bf7df2e37d23e394003677e9ec99260c718c6f9636d6e20b98deb8c",
+    "devices\\layertime-controller-android\\app\\src\\androidTest\\java\\com\\projectrevivesolutions\\layertime\\controller\\IntentPracticeChecks.kt": "ebb3825d37a1156a59131a02f990634185228d6dbc0fc47fa78f0ab6712e8793"
+  },
+  "nativeAdaptedResponsesChecked": 16,
+  "jvmTests": 354,
+  "pythonTests": 98,
+  "pythonPassed": 97,
+  "pythonSkipped": 1,
+  "limitations": [
+    "Small authored request corpus; no independent user or field evaluation.",
+    "Executable drafts can still misunderstand requests.",
+    "New candidate not bundled or enabled.",
+    "Android native practice checks compiled but not run on a phone."
+  ]
+}

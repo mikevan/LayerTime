@@ -25,6 +25,8 @@ data class AnalyticFrame(
     val mfpCapable: Boolean? = null,   // RSN capabilities in a beacon; null when no RSN element
     val mfpRequired: Boolean? = null,
     val eapol: Boolean = false,
+    val timestampValid: Boolean = true,
+    val malformed: Boolean = false,
     val eapolMsg: Int? = null,   // EAPOL-Key handshake message number, wlan_rsna_eapol.keydes.msgnr
 ) {
     val isDeauth get() = typeSubtype == DEAUTH
@@ -48,9 +50,9 @@ data class AnalyticFrame(
             fun first(n: String) = f.first(n)?.display
             fun leadingInt(s: String?): Int? = s?.trim()?.let { t ->
                 val hex = Regex("^0x([0-9a-fA-F]+)").find(t)?.groupValues?.get(1)
-                if (hex != null) hex.toInt(16) else Regex("^-?\\d+").find(t)?.value?.toInt()
+                if (hex != null) hex.toIntOrNull(16) else Regex("^-?\\d+").find(t)?.value?.toIntOrNull()
             }
-            fun bit(s: String?): Boolean? = s?.trim()?.let { it == "1" || it.startsWith("1") || it.equals("true", true) || it.contains("Set", true) }
+            fun bit(s: String?): Boolean? = when (s?.trim()?.lowercase()) { "1", "true", "set" -> true; "0", "false", "not set" -> false; else -> null }
             val ts = leadingInt(first("wlan.fc.type_subtype")) ?: -1
             return AnalyticFrame(
                 index = index,
@@ -64,10 +66,12 @@ data class AnalyticFrame(
                 reasonCode = leadingInt(first("wlan.fixed.reason_code")),
                 rssi = leadingInt(first("radiotap.dbm_antsignal")),
                 channel = leadingInt(first("wlan_radio.channel")) ?: leadingInt(first("radiotap.channel.freq"))?.let { channelOf(it) },
-                ssid = first("wlan.ssid"),
+                ssid = f.first("wlan.ssid")?.shown,
                 mfpCapable = bit(first("wlan.rsn.capabilities.mfpc")),
                 mfpRequired = bit(first("wlan.rsn.capabilities.mfpr")),
-                eapol = f.fields.any { it.name == "eapol" },
+                timestampValid = f.hasTimestamp,
+                malformed = f.malformed,
+                eapol = f.fields.any { it.name == "eapol" || it.name.startsWith("eapol.") },
                 eapolMsg = leadingInt(first("wlan_rsna_eapol.keydes.msgnr")),
             )
         }

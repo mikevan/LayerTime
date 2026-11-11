@@ -35,8 +35,50 @@ object PcapImport {
         data class Running(val fileName: String, val phase: String, val frames: Int, val percent: Int?,
                            val ratePerSecond: Double, val elapsedSeconds: Double, val slowing: Boolean) : State
         data class Done(val fileName: String, val fileBytes: Long, val fileType: String, val wiresharkVersion: String,
-                        val result: CaptureDecodeLoop.Result) : State
+                        val result: CaptureDecodeLoop.Result, val captureId: String = java.util.UUID.randomUUID().toString(), val training: Boolean = false) : State
         data class Failed(val fileName: String, val message: String) : State
+    }
+
+    data class DetailSelection(val captureId: String, val requested: Int, val frames: Map<Int, WiresharkDecoder.PcapFrame>,
+        val loading: Boolean = false, val error: String? = null)
+    @Volatile private var requestedDetails: Set<Int> = emptySet()
+    private val _details=MutableStateFlow<DetailSelection?>(null)
+    val details: StateFlow<DetailSelection?> = _details.asStateFlow()
+
+    /** Re-read selected evidence beyond the 500-tree display cache. Bound retained trees, not analysis. */
+    @Synchronized
+    fun selectDetails(context: Context, indices: Set<Int>) {
+        val done=_state.value as? State.Done ?: return
+        requestedDetails=indices.toSet()
+        if(running) {
+            _details.value=DetailSelection(done.captureId,indices.size,emptyMap(),error="Another decode is running. Tap Load evidence to retry.")
+            return
+        }
+        val wanted=indices.filter { it>=0 && it<done.result.totalFrames }.sorted().take(KEEP_LIMIT).toSet()
+        val cached=done.result.kept.mapIndexed { i,f -> i to f }.filter { it.first in wanted }.toMap()
+        if(cached.size==wanted.size) { _details.value=DetailSelection(done.captureId,indices.size,cached);return }
+        cancelRequested=false
+        _details.value=DetailSelection(done.captureId,indices.size,cached,loading=true)
+        val file=File(context.applicationContext.cacheDir,"pcap_import/import.cap")
+        worker=Thread({
+            val found=cached.toMutableMap()
+            val error=runCatching {
+                val reader=WiresharkDecoder.openPcap(file.absolutePath) ?: error("Decoder unavailable.")
+                reader.use { r ->
+                    var position=0
+                    val last=wanted.maxOrNull() ?: -1
+                    while(position<=last && !cancelRequested) {
+                        val frame=r.next() ?: break
+                        if(position in wanted) found[position]=frame
+                        position++
+                    }
+                    r.error?.let { error(it) }
+                }
+                if(cancelRequested) error("Evidence loading cancelled.")
+                if(found.size<wanted.size) error("Some requested frames could not be read.")
+            }.exceptionOrNull()?.message
+            if(_state.value===done && requestedDetails==indices) _details.value=DetailSelection(done.captureId,indices.size,found,error=error)
+        },"ltws-evidence-details").apply {start()}
     }
 
     private val _state = MutableStateFlow<State>(State.Idle)
@@ -49,18 +91,20 @@ object PcapImport {
 
     fun cancel() { if (running) { cancelRequested = true; Log.i(TAG, "PCAP cancel requested") } }
 
-    fun clear() { if (!running) _state.value = State.Idle }
+    fun clear() { if (!running) { _state.value = State.Idle; _details.value=null; com.projectrevivesolutions.layertime.controller.flow.TriageSession.clear() } }
 
     /** Start an import. Ignored while another import is running. */
     @Synchronized
-    fun start(context: Context, uri: Uri) {
+    fun start(context: Context, uri: Uri, training: Boolean = false) {
         Log.i(TAG, "IMPORT start requested uri=$uri running=$running")
         if (running) { Log.i(TAG, "IMPORT ignored: another import is running"); return }
         val app = context.applicationContext
         cancelRequested = false
+        _details.value=null
+        com.projectrevivesolutions.layertime.controller.flow.TriageSession.clear()
         val name = displayName(app, uri)
         _state.value = State.Running(name, "copy", 0, null, 0.0, 0.0, false)
-        worker = Thread({ runImport(app, uri, name) }, "ltws-pcap-import").apply { start() }
+        worker = Thread({ runImport(app, uri, name, training || name.startsWith("TRAINING-")) }, "ltws-pcap-import").apply { start() }
     }
 
     private fun displayName(context: Context, uri: Uri): String = runCatching {
@@ -79,7 +123,7 @@ object PcapImport {
         _state.value = State.Failed(fileName, message)
     }
 
-    private fun runImport(context: Context, uri: Uri, fileName: String) {
+    private fun runImport(context: Context, uri: Uri, fileName: String, training: Boolean) {
         try {
             phase("copy", fileName)
             val dir = File(context.cacheDir, "pcap_import").apply { mkdirs() }
@@ -136,7 +180,7 @@ object PcapImport {
                     result.readError != null -> Log.i(TAG, "PCAP DONE WITH READ ERROR $tail error=${result.readError}")
                     else -> Log.i(TAG, "PCAP DONE $tail")
                 }
-                _state.value = State.Done(fileName, bytes, r.fileType, version, result)
+                _state.value = State.Done(fileName, bytes, r.fileType, version, result, training=training)
             }
         } catch (t: Throwable) {
             Log.e(TAG, "PCAP FAILED file=$fileName", t)

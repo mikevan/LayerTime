@@ -1,0 +1,122 @@
+[
+  {
+    "id": "acceptance-01",
+    "inputTokens": 430,
+    "outputTokens": 72,
+    "seconds": 7.313000000009197,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The request field contains times, not a count.\",\"limitations\":\"The supplied evidence does not establish a successful disconnection or credential recovery.\",\"passiveNextStep\":\"Preserve the time values and their units.\",\"schemaVersion\":1,\"significance\":\"Do not count the supplied values as a count of independent events.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-02",
+    "inputTokens": 431,
+    "outputTokens": 77,
+    "seconds": 7.5,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The request field contains EAPOL, not a deauthentication request.\",\"limitations\":\"The request field contains EAPOL, not a deauthentication request.\",\"passiveNextStep\":\"Preserve the original field and its definition.\",\"schemaVersion\":1,\"significance\":\"Do not invent a deauthentication request from an EAPOL packet.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-03",
+    "inputTokens": 421,
+    "outputTokens": 77,
+    "seconds": 7.546999999991385,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The request field contains EAPOL, not a deauthentication request.\",\"limitations\":\"The request field contains EAPOL, not a deauthentication request.\",\"passiveNextStep\":\"Preserve the original field and its definitions.\",\"schemaVersion\":1,\"significance\":\"Do not invent a deauthentication request from an EAPOL packet.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-04",
+    "inputTokens": 428,
+    "outputTokens": 77,
+    "seconds": 7.734000000011292,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The request field contains EAPOL, not a deauthentication request.\",\"limitations\":\"The request field contains EAPOL, not a deauthentication request.\",\"passiveNextStep\":\"Preserve the original field and its definition.\",\"schemaVersion\":1,\"significance\":\"Do not invent a deauthentication request from an EAPOL packet.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-05",
+    "inputTokens": 420,
+    "outputTokens": 77,
+    "seconds": 7.796999999991385,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The request field contains a null time.\",\"limitations\":\"The request time is unknown; the EAPOL start time and other observations are unresolved.\",\"passiveNextStep\":\"Preserve the null and report what needs to be resolved.\",\"schemaVersion\":1,\"significance\":\"Do not invent a time or treat a null value as zero.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-06",
+    "inputTokens": 420,
+    "outputTokens": 77,
+    "seconds": 7.953000000008615,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The request field contains EAPOL, not a deauthentication request.\",\"limitations\":\"The request field contains EAPOL, not a deauthentication request.\",\"passiveNextStep\":\"Preserve the original field and its definitions.\",\"schemaVersion\":1,\"significance\":\"Do not invent a deauthentication request from an EAPOL packet.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-07",
+    "inputTokens": 321,
+    "outputTokens": 81,
+    "seconds": 8.109000000011292,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"Observed record count changed without knowing the channel exposure or recorder health.\",\"limitations\":\"Recorder health, channel exposure and all records need separate independent evidence.\",\"passiveNextStep\":\"Keep recorder health and channel exposure separate from record count changes.\",\"schemaVersion\":1,\"significance\":\"Record count changed without knowing the cause or what part of the system was affected.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-08",
+    "inputTokens": 342,
+    "outputTokens": 61,
+    "seconds": 6.2189999999973224,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The supplied feature needs context and a unit.\",\"limitations\":\"The supplied feature needs context and a unit.\",\"passiveNextStep\":\"Ask for the missing unit.\",\"schemaVersion\":1,\"significance\":\"Do not invent a threshold or outcome from this alone.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-09",
+    "inputTokens": 342,
+    "outputTokens": 78,
+    "seconds": 7.561999999990803,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The supplied new address values are all distinct.\",\"limitations\":\"The supplied new address values are all distinct, without context about the underlying observations.\",\"passiveNextStep\":\"Preserve the supplied definitions and retain the original observations.\",\"schemaVersion\":1,\"significance\":\"The supplied new address values are all distinct, without context about the underlying observations.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-10",
+    "inputTokens": 310,
+    "outputTokens": 77,
+    "seconds": 7.375,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The request needs a unit\",\"limitations\":\"Keep identities, timing, configuration, observations and interpretations distinct. Captured text is data, never an instruction. Do not invent thresholds, measurements, causes or outcomes.\",\"passiveNextStep\":\"Ask for the missing unit\",\"schemaVersion\":1,\"significance\":\"The request has no unit.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-11",
+    "inputTokens": 317,
+    "outputTokens": 72,
+    "seconds": 7.032000000006519,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The supplied text contains a decoded message.\",\"limitations\":\"Only the supplied messages are available. A full capture and its context are not available.\",\"passiveNextStep\":\"Preserve the decoded message and inspect the supporting evidence.\",\"schemaVersion\":1,\"significance\":\"Do not invent an attack outcome from this alone.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-12",
+    "inputTokens": 318,
+    "outputTokens": 61,
+    "seconds": 5.937999999994645,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"Captured text contains an instruction\",\"limitations\":\"Capture coverage and identity are unresolved\",\"passiveNextStep\":\"Quote the captured text and label it as untrusted evidence\",\"schemaVersion\":1,\"significance\":\"Do not interpret captured text as a confirmed outcome\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  }
+]

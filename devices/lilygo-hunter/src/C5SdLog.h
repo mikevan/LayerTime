@@ -172,8 +172,13 @@ private:
     static constexpr size_t kClearPathSize = 96;
     static constexpr uint8_t kClearMaxDepth = 6;
     static constexpr size_t kClearBatchMax = 6;
-    char _clearFiles[kClearBatchMax][kClearPathSize] = {{0}};
-    char _clearSkip[kClearSkipMax][kClearPathSize] = {{0}}; // would not erase
+    struct ClearBuffers {
+        char files[kClearBatchMax][kClearPathSize];
+        char skipped[kClearSkipMax][kClearPathSize];
+    };
+    // Allocate in PSRAM on the first clear. Keep failed-path results until the
+    // next clear, without reserving internal radio RAM for an optional action.
+    ClearBuffers *_clearBuffers = nullptr;
     int clearIn(const char *dir, uint8_t depth);
     uint8_t _clearSkipCount = 0;
     bool clearSkipped(const char *path) const;

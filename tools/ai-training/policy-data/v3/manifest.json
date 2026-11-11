@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "originalScenarioFamilies": 12,
+  "variantsPerFamily": 16,
+  "generatedExamples": 192,
+  "sha256": "ee3227641f324df397c886be32c5ca78bf15c565d8998c421f364ee9a927c27f",
+  "releaseEligible": false,
+  "trainingApproved": false,
+  "purpose": "policy-verbalization augmentation, not broad domain training",
+  "generatorSourceSha256": {
+    "build_policy_curriculum.py": "c9c6ddc13031bb0f4698a1fca3ac9fb79629216d3d969945cae06397e200c6be",
+    "evidence_facts.py": "0ef7649c2d15fa9643bd914c2c251e8d11d498ec351adf242a6cf6fd5893a3a3",
+    "wireless_curriculum.py": "d3dd88ae99ce78f3cdf2ca4780958ce1744595ff52efda6f04e0fb6dc31df483",
+    "evaluate_local_model.py": "ec8227d7f52e2cb17ff21499e0bbe81de20ae5b3eb1ab4abff79beeb18e026f8"
+  },
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "limitations": [
+    "Synthetic variations are not new independent environments.",
+    "Targets describe configured warning criteria, not whether an attack occurred.",
+    "Generated labels require independent arithmetic and semantic checks before preparation.",
+    "Document-backed knowledge examples remain a separate training objective."
+  ]
+}

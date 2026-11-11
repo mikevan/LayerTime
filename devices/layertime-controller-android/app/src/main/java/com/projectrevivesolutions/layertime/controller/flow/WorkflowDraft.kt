@@ -14,6 +14,7 @@ data class Draft(
     val workflow: Workflow,
     val positions: Map<String, Pair<Float, Float>>,
     val shipped: Boolean,
+    val authoring: AnalyticOrigin? = null,
 ) {
     val editable: Boolean get() = !shipped
     fun at(id: String): Pair<Float, Float>? = positions[id]
@@ -163,6 +164,7 @@ object DraftEdits {
         val layout = d.workflow.steps.mapNotNull { s -> d.positions[s.id]?.let { (x, y) -> s.id to listOf(x.toDouble(), y.toDouble()) } }.toMap()
         val root = (FlowJson.parse(base) as Map<*, *>).entries.associateTo(LinkedHashMap<String, Any?>()) { (k, v) -> k.toString() to v }
         root["layout"] = layout
+        d.authoring?.let { root["authoring"] = it.wire() }
         return FlowJson.write(root)
     }
 

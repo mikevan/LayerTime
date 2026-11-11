@@ -1,0 +1,94 @@
+{
+  "model": "models\\qwen3-4b-instruct-2507",
+  "examples": 16,
+  "examplesSha256": "c0d7f7cc568904e439f2780de4069415072b5e6f4f28ccfe63625fcd5634106f",
+  "maximumInputTokens": 413,
+  "reservedOutputTokens": 128,
+  "contextTokens": 2048,
+  "allFit": true,
+  "gpuUsed": false,
+  "leadingSystemMessagesMerged": false,
+  "renderedMessageContentRetentionChecked": true,
+  "results": [
+    {
+      "id": "intent-v1-fractional_test-0",
+      "inputTokens": 412,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-fractional_test-1",
+      "inputTokens": 411,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-boundary_test-0",
+      "inputTokens": 410,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-boundary_test-1",
+      "inputTokens": 407,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-ninety_seconds_test-0",
+      "inputTokens": 407,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-ninety_seconds_test-1",
+      "inputTokens": 413,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-pair_scope_test-0",
+      "inputTokens": 408,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-pair_scope_test-1",
+      "inputTokens": 413,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-recording_scope_test-0",
+      "inputTokens": 410,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-recording_scope_test-1",
+      "inputTokens": 409,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-missing_gap_unit_test-0",
+      "inputTokens": 396,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-missing_gap_unit_test-1",
+      "inputTokens": 401,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-burst_only_test-0",
+      "inputTokens": 398,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-burst_only_test-1",
+      "inputTokens": 397,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-signal_test-0",
+      "inputTokens": 391,
+      "budgetFits": true
+    },
+    {
+      "id": "intent-v1-signal_test-1",
+      "inputTokens": 396,
+      "budgetFits": true
+    }
+  ]
+}

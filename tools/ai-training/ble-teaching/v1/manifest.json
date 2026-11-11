@@ -1,0 +1,21 @@
+{
+  "examples": 6,
+  "originalTeachingQuestions": 3,
+  "sourceRecordings": 2,
+  "independentEnvironments": 1,
+  "sha256": "260a686e77b1e8ad05ecaef0d5561f1fb596e89beeffafd74e4ecaa8a6ffde1d",
+  "trainingApproved": false,
+  "releaseEligible": false,
+  "inputHashes": {
+    "runs\\ble-features-v1\\manifest.json": "35ddac96578967fc275ffe65e538756c08093efca154d6b059aa751a84c61385",
+    "runs\\ble-features-v1\\features.npz": "5f3a3593bccdebc79ba08c0407a3a3658d8d1e6adab82552f805b628faef8192",
+    "runs\\ble-specialists-v1\\held-out-predictions.jsonl": "082b373ca9e44cac6f6828470ca3b131138e42ff4afb878ff1ebba42d0507f43"
+  },
+  "limitations": [
+    "Selected windows are not a performance sample or additional independent recordings.",
+    "Whole-recording family isolation is required for future splits; no split or training intake is approved here.",
+    "Feature rows identify accepted windows by matrix row, not a guaranteed packet-time interval or raw frame list.",
+    "Candidate wording is same-agent authored, not independent expert or user-comprehension review.",
+    "This distinct task is not enabled in the production decoder or the current language-model training/evaluation."
+  ]
+}

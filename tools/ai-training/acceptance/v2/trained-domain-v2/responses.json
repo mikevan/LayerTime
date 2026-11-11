@@ -1,0 +1,122 @@
+[
+  {
+    "id": "acceptance-01",
+    "inputTokens": 430,
+    "outputTokens": 87,
+    "seconds": 18.734000000011292,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The EAPOL field matches the supplied client and network.\",\"limitations\":\"Successful disconnection, completed reconnect or credential-recovery evidence is not supplied.\",\"passiveNextStep\":\"Match the supplied client and network identity with the separate fields.\",\"schemaVersion\":1,\"significance\":\"The supplied client and network match the EAPOL field; this is not a confirmed disconnection or reconnect.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-02",
+    "inputTokens": 431,
+    "outputTokens": 83,
+    "seconds": 15.625,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The EAPOL field matches the supplied network radio.\",\"limitations\":\"Successful reconnect, completed disconnection or credential recovery are not established from this alone.\",\"passiveNextStep\":\"Match the client and BSSID from the supplied network context.\",\"schemaVersion\":1,\"significance\":\"A client identity and network radio need to be linked; this does not establish sender authority.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-03",
+    "inputTokens": 421,
+    "outputTokens": 85,
+    "seconds": 15.812999999994645,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The EAPOL field matches the supplied network alias.\",\"limitations\":\"Successful disconnection, completed reconnect or credential-recovery evidence is not established from this alone.\",\"passiveNextStep\":\"Match the client and BSSID separately before linking the field and the network name.\",\"schemaVersion\":1,\"significance\":\"A client identity or BSSID cannot be established from the field alone.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-04",
+    "inputTokens": 428,
+    "outputTokens": 87,
+    "seconds": 15.764999999999418,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The EAPOL field matches the supplied client and network.\",\"limitations\":\"Successful disconnection, completed reconnect or credential-recovery evidence is not supplied.\",\"passiveNextStep\":\"Match the supplied client and network identity with the separate fields.\",\"schemaVersion\":1,\"significance\":\"The supplied client and network match the EAPOL field; this is not a confirmed disconnection or reconnect.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-05",
+    "inputTokens": 420,
+    "outputTokens": 92,
+    "seconds": 19.26600000000326,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The EAPOL field matches the supplied client and network.\",\"limitations\":\"Only the supplied EAPOL field is available; disconnect or reconnect outcomes are not established.\",\"passiveNextStep\":\"Match the client and BSSID from the supported field and exchange identities.\",\"schemaVersion\":1,\"significance\":\"A client or BSSID match is needed. EAPOL alone does not establish a disconnection or reconnect.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-06",
+    "inputTokens": 420,
+    "outputTokens": 81,
+    "seconds": 17.48399999999674,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The EAPOL field matches the supplied network radio.\",\"limitations\":\"Successful disconnection, completed reconnect or credential-recovery evidence is not established from this alone.\",\"passiveNextStep\":\"Match the EAPOL field with the supported client and network identity.\",\"schemaVersion\":1,\"significance\":\"The supplied client and network identities match the supplied network radio.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-07",
+    "inputTokens": 321,
+    "outputTokens": 69,
+    "seconds": 17.656000000002678,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"Observed counts fell, but channel exposure is unresolved.\",\"limitations\":\"Recorder health and channel exposure need separate verification.\",\"passiveNextStep\":\"Keep channel exposure separate from observed record counts.\",\"schemaVersion\":1,\"significance\":\"A decrease in observed records does not prove a decrease in hostile exposure.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-08",
+    "inputTokens": 342,
+    "outputTokens": 80,
+    "seconds": 18.781999999991967,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"Random-address flags are set for 75% of accepted records.\",\"limitations\":\"Address entropy measures concentration, not an attack against every record.\",\"passiveNextStep\":\"Keep the random-address flag and the concentration measure separate in the analysis.\",\"schemaVersion\":1,\"significance\":\"The flag is not a verdict that every record is a random address.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-09",
+    "inputTokens": 342,
+    "outputTokens": 76,
+    "seconds": 15.562000000005355,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"New address values were not supplied.\",\"limitations\":\"Only the supplied features are available. Physical identity, intent and unobserved outcomes remain unresolved.\",\"passiveNextStep\":\"Retain the feature records and their supporting metadata.\",\"schemaVersion\":1,\"significance\":\"The supplied address values are not the same as the observed advertising values.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-10",
+    "inputTokens": 310,
+    "outputTokens": 58,
+    "seconds": 11.531000000002678,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The request needs a unit.\",\"limitations\":\"Keep the original evidence and context distinct from this interpretation.\",\"passiveNextStep\":\"Ask for the missing unit.\",\"schemaVersion\":1,\"significance\":\"The unit was not supplied with the request.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-11",
+    "inputTokens": 317,
+    "outputTokens": 61,
+    "seconds": 11.078999999997905,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"More messages are available.\",\"limitations\":\"Only the supplied messages are available. Physical activity and identity cannot be established.\",\"passiveNextStep\":\"Supply the full message sequence.\",\"schemaVersion\":1,\"significance\":\"The supplied message is not a complete set.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  },
+  {
+    "id": "acceptance-12",
+    "inputTokens": 318,
+    "outputTokens": 69,
+    "seconds": 11.98399999999674,
+    "output": "{\"factReferences\":[\"capture_summary\"],\"headline\":\"The captured text is not a confirmed attack count.\",\"limitations\":\"Successful attacks, identity and end-user impact are not established.\",\"passiveNextStep\":\"Keep the original evidence and its context available.\",\"schemaVersion\":1,\"significance\":\"The supplied text is not a confirmed count of successful attacks.\"}",
+    "compactStructureAndReferencesValid": true,
+    "proseSemanticReviewRequired": true,
+    "schemaAndReferencesValid": true
+  }
+]

@@ -34,10 +34,29 @@ object DeauthSteps {
     private fun noDeauths(step: String) = feature(step, "none", Lean.UNKNOWN, "No disconnect frames from this transmitter are in the window.")
 
     fun register() {
+        Engine.register("capture_source") { _, _, ctx -> ctx.source.frames() }
+        Engine.register("target_behavior") { inputs, settings, _ ->
+            val target = (settings["target_mac"] as? String).orEmpty().lowercase()
+            val network = (settings["network_mac"] as? String).orEmpty().lowercase()
+            val reports = TargetBehavior.analyze(frames(inputs), settings.long("follow_on_ms"), (settings["episode_gap_ms"] as? Number)?.toLong() ?: 3000L)
+                .filter { (target.isBlank() || it.target == target) && (network.isBlank() || it.network == network) }
+            val linked = reports.filter { it.followOnFrames.isNotEmpty() }
+            Feature("target_behavior", "Behavior Timeline", "${linked.size} linked target groups",
+                if (linked.isEmpty()) Lean.UNKNOWN else Lean.SUSPICIOUS,
+                if (reports.isEmpty()) "No disconnect frames were observed in the supplied window; safety cannot be inferred."
+                else reports.joinToString("\n\n") { it.explanation + " " + it.significance },
+                reports.flatMap { it.evidence }.distinct(),
+                metrics = mapOf("episodes" to reports.size.toLong(), "linked_episodes" to linked.size.toLong(),
+                    "max_linked_episodes_per_pair" to (linked.groupingBy { it.target to it.network }.eachCount().values.maxOrNull() ?: 0).toLong(),
+                    "disconnect_frames" to reports.sumOf { it.disconnectFrames.size }.toLong(),
+                    "eapol_frames" to reports.sumOf { it.followOnFrames.size }.toLong(),
+                    "targets" to reports.mapNotNull { it.target }.distinct().size.toLong()), targetReports = reports)
+        }
         // Detection gathers the frames in its window around the event; every check reads from here.
         Engine.register("event_source") { _, s, ctx ->
             val half = s.long("window_ms") * 1_000_000L
-            ctx.source.frames().filter { it.timeNanos >= ctx.event.timeNanos - half && it.timeNanos <= ctx.event.timeNanos + half }
+            val horizon = maxOf(half, (s["after_ms"] as? Number)?.toLong()?.times(1_000_000L) ?: 30000000000L)
+            ctx.source.frames().filter { it.timeNanos >= ctx.event.timeNanos - half && it.timeNanos <= ctx.event.timeNanos + horizon }
         }
         Engine.register("deauth_target") { inputs, _, ctx -> target(View(frames(inputs), ctx.event)) }
         Engine.register("deauth_rate") { inputs, s, ctx -> rate(View(frames(inputs), ctx.event), s.int("burst_frames"), s.long("burst_ms")) }
@@ -51,7 +70,7 @@ object DeauthSteps {
             @Suppress("UNCHECKED_CAST")
             val frames = (inputs["frames"]?.firstOrNull() as? List<AnalyticFrame>) ?: emptyList()
             val text = (s["rules"] as? String).orEmpty()
-            val rules = if (text.isBlank()) VerdictRuleSet.deauthDefault() else VerdictRuleSet.parse(text)
+            val rules = if (text.isBlank()) VerdictRuleSet.deauthDefault().forFeatures(features) else VerdictRuleSet.parse(text)
             rules.evaluate(features, frames)
         }
     }
@@ -128,7 +147,7 @@ object DeauthSteps {
         }
         val value = "${odd.size} of ${numbered.size} off the AP's counter"
         return if (odd.size * 2 >= numbered.size) feature("seq", value, Lean.SUSPICIOUS,
-            "${odd.size} of ${numbered.size} disconnects carry sequence numbers that do not fit between the access point's own beacons: a second radio sent them.", odd)
+            "${odd.size} of ${numbered.size} disconnects carry sequence numbers that do not fit between the access point's own beacons: the sequence differs from the observed beacon stream. Capture loss and distinct sequence streams can also explain this.", odd)
         else feature("seq", value, Lean.BENIGN, "The disconnects are numbered in step with the access point's own beacons.", numbered)
     }
 
@@ -160,15 +179,18 @@ object DeauthSteps {
         val targets = named + known
         val talking = after.filter { it.isData && !it.eapol && it.sa in targets }
         val clones = after.filter { it.isBeacon && it.ssid != null && it.ssid == v.ssid && it.sa != v.ap }
-        val handshakes = after.filter { it.eapol }
+        val correlated = TargetBehavior.analyze(v.window, watchMs)
+            .filter { report -> report.disconnectFrames.any { index -> v.deauths.any { it.index == index } } }
+        val handshakeIndices = correlated.flatMap { it.followOnFrames }.toSet()
+        val handshakes = after.filter { it.index in handshakeIndices }
         val signs = ArrayList<String>()
         if (clones.isNotEmpty()) signs += "the network name reappeared on ${clones.map { it.sa }.distinct().size} new BSSID"
-        if (handshakes.isNotEmpty()) signs += "a password handshake followed"
+        if (handshakes.isNotEmpty()) signs += "EAPOL authentication/key-management traffic followed for the same client and network"
         if (talking.isNotEmpty()) signs += "the disconnected client kept transmitting (${talking.size} frames)"
         val value = if (signs.isEmpty()) "nothing" else listOfNotNull(
             if (clones.isNotEmpty()) "clone" else null, if (handshakes.isNotEmpty()) "handshake" else null,
             if (talking.isNotEmpty()) "client kept talking" else null).joinToString(", ")
-        return if (signs.isEmpty()) feature("after", value, Lean.BENIGN, "Nothing followed in the next ${watchMs / 1000} s: no clone, no handshake, and no traffic from the disconnected clients.")
+        return if (signs.isEmpty()) feature("after", value, Lean.UNKNOWN, "No related follow-on activity was observed in the supplied window (up to ${watchMs / 1000} s). Incomplete capture or channel coverage can hide activity.")
         else feature("after", value, Lean.SUSPICIOUS, "In the next ${watchMs / 1000} s, " + signs.joinToString("; ") + ".", clones + handshakes + talking)
     }
 
@@ -178,9 +200,9 @@ object DeauthSteps {
         val required = v.beacons.any { it.mfpRequired == true }
         val capable = v.beacons.any { it.mfpCapable == true }
         return when {
-            required -> feature("mfp", "required", Lean.BENIGN, "The network requires management frame protection; forged disconnects are dropped by its clients.", v.beacons.take(1))
+            required -> feature("mfp", "required", Lean.BENIGN, "The network requires management frame protection; the observed advertisement requires protected management frames. Client negotiation and enforcement are not established here.", v.beacons.take(1))
             capable -> feature("mfp", "optional", Lean.SUSPICIOUS, "The network offers management frame protection but does not require it; clients that skipped it can be disconnected.", v.beacons.take(1))
-            else -> feature("mfp", "none", Lean.SUSPICIOUS, "The network has no management frame protection; a forged disconnect works on every client.", v.beacons.take(1))
+            else -> feature("mfp", "none", Lean.SUSPICIOUS, "The network has no management frame protection; this observation alone does not establish whether any disconnect was accepted.", v.beacons.take(1))
         }
     }
 

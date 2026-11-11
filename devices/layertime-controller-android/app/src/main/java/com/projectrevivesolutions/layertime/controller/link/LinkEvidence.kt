@@ -1,6 +1,6 @@
 package com.projectrevivesolutions.layertime.controller.link
 
-import com.projectrevivesolutions.layertime.controller.flow.FrameFabricator
+import com.projectrevivesolutions.layertime.controller.capture.Radiotap
 import java.io.ByteArrayOutputStream
 
 /**
@@ -106,7 +106,7 @@ object LinkEvidence {
         fun le32(v: Long) { for (i in 0..3) out.write(((v shr (8 * i)) and 0xFF).toInt()) }
         le32(0xA1B2C3D4L); le16(2); le16(4); le32(0); le32(0); le32(65535); le32(127)
         for (f in frames) {
-            val rt = FrameFabricator.radiotap(f.index.channel, f.index.rssi)
+            val rt = Radiotap.header(f.index.channel, f.index.rssi)
             val tMs = triggerWallMs + f.index.offsetMs
             le32(tMs / 1000); le32((tMs % 1000) * 1000)
             le32((rt.size + f.bytes.size).toLong()); le32((rt.size + maxOf(f.index.onAir, f.bytes.size)).toLong())

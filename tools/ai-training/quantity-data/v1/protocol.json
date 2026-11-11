@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "seedSha256": "27ef0664fbe1ba095a8398d4647845a38ae566a3f60dc8b335d90d1bbacaa9cd",
+  "evaluationSha256": "70da5b848d7442279119c1a87780e5601049e3d9cb32c19e55cb85992aed0116",
+  "controlAdapterSha256": "ff115f68288e522cdcb443d698d6f924af68f2efe7e39f36a9322704f9d5cae7",
+  "additionalUpdates": 512,
+  "epochs": 1,
+  "freshTestRequests": 32,
+  "knownDevelopmentRequests": 64,
+  "primaryGate": "All 32 fresh normalized intents correct, including 16 supported, 8 clarification and 8 unsupported requests. Raw extraction scored separately.",
+  "sampling": "one greedy response per frozen question; no repair or retries",
+  "training": "NF4 FP16, rank 8 q/v LoRA, seed 42, fresh optimizer, initial loss scale 256, checkpoint every 128 updates",
+  "architecture": "Model extracts verbatim quantities and roles. Native exact arithmetic converts. No claim of learned neural arithmetic.",
+  "releaseEligible": false,
+  "androidTesting": false,
+  "limitations": [
+    "Authored synthetic wording, not independent users or field captures.",
+    "Native arithmetic/source guards do not prove correct role or scope assignment.",
+    "Prior v2 evaluation requests are known development, not fresh held-out tests."
+  ]
+}

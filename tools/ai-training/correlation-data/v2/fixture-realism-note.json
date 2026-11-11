@@ -1,0 +1,6 @@
+{
+  "scope": "The two name scenarios contain synthetic beacon observations with unicast destination fields.",
+  "implication": "A beacon does not prove a client connected even with these fields, but fixture realism limits inference about model performance on normal field beacons.",
+  "correction": "Separate candidate v4 uses broadcast beacon destinations; frozen v2 measurement inputs are unchanged.",
+  "releaseEligible": false
+}

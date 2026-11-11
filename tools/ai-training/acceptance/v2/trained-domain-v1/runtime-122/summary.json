@@ -1,0 +1,24 @@
+{
+  "sameModel": "domain-v1-1090-q4km",
+  "compoundRuntimeChange": [
+    "ARMv8.2 dot-product/FP16 target",
+    "512-token physical prefill batch",
+    "bounded actual context allocation",
+    "four decode threads and six batch threads"
+  ],
+  "cases": [
+    {
+      "id": "acceptance-02",
+      "beforeMs": 74838,
+      "afterMs": 28846
+    },
+    {
+      "id": "acceptance-10",
+      "beforeMs": 73720,
+      "afterMs": 23034
+    }
+  ],
+  "beforePssKiB": 3075391,
+  "afterPssKiB": 4671995,
+  "qualification": "Short paired experiment, not sustained thermal or field qualification"
+}

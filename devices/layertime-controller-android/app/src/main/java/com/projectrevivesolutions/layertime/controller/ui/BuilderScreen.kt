@@ -23,6 +23,9 @@ import androidx.compose.material.icons.outlined.FitScreen
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.Icon
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -100,6 +103,14 @@ private enum class Grab {PAN,MOVE,WIRE,PINCH}
  * - Save keeps a new version. Check runs the flow on the seven deauth test scenarios.
  * - Below, the list of flows: accepted ones can be opened or used for TRIAGE.
  */
+/** Retain the editing session while inspecting tools. Saved versions remain the durable record. */
+private object BuilderEditingSession {
+    var draft:Draft?=null
+    var undo:List<Draft> = emptyList()
+    var redo:List<Draft> = emptyList()
+    var showResult=false
+}
+
 @Composable
 fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
     val context=LocalContext.current
@@ -114,11 +125,39 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
     var panY by remember {mutableFloatStateOf(0f)}
     var initialized by remember {mutableStateOf(false)}
     var viewportSize by remember {mutableStateOf(IntSize.Zero)}
+    val captureImport=rememberCaptureImportUi()
+    var showLoad by remember {mutableStateOf(false)}
+    var showMore by remember {mutableStateOf(false)}
+    var showReview by remember {mutableStateOf(false)}
+    var showResult by remember {mutableStateOf(BuilderEditingSession.showResult)}
+    val captureState by com.projectrevivesolutions.layertime.controller.wireshark.PcapImport.state.collectAsState()
+    var showPractice by remember {mutableStateOf(false)}
+    var showDomainAiPractice by remember {mutableStateOf(false)}
     var selected by remember {mutableStateOf<String?>(null)}
-    val loaded by TriageSession.workflow.collectAsState()
     val lastRun by TriageSession.run.collectAsState()
-    var draft by remember {mutableStateOf<Draft?>(null)}
-    LaunchedEffect(loaded) { if(draft==null) loaded?.let {draft=DraftEdits.open(it,null,shipped=true)} }
+    val analysisRunning by TriageSession.running.collectAsState()
+    val analysisError by TriageSession.error.collectAsState()
+    var draft by remember {mutableStateOf<Draft?>(BuilderEditingSession.draft ?: com.projectrevivesolutions.layertime.controller.flow.GuidedBuilder.newAnalysis())}
+    var undo by remember {mutableStateOf<List<Draft>>(BuilderEditingSession.undo)}
+    var redo by remember {mutableStateOf<List<Draft>>(BuilderEditingSession.redo)}
+    SideEffect {BuilderEditingSession.draft=draft;BuilderEditingSession.undo=undo;BuilderEditingSession.redo=redo;BuilderEditingSession.showResult=showResult}
+    var moving by remember {mutableStateOf(false)}
+    fun edit(next: Draft?, move: Boolean = false) {
+        if(next == null || next == draft) return
+        draft?.let { if(!move || !moving) undo=(undo+it).takeLast(50) }
+        redo=emptyList(); draft=next; moving=move
+    }
+    var importNotice by remember {mutableStateOf<String?>(null)}
+    val importFlow=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if(uri!=null) runCatching {
+            val imported=context.contentResolver.openInputStream(uri)?.use {
+                com.projectrevivesolutions.layertime.controller.flow.WorkflowExchange.read(it)
+            } ?: error("Could not read the workflow.")
+            edit(imported)
+            val issues=DraftEdits.sentences(imported.workflow)
+            importNotice="Imported as a draft. " + if(issues.isEmpty()) "Wiring is valid; review before selecting or running it." else issues.joinToString(" ")
+        }.onFailure {importNotice="Could not import: ${it.message}"}
+    }
     var flows by remember {mutableStateOf(WorkflowStore.list(context))}
     var message by remember {mutableStateOf<Pair<String,Boolean>?>(null)} // text, is a problem
     var check by remember {mutableStateOf<ScenarioCheck?>(null)}
@@ -134,6 +173,9 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
     var menuFor by remember {mutableStateOf<String?>(null)}
     var confirmType by remember {mutableStateOf<String?>(null)}
     var suppressTap by remember {mutableStateOf(false)}
+    androidx.activity.compose.BackHandler(enabled=confirmType!=null || menuFor!=null || selected!=null || showLoad || showMore || showPractice || showDomainAiPractice || showResult) {
+        when {showDomainAiPractice->showDomainAiPractice=false;confirmType!=null->confirmType=null;menuFor!=null->menuFor=null;showLoad->showLoad=false;showMore->showMore=false;selected!=null->selected=null;showPractice->showPractice=false;showResult->showResult=false}
+    }
     val textMeasurer=rememberTextMeasurer()
     val timelinePainter=rememberVectorPainter(Icons.Outlined.Layers)
     val vw=viewportSize.width.toFloat(); val vh=viewportSize.height.toFloat()
@@ -183,13 +225,32 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
         if(!d.editable) {say("This flow is read-only. Tap Copy to edit your own copy, or New to start empty.",true);return}
         val w=toWorld(at-canvasRect.topLeft)
         val added=DraftEdits.add(d,type,w.x-FlowLayout.NODE_W/2f,w.y-FlowLayout.PORT_Y) ?: return
-        draft=added.first; selected=added.second; check=null
+        edit(com.projectrevivesolutions.layertime.controller.flow.GuidedBuilder.attach(added.first,added.second)); selected=null; check=null
         say("Added ${StepRegistry.spec(type)?.title}. Drag from its right dot to connect it.")
     }
 
+    fun addByTap(type:String) {
+        val base=draft ?: com.projectrevivesolutions.layertime.controller.flow.GuidedBuilder.newAnalysis()
+        val added=com.projectrevivesolutions.layertime.controller.flow.GuidedBuilder.add(base,type) ?: return
+        edit(added.first);selected=null;check=null;fit()
+        if(type==StepRegistry.WIRESHARK_PLACEHOLDER) menuFor=added.second
+        say("Block added. Tap it on the canvas to configure it.")
+    }
+    LaunchedEffect(lastRun) {if(lastRun?.finding!=null && lastRun?.workflow==draft?.workflow)showResult=true}
+    fun runAnalysis() {
+        val d=draft ?: return
+        if(TriageSession.runOnCaptureAlone(d.workflow)) say("Analyzing. Your report will open when it finishes.")
+        else say("Load a recording first.",true)
+    }
+
     Box(Modifier.fillMaxSize().onGloballyPositioned {screenOrigin=it.positionInRoot()}) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-    OpsTelemetryHousing(Modifier.fillMaxWidth().height(560.dp)) {
+    if(showResult && lastRun?.workflow==draft?.workflow && lastRun?.finding!=null) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+            BuilderTextButton("Back to blocks",true){showResult=false}
+            FindingCard(lastRun!!.finding!!,onWireshark)
+        }
+    } else Column(Modifier.fillMaxSize()) {
+    OpsTelemetryHousing(Modifier.fillMaxWidth().weight(1f)) {
         Column(Modifier.fillMaxSize().padding(start=18.dp,end=18.dp,top=20.dp,bottom=20.dp),
             verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)) {
@@ -203,17 +264,28 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
                 BuilderControl("Reset view to 100 percent",Icons.Outlined.CenterFocusStrong) {
                     if(vw>0f)update(current().transform(1f/zoom,vw/2f,vh/2f,0f,0f,vw,vh,worldWidth,worldHeight))}
             }
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                val d=draft
-                BuilderTextButton("Copy",d!=null && d.shipped) {
-                    draft=DraftEdits.copyOf(d!!); check=null; say("This is your own copy. Drag steps in from the Tools Palette below, or rewire what is here.")}
-                BuilderTextButton("New",true) {draft=DraftEdits.blank(); selected=null; check=null
-                    say("An empty flow. Hold a step in the Tools Palette and drag it here.")}
-                BuilderTextButton("Save",d!=null && d.editable && d.workflow.steps.isNotEmpty()) {
-                    val saved=WorkflowStore.save(context,d!!); draft=saved; flows=WorkflowStore.list(context)
-                    say("Saved ${saved.workflow.name}, version ${saved.workflow.version}.")}
-                BuilderTextButton("Check",d!=null && d.workflow.steps.isNotEmpty()) {check=DraftEdits.checkScenarios(d!!.workflow)}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                BuilderTextButton("New",true){edit(com.projectrevivesolutions.layertime.controller.flow.GuidedBuilder.newAnalysis());selected=null;check=null;fit()}
+                BuilderTextButton("Load",true){flows=WorkflowStore.list(context);showLoad=true}
+                BuilderTextButton("Save",draft?.workflow?.steps?.isNotEmpty()==true){draft?.let {d->
+                    runCatching {WorkflowStore.save(context,d)}.onSuccess {edit(it);flows=WorkflowStore.list(context);say("Saved ${it.workflow.name}, version ${it.workflow.version}.")}
+                        .onFailure {say("Could not save: ${it.message}",true)}
+                }}
+                BuilderTextButton(if(analysisRunning)"Running" else "Run",!analysisRunning && captureState is com.projectrevivesolutions.layertime.controller.wireshark.PcapImport.State.Done && draft?.let {DraftEdits.sentences(it.workflow).isEmpty()}==true){runAnalysis()}
             }
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                BuilderTextButton("Recording",true){captureImport.pick()}
+                BuilderTextButton("Undo",undo.isNotEmpty()) {val old=undo.last();redo=(redo+listOfNotNull(draft)).takeLast(50);undo=undo.dropLast(1);draft=old;selected=null}
+                BuilderTextButton("Redo",redo.isNotEmpty()) {val next=redo.last();undo=(undo+listOfNotNull(draft)).takeLast(50);redo=redo.dropLast(1);draft=next;selected=null}
+                BuilderTextButton("More",true){showMore=true}
+            }
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                Text(draft?.workflow?.name ?: "New analytic",color=BuilderInk,style=BuilderType.copy(fontSize=13.sp),maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f))
+                BuilderTextButton("Review / AI",true){showReview=true}
+            }
+            BuilderToolsPalette(onPick={addByTap(it.type)},onUnavailable={},
+                onDragStart={type,at->paletteDrag=type;dragRoot=at},onDrag={dragRoot+=it},
+                onDragEnd={paletteDrag?.let {dropFromPalette(it,dragRoot)};paletteDrag=null},onDragCancel={paletteDrag=null})
             val glass=RoundedCornerShape(5.dp)
             Canvas(Modifier.fillMaxWidth().weight(1f).background(Color(0xFF020D16),glass)
                 .border(.6.dp,BuilderCyan.copy(alpha=.45f),glass).clip(glass)
@@ -229,13 +301,14 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
                             val id = nodeAt(d0, p)
                             val type = id?.let { d0.workflow.step(it)?.type }
                             if (id != null && (type == StepRegistry.WIRESHARK_PLACEHOLDER || type in StepRegistry.WIRESHARK_CHECKS)) {
-                                selected = id; menuFor = id; suppressTap = true
+                                selected = null; menuFor = id; suppressTap = true
                             }
                         }
                     })
                 }
                 .pointerInput(viewportSize) {
                     awaitEachGesture {
+                        moving=false
                         val down=awaitFirstDown(requireUnconsumed=false)
                         val start=down.position
                         val d0=draft
@@ -258,7 +331,7 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
                                 val ch=pressed.first()
                                 if((ch.position-start).getDistance()>viewConfiguration.touchSlop) moved=true
                                 if(moved) when(mode) {
-                                    Grab.MOVE -> { val w=toWorld(ch.position); draft=DraftEdits.move(draft!!,onNode!!,w.x-grab.x,w.y-grab.y) }
+                                    Grab.MOVE -> { val w=toWorld(ch.position); edit(DraftEdits.move(draft!!,onNode!!,w.x-grab.x,w.y-grab.y),move=true) }
                                     Grab.WIRE -> wireEnd=ch.position
                                     Grab.PAN -> { val dlt=ch.positionChange()
                                         if(vw>0f)update(current().transform(1f,0f,0f,dlt.x,dlt.y,vw,vh,worldWidth,worldHeight)) }
@@ -273,7 +346,7 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
                             val target=inputAt(d1,wireEnd)
                             if(from!=null && target!=null) {
                                 when(val r=DraftEdits.connect(d1,from,target.first,target.second)) {
-                                    is ConnectResult.Done -> {draft=r.draft; check=null
+                                    is ConnectResult.Done -> {edit(r.draft); check=null
                                         say("Connected ${StepRegistry.spec(d1.workflow.step(from)!!.type)?.title} to ${StepRegistry.spec(d1.workflow.step(target.first)!!.type)?.title}.")}
                                     is ConnectResult.Refused -> say(r.sentence,true)
                                 }
@@ -318,7 +391,7 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
                     drawTile(this,spec,tl,sz,zoom,status,s.id==selected,timelinePainter)
                     if(zoom>=.3f) {
                         val title=spec?.title ?: s.type
-                        val value=when(out) {is Feature->out.value;is Finding->out.verdict.label;else->""}
+                        val value=when(out) {is Feature->out.value;is Finding->out.assessmentLabel;else->""}
                         drawText(textMeasurer,title,Offset(tl.x+4.dp.toPx()*zoom,tl.y+50.dp.toPx()*zoom),
                             TextStyle(color=BuilderInk,fontSize=with(density){(12.dp.toPx()*zoom).toSp()},lineHeight=with(density){(14.dp.toPx()*zoom).toSp()},
                                 fontFamily=FontFamily.SansSerif,textAlign=TextAlign.Center),
@@ -336,50 +409,66 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
                 }
             }
             LaunchedEffect(initialized,draft==null) { if(initialized) fit() }
-            val d=draft
-            Text(when {
-                d==null -> "No flow is open. Tap New, or open one from the list below."
-                d.shipped -> "${d.workflow.name}, version ${d.workflow.version}, shipped and read-only. Tap Copy to edit your own copy."
-                else -> "${d.workflow.name}, version ${d.workflow.version}, your own. Hold a step in the Tools Palette and drag it here; drag from a right dot to a left dot to connect."
-            },color=BuilderMuted,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp))
-            message?.let {(t,bad)-> Text(t,color=if(bad)BuilderAmber else BuilderCyan,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp))}
+            val issues=draft?.let {DraftEdits.sentences(it.workflow)}.orEmpty()
+            val recording=captureState as? com.projectrevivesolutions.layertime.controller.wireshark.PcapImport.State.Done
+            Text(when { analysisRunning->"Running analytic..."; issues.isNotEmpty() && draft?.workflow?.steps?.size==2->"Add a Wireshark or Timeline block to begin."; issues.isNotEmpty()->issues.first();recording==null->"Choose a recording to test this analytic.";else->"${recording.result.totalFrames} packets ready. Tap a block to edit; connect matching ports." },
+                color=if(issues.isNotEmpty())BuilderAmber else BuilderMuted,style=BuilderType,maxLines=2,overflow=TextOverflow.Ellipsis)
+
         }
     }
-    // What is wrong with the open flow, and how it did on the test scenarios.
-    draft?.takeIf {it.workflow.steps.isNotEmpty()}?.let {d->
-        val problems=remember(d.workflow) {DraftEdits.sentences(d.workflow)}
-        OpsConnectionHousing(Modifier.fillMaxWidth()) {
-            Column(Modifier.fillMaxWidth().padding(start=18.dp,end=18.dp,top=14.dp,bottom=16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                Text(if(problems.isEmpty())"ACCEPTED" else "NOT ACCEPTED YET",color=if(problems.isEmpty())BuilderGreen else BuilderAmber,
-                    style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp,letterSpacing=.6.sp))
-                if(problems.isEmpty()) Text("The wiring holds together, so this flow can run.",color=BuilderInk,style=BuilderType)
-                problems.take(6).forEach {Text(it,color=BuilderInk,style=BuilderType)}
-                if(problems.size>6) Text("${problems.size-6} more problems are not shown.",color=BuilderMuted,style=BuilderType)
-                check?.let {Text(it.sentence,color=if(it.failures.isEmpty())BuilderGreen else BuilderAmber,style=BuilderType)}
+
+        analysisError?.let {Text(it,color=BuilderAmber,style=BuilderType)}
+        message?.let {Text(it.first,color=if(it.second)BuilderAmber else BuilderCyan,style=BuilderType,maxLines=2,overflow=TextOverflow.Ellipsis)}
+    }
+    if(showLoad) BuilderLoadMenu(flows,onDismiss={showLoad=false},onLoad={entry->
+        WorkflowStore.open(context,entry)?.let {opened->
+            edit(if(opened.shipped)DraftEdits.copyOf(opened) else opened);showLoad=false;selected=null;check=null;showResult=false;fit()
+        } ?: say("Could not load this analytic.",true)
+    },onImport={showLoad=false;importFlow.launch(arrayOf("application/json","text/plain","application/octet-stream"))},onPractice={
+        runCatching {
+            check(!com.projectrevivesolutions.layertime.controller.wireshark.PcapImport.running){"A recording is still loading."}
+            edit(DraftEdits.copyOf(DraftEdits.open(com.projectrevivesolutions.layertime.controller.flow.BuilderPractice.workflow(),null,true)))
+            val file=java.io.File(context.cacheDir,com.projectrevivesolutions.layertime.controller.flow.BuilderPractice.FILE_NAME)
+            file.writeBytes(com.projectrevivesolutions.layertime.controller.flow.BuilderPractice.fixture().pcap())
+            com.projectrevivesolutions.layertime.controller.wireshark.PcapImport.start(context,android.net.Uri.fromFile(file),training=true)
+            showLoad=false;showResult=false;fit();say("Practice blocks and recording loaded. Tap Run to test them.")
+        }.onFailure {say("Could not load practice: ${it.message}",true)}
+    })
+    if(showMore) BuilderModal(onDismiss={showMore=false}) {
+        Text("ANALYTIC",color=BuilderCyan,style=BuilderType)
+        draft?.let {d->
+            OutlinedTextField(value=d.workflow.name,onValueChange={edit(d.copy(workflow=d.workflow.copy(name=it)))},label={Text("Analytic name")},modifier=Modifier.fillMaxWidth(),textStyle=BuilderType.copy(color=BuilderInk))
+            BuilderTextButton("Arrange blocks",true){edit(DraftEdits.open(d.workflow,null,false).copy(authoring=d.authoring));showMore=false;fit()}
+            BuilderTextButton("Use for triage",DraftEdits.sentences(d.workflow).isEmpty()){TriageSession.use(d.workflow);showMore=false;say("This analytic is now selected for detection triage.")}
+            BuilderTextButton("Share analytic",DraftEdits.sentences(d.workflow).isEmpty()) {
+                runCatching {
+                    val dir=java.io.File(context.filesDir,"exports").apply {mkdirs()}
+                    val file=java.io.File(dir,"${WorkflowStore.slug(d.workflow.name)}-v${d.workflow.version}.json").apply {writeText(DraftEdits.write(d))}
+                    val uri=androidx.core.content.FileProvider.getUriForFile(context,context.packageName+".fileprovider",file)
+                    val intent=android.content.Intent(android.content.Intent.ACTION_SEND).apply {type="application/json";putExtra(android.content.Intent.EXTRA_STREAM,uri);addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)}
+                    context.startActivity(android.content.Intent.createChooser(intent,"Share analytic"))
+                }.onFailure {say("Could not share: ${it.message}",true)}
             }
+            if(d.authoring!=null)Text("Sharing includes the original authoring prompt and model version. Review the prompt for private context before sharing.",color=BuilderMuted,style=BuilderType.copy(fontSize=12.sp))
+            BuilderTextButton("Test deauth examples",DraftEdits.sentences(d.workflow).isEmpty()){check=DraftEdits.checkScenarios(d.workflow);say(check!!.sentence,check!!.failures.isNotEmpty());showMore=false}
         }
+        BuilderTextButton("Practice guide",true){showMore=false;showPractice=true}
+        if(com.projectrevivesolutions.layertime.controller.BuildConfig.DEBUG)
+            BuilderTextButton("Test trained AI",true){showMore=false;showDomainAiPractice=true}
     }
-    selected?.let {id-> draft?.let {d-> d.workflow.step(id)?.let {step->
-        BuilderStepDetail(d,step,lastRun?.takeIf {it.workflow==d.workflow}?.output(id),
-            onChange={draft=it; check=null},onRemove={draft=DraftEdits.remove(d,id); selected=null; check=null},onClose={selected=null},
-            onChooseCheck={menuFor=it})
+    if(showDomainAiPractice) BuilderModal(onDismiss={showDomainAiPractice=false}) {DomainAiPracticePanel()}
+    if(showPractice) BuilderModal(onDismiss={showPractice=false}) {
+        BuilderPracticePanel(onOpen={w->edit(DraftEdits.copyOf(DraftEdits.open(w,null,true)));showPractice=false;fit()},onWireshark=onWireshark)
+    }
+    if(showReview) BuilderReviewPanel(onDismiss={showReview=false},onWireshark=onWireshark,
+        onDraft={edit(it);selected=null;check=null;showResult=false;fit()})
+    selected?.let {id->draft?.let {d->d.workflow.step(id)?.let {step->
+        BuilderModal(onDismiss={selected=null}) {
+            BuilderStepDetail(d,step,lastRun?.takeIf {it.workflow==d.workflow}?.output(id),
+                onChange={edit(it);check=null},onRemove={edit(DraftEdits.remove(d,id));selected=null;check=null},onClose={selected=null},
+                onChooseCheck={selected=null;menuFor=it},onOpenWireshark=onWireshark)
+        }
     }}}
-    BuilderToolsPalette(
-        onPick={spec-> say("${spec.title}: ${spec.description} Hold it and drag it onto the workspace.")},
-        onUnavailable={say("ATTACK TIMELINE is not a workflow step yet, so it cannot be placed. Open it from the Tools page.",true)},
-        onDragStart={type,at-> paletteDrag=type; dragRoot=at},
-        onDrag={delta-> dragRoot+=delta},
-        onDragEnd={ paletteDrag?.let {dropFromPalette(it,dragRoot)}; paletteDrag=null },
-        onDragCancel={paletteDrag=null},
-    )
-    BuilderFlowList(flows,draft,
-        onOpen={e-> WorkflowStore.open(context,e)?.let {draft=it; selected=null; check=null; fit()
-            say("Opened ${e.name}, version ${e.version}.")} ?: say("${e.name} could not be opened.",true)},
-        onUse={e-> val w=WorkflowStore.open(context,e)?.workflow
-            if(w!=null && TriageSession.use(w)) say("TRIAGE now runs ${e.name}, version ${e.version}.") else say("${e.name} is not accepted, so TRIAGE cannot use it.",true)},
-        onRefresh={flows=WorkflowStore.list(context)})
-    Spacer(Modifier.height(16.dp))
-    }
     // The Wireshark check menu and its confirm popup, above everything.
     menuFor?.let {id->
         WiresharkCheckMenu(
@@ -389,7 +478,7 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
     }
     confirmType?.let {type-> val id=menuFor
         if(id!=null) WiresharkConfirm(type,
-            onYes={ draft=draft?.let {DraftEdits.assign(it,id,type)}; check=null; confirmType=null; menuFor=null
+            onYes={ edit(draft?.let {com.projectrevivesolutions.layertime.controller.flow.GuidedBuilder.attach(DraftEdits.assign(it,id,type),id)}); check=null; confirmType=null; menuFor=null
                 say("This Wireshark check is now ${StepRegistry.spec(type)?.title}.") },
             onNo={confirmType=null})
     }
@@ -409,9 +498,19 @@ fun BuilderScreen(onWireshark:()->Unit={},onTimeline:()->Unit={}) {
  */
 private fun drawTile(ds:DrawScope,spec:StepSpec?,tl:Offset,sz:Size,zoom:Float,status:Color,selected:Boolean,
                      timeline:androidx.compose.ui.graphics.painter.Painter) = with(ds) {
-    val r=CornerRadius(6.dp.toPx()*zoom)
-    drawRoundRect(Color(0xFF0B2433).copy(alpha=.55f),tl,sz,r)
-    drawRoundRect(if(selected)Color.White else status.copy(alpha=.7f),tl,sz,r,style=Stroke((if(selected)2f else .8f).dp.toPx()*zoom.coerceIn(.5f,2f)))
+    val shoulder=8.dp.toPx()*zoom
+    val hasInput=spec?.inputs?.isNotEmpty()==true
+    val hasOutput=spec?.output!=null
+    val body=Path().apply {
+        moveTo(tl.x,tl.y);lineTo(tl.x+sz.width-(if(hasOutput)shoulder else 0f),tl.y)
+        if(hasOutput) {lineTo(tl.x+sz.width-shoulder,tl.y+sz.height*.19f);lineTo(tl.x+sz.width,tl.y+sz.height*.24f);lineTo(tl.x+sz.width,tl.y+sz.height*.34f);lineTo(tl.x+sz.width-shoulder,tl.y+sz.height*.39f)}
+        lineTo(tl.x+sz.width-(if(hasOutput)shoulder else 0f),tl.y+sz.height);lineTo(tl.x,tl.y+sz.height)
+        if(hasInput) {lineTo(tl.x,tl.y+sz.height*.39f);lineTo(tl.x+shoulder,tl.y+sz.height*.34f);lineTo(tl.x+shoulder,tl.y+sz.height*.24f);lineTo(tl.x,tl.y+sz.height*.19f)}
+        close()
+    }
+    val material=when(spec?.type) {"capture_source","event_source"->Color(0xFF43351A);"target_behavior"->Color(0xFF2C2147);"deauth_verdict"->Color(0xFF173B31);else->Color(0xFF123447)}
+    drawPath(body,material)
+    drawPath(body,if(selected)Color.White else status.copy(alpha=.85f),style=Stroke((if(selected)2f else 1f).dp.toPx()*zoom.coerceIn(.5f,2f)))
     val icon=36.dp.toPx()*zoom
     val at=Offset(tl.x+(sz.width-icon)/2f,tl.y+6.dp.toPx()*zoom)
     when(LayerTool.of(spec?.tool)) {
@@ -457,31 +556,37 @@ private fun PaletteTile(spec:StepSpec?,enabled:Boolean,highlight:Boolean=false,t
 @Composable
 private fun BuilderToolsPalette(onPick:(StepSpec)->Unit,onUnavailable:()->Unit,
                                 onDragStart:(String,Offset)->Unit,onDrag:(Offset)->Unit,onDragEnd:()->Unit,onDragCancel:()->Unit) {
-    OpsConnectionHousing(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().padding(start=18.dp,end=18.dp,top=17.dp,bottom=18.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
-            Text("TOOLS PALETTE",color=BuilderInk,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp,letterSpacing=.6.sp))
-            Text("Tap a step to read what it does. Hold it and drag it onto the workspace to place it.",
-                color=BuilderMuted,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp))
-            val shape=RoundedCornerShape(5.dp)
-            Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xFF092331),Color(0xFF030F19))),shape)
-                .border(.6.dp,BuilderCyan.copy(alpha=.3f),shape).clip(shape).horizontalScroll(rememberScrollState()).padding(6.dp),
-                horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                for(type in StepRegistry.PALETTE) {
+    var category by remember {mutableStateOf("Wireshark")}
+    var expanded by remember {mutableStateOf(true)}
+    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        Text(if(expanded)"BLOCKS - tap to add / hold to drag" else "BLOCKS - tap to expand",color=BuilderCyan,
+            style=BuilderType.copy(fontSize=11.sp),modifier=Modifier.clickable {expanded=!expanded})
+        if(expanded) {
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+                for(label in listOf("Evidence","Wireshark","Timeline","Report")) {
+                    Box(Modifier.weight(1f).clickable(role=Role.Tab){category=label}
+                        .border(.7.dp,if(category==label)BuilderCyan else BuilderMuted.copy(alpha=.2f),RoundedCornerShape(4.dp))
+                        .padding(vertical=6.dp),contentAlignment=Alignment.Center) {
+                        Text(label,color=if(category==label)BuilderCyan else BuilderMuted,
+                            style=BuilderType.copy(fontSize=11.sp),maxLines=1)
+                    }
+                }
+            }
+            val types=when(category) {
+                "Evidence"->listOf("capture_source","event_source")
+                "Wireshark"->StepRegistry.WIRESHARK_CHECKS
+                "Timeline"->listOf("target_behavior")
+                else->listOf("deauth_verdict")
+            }
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical=2.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                for(type in types) {
                     val spec=StepRegistry.spec(type)!!
                     var origin by remember {mutableStateOf(Offset.Zero)}
                     Box(Modifier.onGloballyPositioned {origin=it.positionInRoot()}
-                        .pointerInput(spec.type) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart={off-> onDragStart(spec.type,origin+off)},
-                                onDrag={ch,amount-> ch.consume(); onDrag(amount)},
-                                onDragEnd={onDragEnd()},onDragCancel={onDragCancel()})
-                        }
-                        .clickable(role=Role.Button,onClickLabel="What ${spec.title} does") {onPick(spec)}) {
-                        PaletteTile(spec,enabled=true)
-                    }
-                }
-                Box(Modifier.clickable(role=Role.Button,onClickLabel="Attack timeline is not available") {onUnavailable()}) {
-                    PaletteTile(null,enabled=false,tool=LayerTool.ATTACK_TIMELINE,title=LayerTool.ATTACK_TIMELINE.title)
+                        .pointerInput(type) {detectDragGesturesAfterLongPress(
+                            onDragStart={off->onDragStart(type,origin+off)},onDrag={change,delta->change.consume();onDrag(delta)},
+                            onDragEnd={onDragEnd()},onDragCancel={onDragCancel()})}
+                        .clickable(role=Role.Button,onClickLabel="Add ${spec.title} block"){onPick(spec)}) {PaletteTile(spec,true)}
                 }
             }
         }
@@ -495,7 +600,7 @@ private fun BuilderFlowList(flows:List<WorkflowStore.Entry>,open:Draft?,onOpen:(
     OpsConnectionHousing(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(start=18.dp,end=18.dp,top=16.dp,bottom=18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
-                Text("ACCEPTED FLOWS",color=BuilderInk,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp,letterSpacing=.6.sp),modifier=Modifier.weight(1f))
+                Text("VALID WORKFLOWS",color=BuilderInk,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp,letterSpacing=.6.sp),modifier=Modifier.weight(1f))
                 BuilderTextButton("Refresh",true) {onRefresh()}
             }
             val accepted=flows.filter {it.accepted}
@@ -503,7 +608,7 @@ private fun BuilderFlowList(flows:List<WorkflowStore.Entry>,open:Draft?,onOpen:(
             accepted.forEach {e-> BuilderFlowRow(e,open,onOpen,onUse)}
             val pending=flows.filter {!it.accepted}
             if(pending.isNotEmpty()) {
-                Text("NOT ACCEPTED YET",color=BuilderAmber,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp,letterSpacing=.6.sp))
+                Text("NEEDS CHANGES",color=BuilderAmber,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp,letterSpacing=.6.sp))
                 pending.forEach {e-> BuilderFlowRow(e,open,onOpen,onUse)}
             }
         }
@@ -553,7 +658,7 @@ private fun BuilderControl(label:String,icon:ImageVector,enabled:Boolean=true,on
 /** A tapped tile: what it does, what feeds it, its settings, and on your own flow Disconnect and Remove. */
 @Composable
 private fun BuilderStepDetail(d:Draft,step:com.projectrevivesolutions.layertime.controller.flow.Step,output:Any?,
-                              onChange:(Draft)->Unit,onRemove:()->Unit,onClose:()->Unit,onChooseCheck:(String)->Unit) {
+                              onChange:(Draft)->Unit,onRemove:()->Unit,onClose:()->Unit,onChooseCheck:(String)->Unit,onOpenWireshark:()->Unit) {
     val spec=StepRegistry.spec(step.type)
     OpsConnectionHousing(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(start=18.dp,end=18.dp,top=16.dp,bottom=18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -576,17 +681,22 @@ private fun BuilderStepDetail(d:Draft,step:com.projectrevivesolutions.layertime.
             }
             Text("Produces: ${spec.output?.wire ?: "nothing"}.",color=BuilderMuted,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp))
             for(st in spec.settings) {
-                val v=((step.settings[st.key] ?: st.default) as? Number)?.toLong() ?: 0L
-                val inc=maxOf(1L,((st.default as? Number)?.toLong() ?: 10L)/10L)
-                Text("${st.description} Now $v.",color=BuilderMuted,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp))
-                if(d.editable) Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                    BuilderTextButton("Less",v-inc>=1) {onChange(DraftEdits.setSetting(d,step.id,st.key,v-inc))}
-                    BuilderTextButton("More",true) {onChange(DraftEdits.setSetting(d,step.id,st.key,v+inc))}
-                }
+                if(st.key=="rules") { ReportRuleEditor(d,step,onChange);continue }
+                val value=step.settings[st.key] ?: st.default
+                var entry by remember(step.id,st.key,value) {mutableStateOf(value.toString())}
+                Text(st.description,color=BuilderMuted,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp))
+                OutlinedTextField(value=entry,onValueChange={text ->
+                    entry=text
+                    val parsed:Any?=when(st.default) {is Number->text.toLongOrNull();is Boolean->text.toBooleanStrictOrNull();else->text}
+                    if(parsed!=null) onChange(DraftEdits.setSetting(d,step.id,st.key,parsed))
+                },enabled=d.editable,label={Text(st.key)},singleLine=st.key!="rules",
+                    modifier=Modifier.fillMaxWidth(),textStyle=BuilderType.copy(color=BuilderInk),
+                    isError=st.default is Number && entry.toLongOrNull()==null)
+                if(st.key=="rules") Text("Rules can read Timeline metrics by block ID: linked_episodes, episodes, eapol_frames, disconnect_frames, targets. Sentence blanks include {target_behavior.eapol_frames}. Optional label sets your assessment heading.",color=BuilderMuted,style=BuilderType)
             }
             when(output) {
                 is Feature -> Text("Last run: ${output.value}. ${output.reason}",color=leanColor(output.lean),style=BuilderType)
-                is Finding -> Text("Last run: ${output.verdict.label}. ${output.summary}",color=verdictColor(output.verdict),style=BuilderType)
+                is Finding -> FindingCard(output,onOpenWireshark)
                 else -> {}
             }
             if(d.editable) BuilderTextButton("Remove",true) {onRemove()}
@@ -610,8 +720,9 @@ private fun WiresharkCheckMenu(current:String?,onHold:(String)->Unit,onDismiss:(
             .border(1.dp,BuilderCyan.copy(alpha=.5f),shape).clip(shape)
             .pointerInput(Unit){detectTapGestures{}}
             .padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+            FrameBackControl(onBack={onDismiss()})
             Text("WIRESHARK CHECKS",color=BuilderInk,style=BuilderType.copy(fontSize=13.sp,lineHeight=16.sp,letterSpacing=.6.sp))
-            Text("Hold a check to choose it. Drag to scroll. Tap outside this box to close it.",
+            Text("Tap a check to choose it. Drag to scroll. Tap outside this box to close it.",
                 color=BuilderMuted,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp))
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 for(type in StepRegistry.WIRESHARK_CHECKS) {
@@ -620,7 +731,7 @@ private fun WiresharkCheckMenu(current:String?,onHold:(String)->Unit,onDismiss:(
                     val rshape=RoundedCornerShape(6.dp)
                     Row(Modifier.fillMaxWidth().background(Color(0xFF0A2130),rshape)
                         .border(if(chosen)1.2.dp else .6.dp,(if(chosen)BuilderGreen else BuilderCyan).copy(alpha=.5f),rshape).clip(rshape)
-                        .pointerInput(type){detectTapGestures(onLongPress={onHold(type)})}
+                        .clickable(role=Role.Button,onClickLabel="Choose ${spec.title}"){onHold(type)}
                         .padding(horizontal=12.dp,vertical=10.dp),
                         verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                         Canvas(Modifier.size(24.dp)){drawWiresharkFin(Offset.Zero,size.minDimension,BuilderCyan,1.2f*density)}
@@ -632,7 +743,7 @@ private fun WiresharkCheckMenu(current:String?,onHold:(String)->Unit,onDismiss:(
                     }
                 }
             }
-            BuilderTextButton("Close",true){onDismiss()}
+            FrameBackControl(bottom=true,onBack={onDismiss()})
         }
     }
 }
@@ -647,6 +758,7 @@ private fun WiresharkConfirm(type:String,onYes:()->Unit,onNo:()->Unit) {
         Column(Modifier.fillMaxWidth(.82f).background(Brush.verticalGradient(listOf(Color(0xFF0C2636),Color(0xFF05121D))),shape)
             .border(1.dp,BuilderGreen.copy(alpha=.6f),shape).clip(shape).pointerInput(Unit){detectTapGestures{}}
             .padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            FrameBackControl(onBack={onNo()})
             Text("Use \"${spec.title}\"?",color=BuilderInk,style=BuilderType.copy(fontSize=14.sp,lineHeight=18.sp))
             Text(wiresharkFieldHint(type),color=BuilderMuted,style=BuilderType.copy(fontSize=12.sp,lineHeight=15.sp))
             Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {

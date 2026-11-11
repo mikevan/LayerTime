@@ -1,0 +1,31 @@
+{
+  "examples": 480,
+  "trainRows": 384,
+  "validationRows": 48,
+  "freshTestRows": 48,
+  "knownDevelopmentRows": 16,
+  "trainWordingTemplates": 24,
+  "validationWordingTemplates": 6,
+  "freshAuthoredTestQuestions": 48,
+  "independentArithmeticAuditPasses": 480,
+  "nativeGoldDecisionsChecked": 480,
+  "nativeGoldDraftExecutions": 1440,
+  "sourceSha256": {
+    "tools\\ai-training\\build_intent_curriculum.py": "43feb6142de869b429d998ac5e342555e1468a820e2b9193e78b60e9ecadbbef",
+    "tools\\ai-training\\intent_curriculum_audit.py": "ac397d0d1a4b14751c4e62e831b525deb8b2462a61cda60c76f6ae2754f4d609",
+    "tools\\ai-training\\analytic_intent.py": "7c43b6d768302fa178efff99591050e7755761daed6ac44afe58f2a576522c42",
+    "tools\\ai-training\\train_lora.py": "ab99d8738799647bdcc845c3c65a0027b9d61a84cb561eec7bc963dd254a28b1",
+    "tools\\ai-training\\prepare.py": "f9c136178a04a7676711ac2bdbc9fe97865d27caa285bbb50343eb00432b02d8",
+    "devices\\layertime-controller-android\\app\\src\\main\\java\\com\\projectrevivesolutions\\layertime\\controller\\ai\\AnalyticIntent.kt": "a0549675b5eede9faad91b770eec2b67f597811db6b9eef42b1b79a3bc78b0e2",
+    "devices\\layertime-controller-android\\app\\src\\test\\java\\com\\projectrevivesolutions\\layertime\\controller\\AnalyticIntentTest.kt": "b1299a133bf7df2e37d23e394003677e9ec99260c718c6f9636d6e20b98deb8c"
+  },
+  "independentExpertReview": false,
+  "approvedForBoundedTraining": true,
+  "releaseEligible": false,
+  "limitations": [
+    "Training/validation are parameterized authored templates, not hundreds of independent users.",
+    "Fresh tests are authored by the same developer; no independent user population or field qualification.",
+    "Old 16 failures are development checks under v2 instructions and are not fresh held-out evidence.",
+    "Native engine correctness does not establish natural-language meaning; source wording requires review."
+  ]
+}

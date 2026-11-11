@@ -71,6 +71,7 @@ fun HunterCardScreen(onBack: () -> Unit, onOpenWireshark: () -> Unit) {
     var logs by remember { mutableStateOf<List<CardFile>>(emptyList()) }
     var chosen by remember { mutableStateOf<CardFile?>(null) }
     var parsed by remember { mutableStateOf<HunterCardLog.Log?>(null) }
+    androidx.activity.compose.BackHandler(enabled=chosen!=null){chosen=null;parsed=null}
     var evidence by remember { mutableStateOf<Map<String, Uri>>(emptyMap()) }
     var message by remember { mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
@@ -111,7 +112,7 @@ fun HunterCardScreen(onBack: () -> Unit, onOpenWireshark: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SciFiOutline("‹ BACK", enabled = true) { if (chosen != null) { chosen = null; parsed = null } else onBack() }
+                if(com.projectrevivesolutions.layertime.controller.DeviceKind.isLokmatWatch) SciFiOutline("‹ BACK", enabled = true) { if (chosen != null) { chosen = null; parsed = null } else onBack() }
                 Text("HUNTER CARD", color = LtColors.ConsoleEdge, fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 1.sp, style = glowText())
             }
         }

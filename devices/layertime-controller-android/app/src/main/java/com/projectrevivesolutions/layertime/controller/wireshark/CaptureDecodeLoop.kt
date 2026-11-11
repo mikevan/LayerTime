@@ -30,6 +30,8 @@ object CaptureDecodeLoop {
             if (last) " final" else "")
     }
 
+    const val ANALYSIS_LIMIT = 200000
+
     data class Result(
         val totalFrames: Int,
         val kept: List<WiresharkDecoder.PcapFrame>,
@@ -37,7 +39,9 @@ object CaptureDecodeLoop {
         val cancelled: Boolean,
         val readError: String?,
         val elapsedSeconds: Double,
-        val malformedFrames: Int
+        val malformedFrames: Int,
+        val observations: List<com.projectrevivesolutions.layertime.controller.flow.AnalyticFrame> = emptyList(),
+        val analysisLimit: Int = ANALYSIS_LIMIT,
     )
 
     /** Tracks rate per interval. Pure; time is passed in. */
@@ -68,8 +72,11 @@ object CaptureDecodeLoop {
         nowNs: () -> Long,
         beatIntervalNs: Long = 5_000_000_000L,
         onBeat: (Beat) -> Unit,
-        onFrame: (WiresharkDecoder.PcapFrame) -> Unit = {}
+        onFrame: (WiresharkDecoder.PcapFrame) -> Unit = {},
+        analysisLimit: Int = ANALYSIS_LIMIT
     ): Result {
+        require(analysisLimit > 0 && keepLimit >= 0)
+        val observations = ArrayList<com.projectrevivesolutions.layertime.controller.flow.AnalyticFrame>()
         val start = nowNs()
         val meter = RateMeter(beatIntervalNs, start)
         val kept = ArrayList<WiresharkDecoder.PcapFrame>()
@@ -83,6 +90,7 @@ object CaptureDecodeLoop {
             count++
             if (f.malformed) malformed++
             if (kept.size < keepLimit) kept.add(f)
+            if (observations.size < analysisLimit) observations.add(com.projectrevivesolutions.layertime.controller.flow.AnalyticFrame.fromPcap(count - 1, f))
             percent = percentOf(f.fileOffset, source.fileSize)
             onFrame(f)
             meter.tick(count, nowNs(), percent)?.let(onBeat)
@@ -90,6 +98,6 @@ object CaptureDecodeLoop {
         val end = nowNs()
         meter.tick(count, end, if (wasCancelled) percent else 100.takeIf { source.fileSize > 0 }, force = true)?.let(onBeat)
         val err = if (wasCancelled) null else source.error
-        return Result(count, kept, keepLimit, wasCancelled, err, (end - start) / 1e9, malformed)
+        return Result(count, kept, keepLimit, wasCancelled, err, (end - start) / 1e9, malformed, observations, analysisLimit)
     }
 }

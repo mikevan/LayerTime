@@ -1,0 +1,19 @@
+{
+  "appliedUpdatesThisStage": 682,
+  "parentAppliedUpdates": 1090,
+  "cumulativeAppliedUpdates": 1772,
+  "skippedUpdates": 0,
+  "trainingExamples": 341,
+  "validationExamples": 13,
+  "testExamples": 12,
+  "acceptancePassed": 2,
+  "acceptanceCases": 12,
+  "previousAcceptancePassed": 2,
+  "improvement": "BLE address-type interpretation",
+  "regression": "Captured instruction explanation",
+  "decision": "Do not replace the phone model: required Wi-Fi identity and timing findings still fail",
+  "phoneBuildRetained": 122,
+  "phoneModelRetained": "domain-v1-1090-q4km",
+  "releaseEligible": false,
+  "adapterSha256": "45c75c3ff286a89de4d328f08428f6b441ceb252dd47f6f9d42a0ffd60220e1c"
+}

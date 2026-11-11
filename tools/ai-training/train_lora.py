@@ -11,7 +11,8 @@ from prepare import verify
 
 def main():
     source_names=['train_lora.py','completion_loss.py','prepare.py','assemble_development_corpus.py','training_stability.py',
-                  'audit_policy_curriculum.py','evaluate_local_model.py','evidence_facts.py','grounded_contract.py','analytic_intent.py','intent_curriculum_audit.py','training_recovery.py','analytic_quantity.py','quantity_ontology.py']
+                  'audit_policy_curriculum.py','evaluate_local_model.py','evidence_facts.py','grounded_contract.py','analytic_intent.py','intent_curriculum_audit.py','training_recovery.py','analytic_quantity.py','quantity_ontology.py',
+                  'domain_training_profile.py','compact_domain_contract.py','blue_team_contracts.py','repair_domain_views_v2.py','frozen_cpu_layers.py']
     source_snapshot={name:Path(__file__).with_name(name).read_bytes() for name in source_names}
     parser=argparse.ArgumentParser()
     parser.add_argument('--dataset',type=Path,required=True)
@@ -28,9 +29,17 @@ def main():
                         help='Initial CUDA FP16 gradient loss scale; recorded in runtime provenance')
     parser.add_argument('--qlora',action='store_true',help='NF4 base weights with trainable LoRA adapters')
     parser.add_argument('--multitask',action='store_true',help='Verify source-grounded explanation tasks alongside capture reviews')
+    parser.add_argument('--domain',action='store_true',help='Use the explicitly admitted compact blue-team domain profile')
+    parser.add_argument('--lora-rank',type=int,default=8)
+    parser.add_argument('--lora-alpha',type=int,default=16)
+    parser.add_argument('--learning-rate',type=float,default=1e-4)
+    parser.add_argument('--cpu-frozen-layers',action='store_true',help='Keep frozen embedding and output matrices on CPU to reduce GPU memory')
     parser.add_argument('--merge-system-messages',action='store_true',help='Preserve all leading system instructions for single-system native templates')
     parser.add_argument('--dry-run',action='store_true')
     args=parser.parse_args()
+    if args.domain and args.multitask:parser.error('Choose one corpus profile')
+    if not 1<=args.lora_rank<=128 or not 1<=args.lora_alpha<=256:parser.error('Invalid LoRA configuration')
+    if not math.isfinite(args.learning_rate) or not 0<args.learning_rate<=1e-3:parser.error('Invalid learning rate')
     if not 1<=args.max_steps<=100000 or not 1<=args.gradient_accumulation<=256:
         parser.error('Invalid optimizer update or accumulation count')
     if not math.isfinite(args.initial_loss_scale) or args.initial_loss_scale<1:
@@ -40,7 +49,10 @@ def main():
     if (args.pause_at_checkpoint or args.resume_last_checkpoint) and not args.checkpoint_steps:
         parser.error('Checkpoint recovery/pause requires a checkpoint interval')
     if args.pause_at_checkpoint and args.resume_last_checkpoint:parser.error('Resume without the pause flag')
-    if args.multitask:
+    if args.domain:
+        from domain_training_profile import verify as verify_domain
+        manifest=verify_domain(args.dataset)
+    elif args.multitask:
         from assemble_development_corpus import verify as verify_multitask
         manifest=verify_multitask(args.dataset)
     else:manifest=verify(args.dataset)
@@ -159,6 +171,10 @@ def main():
             load_in_4bit=True,bnb_4bit_quant_type='nf4',bnb_4bit_use_double_quant=True,
             bnb_4bit_compute_dtype=torch.float16))
     model=AutoModelForCausalLM.from_pretrained(str(args.base_model),**load_options)
+    if args.cpu_frozen_layers:
+        from frozen_cpu_layers import offload_frozen_io
+        torch.set_num_threads(4)
+        offload_frozen_io(model)
     if args.qlora:
         model=prepare_model_for_kbit_training(model,use_gradient_checkpointing=True,
             gradient_checkpointing_kwargs={'use_reentrant':False})
@@ -166,10 +182,10 @@ def main():
     if args.initial_adapter:
         model=PeftModel.from_pretrained(model,args.output/'initial-adapter',local_files_only=True,is_trainable=True)
     else:
-        model=get_peft_model(model,LoraConfig(r=8,lora_alpha=16,lora_dropout=0.05,
+        model=get_peft_model(model,LoraConfig(r=args.lora_rank,lora_alpha=args.lora_alpha,lora_dropout=0.05,
             target_modules=['q_proj','v_proj'],task_type='CAUSAL_LM'))
     arguments=TrainingArguments(output_dir=str(args.output),max_steps=args.max_steps,per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,gradient_accumulation_steps=args.gradient_accumulation,learning_rate=1e-4,fp16=True,
+        per_device_eval_batch_size=1,gradient_accumulation_steps=args.gradient_accumulation,learning_rate=args.learning_rate,fp16=True,
         gradient_checkpointing=True,gradient_checkpointing_kwargs={'use_reentrant':False},
         eval_strategy='no',save_strategy='steps' if args.checkpoint_steps else 'no',
         save_steps=args.checkpoint_steps or 500,save_total_limit=2,logging_steps=1,report_to=[],seed=42,

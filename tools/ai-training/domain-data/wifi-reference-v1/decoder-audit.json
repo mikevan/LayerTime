@@ -1,0 +1,15 @@
+{
+  "independentDecoder": "Scapy",
+  "checkedRecords": 14886,
+  "mismatches": [],
+  "comparedFields": [
+    "type",
+    "subtype",
+    "receiver",
+    "transmitter",
+    "EAPOL presence"
+  ],
+  "limitations": [
+    "Not FCS validation, timestamp/exposure verification, protected-payload decryption, Hunter parity, or independent incident labelling."
+  ]
+}

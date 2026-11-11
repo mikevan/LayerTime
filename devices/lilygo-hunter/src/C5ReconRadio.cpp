@@ -21,6 +21,7 @@
 #if defined(LAYERTIME_TARGET_TDONGLE_C5)
 
 #include "C5ReconRadio.h"
+#include "C5ConnectionTrace.h"
 
 #include "C5StageLog.h"
 
@@ -82,7 +83,7 @@ public:
     void onScanEnd(const NimBLEScanResults &results, int reason) override
     {
         (void)results;
-        (void)reason;
+        c5ConnectionTrace("ble-scan-ended", reason);
         if (gBleActiveInstance != nullptr) gBleActiveInstance->handleBleScanEnd();
     }
 };
@@ -266,7 +267,8 @@ void C5ReconRadio::resetDetectorState()
 
 void C5ReconRadio::startWifiMonitoring(uint8_t channel)
 {
-    WiFi.mode(WIFI_STA);
+    const bool modeOk = WiFi.mode(WIFI_STA);
+    c5ConnectionTrace("wifi-monitor-mode", modeOk);
     WiFi.disconnect(false, false);
     _activeInstance = this;
     esp_wifi_set_promiscuous(false);
@@ -275,7 +277,9 @@ void C5ReconRadio::startWifiMonitoring(uint8_t channel)
     if (esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE) != ESP_OK) ++_counters.channelRefusals;
     _channel = channel;
     _firstFrameOnChannel = true;
-    if (esp_wifi_set_promiscuous(true) != ESP_OK) _activeInstance = nullptr;
+    const esp_err_t promiscuousRc = esp_wifi_set_promiscuous(true);
+    if (promiscuousRc != ESP_OK) _activeInstance = nullptr;
+    c5ConnectionTrace("wifi-monitor-start", promiscuousRc);
     ++_counters.wifiStarts;
     if (_stage) _stage->record(recon::Stage::WifiStart, channel, 0, _activeInstance != nullptr);
 }
@@ -323,7 +327,8 @@ void C5ReconRadio::startBleScan(ReconTarget detector, uint32_t durationMs)
     gBleActiveInstance = this;
     ++_counters.bleScanStarts;
     if (_stage) _stage->record(recon::Stage::BleScanStart, static_cast<uint8_t>(detector), 0, durationMs);
-    scan->start(durationMs, false);
+    const bool started = scan->start(durationMs, false);
+    c5ConnectionTrace("ble-scan-start", started);
 }
 
 void C5ReconRadio::stopBleScan()

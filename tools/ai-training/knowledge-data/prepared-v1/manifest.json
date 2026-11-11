@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "purpose": "small multitask development curriculum, not domain qualification",
+  "releaseEligible": false,
+  "independentExpertReview": false,
+  "splits": {
+    "train": {
+      "file": "train.jsonl",
+      "sha256": "82baac59358207b54665341d0f869db9456acf551f2116dae845250ef1d1e1a0",
+      "examples": 22,
+      "families": [
+        "broadcast_flood_reason7",
+        "legitimate_burst_inactivity",
+        "nist-sp800-94",
+        "single_housekeeping_deauth",
+        "targeted_flood"
+      ],
+      "tasks": {
+        "EXPLAIN_DEFENSIVE_CONCEPT": 13,
+        "REVIEW_CAPTURE": 9
+      }
+    },
+    "validation": {
+      "file": "validation.jsonl",
+      "sha256": "ca0a985f924ada6828d611264a749cebbe21f45e0f41f9e66d6bd3041df0fc70",
+      "examples": 14,
+      "families": [
+        "flood_on_protected_network",
+        "nist-sp800-153"
+      ],
+      "tasks": {
+        "EXPLAIN_DEFENSIVE_CONCEPT": 11,
+        "REVIEW_CAPTURE": 3
+      }
+    },
+    "test": {
+      "file": "test.jsonl",
+      "sha256": "7d535b41a8493a0486c0dfe660acfaaa9b759ebdfbe64a32c097f5e9edfc009f",
+      "examples": 5,
+      "families": [
+        "flood_then_evil_twin",
+        "flood_without_beacons"
+      ],
+      "tasks": {
+        "REVIEW_CAPTURE": 5
+      }
+    }
+  },
+  "inputs": {
+    "knowledge-data\\cards.jsonl": "d028e3c8cf752ab464e588f51b928fe6d2eff034e320869cc2e4c6ef3694d334",
+    "knowledge-data\\manifest.json": "70df5ca1a34fe372a7c24ca18a4d340e85e97837bef07f1a1e5688a4b270de4e",
+    "sources.json": "5209f08bb71c27cad27b6a9606b0c3f3faf97ebfa8738ed69075e415bc0b3201"
+  },
+  "limitations": [
+    "24 authored concepts plus 17 existing synthetic capture pages; no new field recordings.",
+    "Knowledge validation uses a different source document; capture test families retain original assignments.",
+    "Knowledge task has no independent test set in this version.",
+    "Application-specific design interpretations on the cards are excluded from supervised answers.",
+    "The twelve corrective candidates and quarantined external instruction datasets are excluded."
+  ],
+  "cardsSha256": "d028e3c8cf752ab464e588f51b928fe6d2eff034e320869cc2e4c6ef3694d334",
+  "sourceRegistrySha256": "eda1349c7b883982df0c10f129fc163b18c74317497b388d20f392b007e6c038"
+}

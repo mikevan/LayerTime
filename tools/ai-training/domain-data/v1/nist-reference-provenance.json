@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "documents": [
+    {
+      "id": "nist-sp800-153",
+      "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-153.pdf",
+      "date": "2012-02",
+      "title": "Guidelines for Securing Wireless Local Area Networks",
+      "scope": "Historical WLAN monitoring guidance; not current WPA3 or Wi-Fi 6/7 coverage.",
+      "pages": 24,
+      "bytes": 625526,
+      "sha256": "6e8d44de32789ecb3267c8a7778eb3088c15f5c860cf6e823243c8030ed3ec09",
+      "rightsReference": "https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications",
+      "attribution": "Republished courtesy of the National Institute of Standards and Technology.",
+      "rightsStatus": "Reference intake only; review third-party authors and notices before selecting training text."
+    },
+    {
+      "id": "nist-sp800-94",
+      "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-94.pdf",
+      "date": "2007-02",
+      "title": "Guide to Intrusion Detection and Prevention Systems",
+      "scope": "Historical detection concepts; do not treat obsolete technology or configuration advice as current.",
+      "pages": 127,
+      "bytes": 1060429,
+      "sha256": "289c2ed27f7e3aac41624bf2e6fad268642bad2dabe352a5ab28fa169824a96e",
+      "rightsReference": "https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications",
+      "attribution": "Republished courtesy of the National Institute of Standards and Technology.",
+      "rightsStatus": "Reference intake only; review third-party authors and notices before selecting training text."
+    },
+    {
+      "id": "nist-sp800-121r2-upd1",
+      "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-121r2-upd1.pdf",
+      "date": "2022-01-19",
+      "title": "Guide to Bluetooth Security",
+      "scope": "Publication covers Bluetooth through 4.2; external coauthors require rights review. Not Bluetooth 5/6 coverage.",
+      "pages": 68,
+      "bytes": 2429577,
+      "sha256": "72eb105cd5ddb77b9adaadb097dfd1b428d86cf7edd81219c27dde0b437ac8b5",
+      "rightsReference": "https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications",
+      "attribution": "Republished courtesy of the National Institute of Standards and Technology.",
+      "rightsStatus": "Reference intake only; review third-party authors and notices before selecting training text."
+    }
+  ],
+  "pages": 219,
+  "passages": 451,
+  "passagesSha256": "378acf3d3618c4906f309f18590022e5735d134900597dda2ade7e30b63287f7",
+  "rightsSnapshotSha256": "c2b5eb26fb45bfe7e6c07f22fd31c7a02683fe18e5bcfb5a417e2d08d49fbcd4",
+  "releaseEligible": false,
+  "trainingApproved": false,
+  "limitations": [
+    "Passages are source material, not supervised training examples.",
+    "No independent packet captures or new evaluation environments are provided by these documents.",
+    "Document families must not be randomly split at passage level.",
+    "Page numbers refer to PDF positions, not printed page labels. Extraction may lose tables and equations.",
+    "Historical references must retain publication dates and protocol scope."
+  ],
+  "previousNormalizedTextSha256": "16ec1f75537b23e35f5c9174379953e69a2941c19f19c1253d1e4a10621f74e3",
+  "hashCorrection": "Corrected to hash actual on-disk bytes, including Windows CRLF. Data unchanged."
+}

@@ -1,0 +1,41 @@
+{
+  "train": {
+    "examples": 512,
+    "wordingFamilies": 30,
+    "normalizedStatuses": {
+      "DRAFT": 288,
+      "CLARIFY": 176,
+      "UNSUPPORTED": 48
+    },
+    "draftScopes": {
+      "DEVICE_AP_PAIR": 144,
+      "RECORDING": 144
+    }
+  },
+  "validation": {
+    "examples": 48,
+    "wordingFamilies": 6,
+    "normalizedStatuses": {
+      "DRAFT": 24,
+      "CLARIFY": 16,
+      "UNSUPPORTED": 8
+    },
+    "draftScopes": {
+      "DEVICE_AP_PAIR": 16,
+      "RECORDING": 8
+    }
+  },
+  "test": {
+    "examples": 32,
+    "wordingFamilies": 32,
+    "normalizedStatuses": {
+      "DRAFT": 16,
+      "CLARIFY": 8,
+      "UNSUPPORTED": 8
+    },
+    "draftScopes": {
+      "DEVICE_AP_PAIR": 11,
+      "RECORDING": 5
+    }
+  }
+}

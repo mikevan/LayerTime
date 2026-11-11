@@ -8,6 +8,7 @@ package com.projectrevivesolutions.layertime.controller.flow
  * numbers Long or Double, plus String, Boolean, and null.
  */
 object FlowJson {
+    private val numberPattern = Regex("-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?")
     fun parse(text: String): Any? {
         val p = Parser(text)
         p.skipWs()
@@ -56,13 +57,19 @@ object FlowJson {
 
     private class Parser(val s: String) {
         var pos = 0
+        private var depth = 0
+        private fun <T> nested(read: () -> T): T {
+            if (depth >= 64) throw FlowJsonError("JSON nesting exceeds 64 levels")
+            depth++
+            return try { read() } finally { depth-- }
+        }
         fun atEnd() = pos >= s.length
         fun skipWs() { while (pos < s.length && s[pos].isWhitespace()) pos++ }
         fun value(): Any? {
             skipWs()
             if (atEnd()) throw FlowJsonError("unexpected end of text")
             return when (s[pos]) {
-                '{' -> obj(); '[' -> arr(); '"' -> str()
+                '{' -> nested { obj() }; '[' -> nested { arr() }; '"' -> str()
                 't' -> word("true", true); 'f' -> word("false", false); 'n' -> word("null", null)
                 else -> num()
             }
@@ -75,6 +82,7 @@ object FlowJson {
                 skipWs()
                 if (peek() != '"') throw FlowJsonError("expected a key at $pos")
                 val k = str(); skipWs()
+                if (m.containsKey(k)) throw FlowJsonError("duplicate object key")
                 if (peek() != ':') throw FlowJsonError("expected ':' at $pos"); pos++
                 m[k] = value(); skipWs()
                 when (peek()) { ',' -> pos++; '}' -> { pos++; return m }; else -> throw FlowJsonError("expected ',' or '}' at $pos") }
@@ -107,7 +115,7 @@ object FlowJson {
                             else -> throw FlowJsonError("bad escape \\$e at ${pos - 1}")
                         }
                     }
-                    else -> b.append(c)
+                    else -> { if(c < ' ') throw FlowJsonError("unescaped control character"); b.append(c) }
                 }
             }
         }
@@ -116,7 +124,9 @@ object FlowJson {
             while (!atEnd() && (s[pos].isDigit() || s[pos] in "+-.eE")) pos++
             val t = s.substring(start, pos)
             if (t.isEmpty()) throw FlowJsonError("unexpected '${s[pos]}' at $pos")
-            return if (t.any { it in ".eE" }) t.toDouble() else t.toLong()
+            if (!t.matches(numberPattern)) throw FlowJsonError("invalid JSON number")
+            return if (t.any { it in ".eE" }) (t.toDoubleOrNull()?.takeIf {it.isFinite()} ?: throw FlowJsonError("number out of range"))
+                else t.toLongOrNull() ?: throw FlowJsonError("integer out of range")
         }
         fun word(w: String, v: Any?): Any? {
             if (!s.startsWith(w, pos)) throw FlowJsonError("unexpected text at $pos"); pos += w.length; return v
