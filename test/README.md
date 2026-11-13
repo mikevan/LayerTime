@@ -74,9 +74,14 @@ checked out as the submodule at `sensors/`; their own suites live in
 below adds `-I../sensors/src`, because core's model uses the library's
 Confidence, SourceKind, and Band. `test_recon_classification` covers core's
 side of the seam (the detector mapping and the selection-to-detector-set
-translation), and `test_sensor_equivalence` proves the extraction changed no
-detection: it replays a fixed corpus and compares every candidate against
-the output recorded from 894b508, before the move.
+translation), and `test_sensor_equivalence` checks the pinned Sensors 1.1.2 behavior on a fixed
+seeded corpus. Its original 10 UUID and 39 OUI input keys are snapshotted from
+commit `894b508`; the corpus does not iterate live signature tables. The original
+oracle remains alongside the reviewed current-policy oracle. A constrained
+translation reproduces the latter without running the classifier; the normal
+C++ regression compares actual output with it. See
+[test_sensor_equivalence/REVIEW.md](test_sensor_equivalence/REVIEW.md) for the
+reviewed changes and provenance.
 
 ```
 g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_decl_advice test_declination_advice/test_declination_advice.cpp ../libraries/LayerTime-Core/src/core/logic/DeclinationAdvice.cpp

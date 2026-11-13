@@ -43,9 +43,11 @@ the stricter shared-repository gate used by the watch builds.
 Hunter and Vixen build and test in their own repositories. The LayerTime gate
 accepts the two watch firmware targets listed above.
 
-The historical sensor-equivalence fixture mismatch is documented in
-`docs/repository-split/README.md`. It still fails on the unchanged detector
-revision; it is not silently excluded or relabeled as a pass.
+The detector regression uses fixed historical input keys and a reviewed Sensors
+1.1.2 oracle. `test/test_sensor_equivalence/review_policy_update.py` derives that
+oracle from the preserved historical file using documented policy changes; the
+classifier output is checked separately. Both the derivation and detector
+comparison pass. See `test/test_sensor_equivalence/REVIEW.md`.
 
 ## Supported environments
 - Linux or macOS with `g++`/`clang++`, `bash`, `python3`, and `git`: run

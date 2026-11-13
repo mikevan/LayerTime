@@ -90,18 +90,23 @@ and file-mode settings only for that invocation. Shared guard and legacy sensor
 guard negative tests are part of the host profile. Hunter and Vixen run their
 own tests in their owning repositories.
 
-The historical `test_sensor_equivalence` fixture mismatch remains: an older
-oracle expects a confirmed Find My tracker for one input, while the pinned
-library reports an unknown Find My beacon type. The same failure was reproduced
-before extraction. Complete detector output before and after extraction had
-identical SHA-256:
+The former `test_sensor_equivalence` mismatch is resolved by a reviewed,
+versioned expectation update. Its 10 UUID and 39 OUI input keys are frozen from
+commit `894b508`, so changes to live signature tables no longer change seeded
+inputs. The original oracle is retained. The active Sensors 1.1.2 oracle is
+reproduced from that old oracle using only the documented non-exclusive OUI and
+Find My policy changes; current classifier output is used as a comparison, not
+as an oracle writer. No detector implementation or dependency revision changed.
 
-`903dde150c23e3302d32e0473ff2aafcdb987555eaaacacea3dee5006dd345cf`
+See [the policy review](../../test/test_sensor_equivalence/REVIEW.md), its
+machine-readable record and `review_policy_update.py`. All 26 host check groups
+now pass, including the oracle derivation and detector-output comparison. The
+older failure in `cleanup-validation.json` describes the earlier cleanup stage.
 
-That oracle has not been rewritten or silently excluded. The host gate reports
-this existing failure explicitly. Watch build results and checkout verification
-for the canonical-repository cleanup are recorded in `cleanup-validation.json`.
-No hardware is flashed by these checks.
+Hunter now initializes its own Core, C5 and Sensors submodules, and Vixen
+initializes its own Contracts submodule. Their main README files describe the
+self-contained clone and verification commands. No hardware is flashed by these
+source checks.
 
 ## Migration history
 

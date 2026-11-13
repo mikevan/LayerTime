@@ -1,0 +1,307 @@
+{
+  "historicalSourceCommit": "894b508269a98ac19606b7c80ea6a064cc1f52ed",
+  "historicalSignatureSourceSha256": "32c10b291a952e4527301ef8808a65bdbc9b51f889982b2b7e6fe291b40f45d0",
+  "frozenInputKeys": {
+    "uuids": 10,
+    "ouis": 39
+  },
+  "sensorRevision": "35e7213874d4577bd9385f226b20e614a65fbfa8",
+  "vendorOuiChanges": {
+    "58:8E:81": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "EC:1B:BD": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "90:35:EA": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "04:0D:84": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "F0:82:C0": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "1C:34:F1": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "38:5B:44": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "94:34:69": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "24:B2:B9": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock Liteon"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock Liteon"
+      ]
+    },
+    "D0:39:57": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "00:F4:8D": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "14:5A:FC": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "80:30:49": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "E0:0A:F6": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "70:C9:4E": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "3C:91:80": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "D8:F3:BC": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "B8:35:32": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock"
+      ]
+    },
+    "00:A0:D8": {
+      "from": [
+        "Flock",
+        "High",
+        "Flock Sierra"
+      ],
+      "to": [
+        "Flock",
+        "Low",
+        "Flock Sierra"
+      ]
+    }
+  },
+  "expectedOutputSha256": "c27d1ea0bf597acaaef21501cc1400a66e29bc79e27a984ce67ee3e856078be7",
+  "allOtherOutputUnchanged": true,
+  "detectorCodeChanged": false,
+  "formatVersion": 1,
+  "reviewMethod": "AI-assisted source and versioned-policy review. Expected output is derived from the historical oracle by constrained transformations, not copied from classifier output. No independent human or field validation is claimed.",
+  "reviewedExpectedChanges": {
+    "short_find_my_low": 6,
+    "removed_false_subtype_0x1e": 3,
+    "ble_vendor_oui_low": 372,
+    "wifi_vendor_oui_low": 294
+  },
+  "historicalOutputSha256": "fdbd59bcda8662a1feadcd94731c7a79a38487a387152044d4c15b77ee25d6de",
+  "frozenCorpus": {
+    "uuidKeys": [
+      64863,
+      65261,
+      65260,
+      64858,
+      12417,
+      12418,
+      12419,
+      65194,
+      65207,
+      65208
+    ],
+    "ouiKeys": [
+      "58:8E:81",
+      "EC:1B:BD",
+      "90:35:EA",
+      "04:0D:84",
+      "F0:82:C0",
+      "1C:34:F1",
+      "38:5B:44",
+      "94:34:69",
+      "B4:1E:52",
+      "24:B2:B9",
+      "D0:39:57",
+      "00:F4:8D",
+      "14:5A:FC",
+      "80:30:49",
+      "E0:0A:F6",
+      "70:C9:4E",
+      "3C:91:80",
+      "D8:F3:BC",
+      "B8:35:32",
+      "00:A0:D8",
+      "00:25:DF",
+      "E4:05:40",
+      "28:24:FF",
+      "24:0A:C4",
+      "30:AE:A4",
+      "24:6F:28",
+      "CC:50:E3",
+      "DC:54:75",
+      "E8:9F:6D",
+      "8C:AA:B5",
+      "34:85:18",
+      "D4:AD:FC",
+      "AC:67:B2",
+      "84:F3:EB",
+      "B4:E6:2D",
+      "CC:DB:A7",
+      "94:B9:7E",
+      "A4:CF:12",
+      "C0:49:EF"
+    ]
+  },
+  "policyReference": "https://github.com/mikevan/LayerTime-Sensors/blob/35e7213874d4577bd9385f226b20e614a65fbfa8/CHANGELOG.md"
+}

@@ -178,6 +178,12 @@ else
 fi
 echo
 echo "Host unit suites + architecture boundary + sensor harness:"
+if python3 "$T/test_sensor_equivalence/review_policy_update.py" >"$out/fixture-review.log" 2>&1; then
+  PASS+=("reviewed detector oracle derivation (historical inputs and constrained policy translation)")
+else
+  FAIL+=("reviewed detector oracle derivation (see tools/ci/logs/fixture-review.log)")
+  cp "$out/fixture-review.log" "$logdir/fixture-review.log"
+fi
 host_check geogrid            "$T/test_geogrid/test_geogrid.cpp" "$L/GeoGrid.cpp"
 host_check core_model         "$T/test_core_model/test_core_model.cpp" "$L/QuickMessages.cpp"
 host_check decl_advice        "$T/test_declination_advice/test_declination_advice.cpp" "$L/DeclinationAdvice.cpp"
