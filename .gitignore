@@ -13,9 +13,17 @@ devices/garmin-tactix/developer_key
 tools/ci/logs/
 # Native (NDK) build cache from the Android controller build; rebuilds itself.
 .ndk-cache/
-# Pinned external inference source; restored by tools/ai/fetch-runtime.ps1.
+# Legacy local inference source; development now belongs to the Vixen repository.
 third_party/llama.cpp/
 # Private field evidence stays local.
 diagnostic-artifacts/field-review-*/
 # Generated development weights and manifest are reproduced from the training run.
 devices/layertime-controller-android/app/src/debug/assets/ai/development/
+
+# Retired local product workspaces may retain private models, captures and caches.
+# Their tracked source now lives in the standalone Hunter and Vixen repositories.
+/devices/lilygo-hunter/
+/devices/layertime-controller-android/
+/tools/ai-training/
+/tools/ai/
+/docs/ai-development/

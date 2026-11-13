@@ -9,19 +9,17 @@
 #   --full    everything in --host PLUS a build of the required firmware
 #             targets, each from its own device project (see PROJECT below).
 #   --targets a,b   firmware environments --full builds (default: twatch_ultra).
-#             Known: twatch_ultra, twatch_s3plus, tdongle_c5_hunter. Any other
+#             Known: twatch_ultra, twatch_s3plus. Hunter builds in its own repo. Any other
 #             name stops the run before anything is built.
 #
 # A required check that cannot run is reported NOT RUN and FAILS the profile.
 # --host does not require firmware; it reports the firmware build as NOT RUN
 # and its PASS means "host checks passed", never "firmware builds".
 #
-# The library revision guard (tools/sensors_check.py) runs first. FAIL stops
-# the verdict from passing. With LAYERTIME_SENSORS_UNRECORDED=1 a mismatched
-# or modified library is reported EXPERIMENTAL; the run then ends "NOT VALID
-# FOR ACCEPTANCE" and exits 3, never 0.
+# Core, Contracts and Sensors must match their locked submodule commits.
+# The legacy sensor-only experimental override does not bypass this gate.
 #
-# Exit codes: 0 passed, 1 failed, 2 usage or setup error, 3 experimental.
+# Exit codes: 0 passed, 1 failed, 2 usage or setup error.
 # The run's inputs (source commit, library commit, compiler, device
 # dependency pins) are written to tools/ci/logs/preflight_manifest.txt.
 set -uo pipefail
@@ -37,7 +35,6 @@ IFS=',' read -r -a TARGETS <<< "$targets"
 declare -A PROJECT=(
   [twatch_ultra]=devices/lilygo-tultra
   [twatch_s3plus]=devices/lilygo-s3plus
-  [tdongle_c5_hunter]=devices/lilygo-hunter
 )
 [ "${#TARGETS[@]}" -gt 0 ] || { echo "pre-flight: --targets is empty." >&2; exit 2; }
 for t in "${TARGETS[@]}"; do
@@ -129,10 +126,16 @@ echo
 
 # ---------------- Tier 0: host checks (both profiles) -----------------------
 echo "Sensor library revision (tools/sensors_check.py):"
+if python3 "$root/tools/shared_repos_check.py" "$root" >"$out/shared-repos.log" 2>&1; then
+  PASS+=("shared repository pins (Core, Contracts and Sensors, recorded and clean)")
+else
+  FAIL+=("shared repository pins (see tools/ci/logs/shared-repos.log)")
+  cp "$out/shared-repos.log" "$logdir/shared-repos.log"
+  cat "$out/shared-repos.log"
+fi
 # The same guard the firmware builds run: the recorded commit, a clean
 # library checkout, readable git metadata. FAIL and EXPERIMENTAL both keep
 # this run from passing.
-EXPERIMENTAL=0
 if ! command -v python3 >/dev/null 2>&1; then
   FAIL+=("sensors revision (python3 not found; the guard cannot run)")
 else
@@ -140,7 +143,7 @@ else
   echo "$guard" | sed 's/^/  /'
   case $gcode in
     0) PASS+=("sensors revision ($(sensors_identity | cut -d' ' -f1), recorded and clean)");;
-    3) EXPERIMENTAL=1; NOTRUN+=("sensors revision (EXPERIMENTAL: not the recorded, clean library)");;
+    3) FAIL+=("sensors revision (experimental override is not accepted by the shared-repository gate)");;
     *) FAIL+=("sensors revision (guard failed; see the lines above)");;
   esac
 fi
@@ -148,6 +151,12 @@ if bash "$root/tools/ci/test_sensors_guard.sh" >"$out/guard_tests.log" 2>&1; the
   PASS+=("sensors guard negative tests ($(tail -n1 "$out/guard_tests.log"))")
 else
   FAIL+=("sensors guard negative tests (see tools/ci/logs/guard_tests.log)"); cp "$out/guard_tests.log" "$logdir/guard_tests.log"
+fi
+if python3 -m unittest discover -s "$root/tools" -p test_shared_repos_check.py >"$out/shared_guard_tests.log" 2>&1; then
+  PASS+=("shared repository guard negative tests (7 tests)")
+else
+  FAIL+=("shared repository guard negative tests (see tools/ci/logs/shared-guard-tests.log)")
+  cp "$out/shared_guard_tests.log" "$logdir/shared-guard-tests.log"
 fi
 echo
 echo "Sensor library (LayerTime-Sensors, built and run in an isolated copy):"
@@ -222,11 +231,7 @@ echo
 required_notrun=0
 if [ "$firmware_required" -eq 1 ]; then for x in "${NOTRUN[@]:-}"; do case "$x" in firmware:*) required_notrun=1;; esac; done; fi
 
-if [ "${#FAIL[@]}" -eq 0 ] && [ "$required_notrun" -eq 0 ] && [ "$EXPERIMENTAL" -eq 1 ]; then
-  echo "EXPERIMENTAL: the checks ran against a library that is not the recorded, clean revision."
-  echo "NOT VALID FOR ACCEPTANCE (LAYERTIME_SENSORS_UNRECORDED=1)."
-  exit 3
-elif [ "${#FAIL[@]}" -eq 0 ] && [ "$required_notrun" -eq 0 ]; then
+if [ "${#FAIL[@]}" -eq 0 ] && [ "$required_notrun" -eq 0 ]; then
   if [ "$profile" = "host" ]; then echo "HOST PROFILE PASSED: host checks passed. Firmware build NOT RUN (this does not certify a firmware build)."
   else echo "FULL PROFILE PASSED: host checks and required firmware targets built."; fi
   exit 0

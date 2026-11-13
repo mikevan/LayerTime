@@ -1,9 +1,0 @@
-{
-  "cards": 24,
-  "originalConcepts": 24,
-  "sha256": "d028e3c8cf752ab464e588f51b928fe6d2eff034e320869cc2e4c6ef3694d334",
-  "releaseEligible": false,
-  "note": "Source anchors establish traceability, not automated entailment or independent review.",
-  "previousNormalizedTextSha256": "f599017d84fa50115ee2ca669639ffcb283b64fb0da6e04bfc32a5ebd1d345f2",
-  "hashCorrection": "Corrected to hash actual on-disk bytes, including Windows CRLF. Data unchanged."
-}

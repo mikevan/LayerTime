@@ -1,7 +1,0 @@
-{
-  "supervisedExamples": 856,
-  "evaluationExamples": 120,
-  "maxFullSupervisedTokens": 387,
-  "maxEvaluationInputTokens": 458,
-  "truncated": false
-}

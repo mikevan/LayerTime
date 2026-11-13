@@ -1,7 +1,0 @@
-{
-  "phase": "completed-overall-gate-failed",
-  "completedTrainingUpdates": 768,
-  "freshCorrect": 24,
-  "knownCorrect": 90,
-  "androidDeviceTested": false
-}

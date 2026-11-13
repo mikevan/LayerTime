@@ -1,6 +1,0 @@
-{
-  "repository": "https://github.com/ggml-org/llama.cpp.git",
-  "revision": "3b4d6ab3f79651935fba1dd93732f29022a7f5f5",
-  "license": "MIT",
-  "purpose": "Embedded CPU inference with no network service"
-}

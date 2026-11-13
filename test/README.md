@@ -121,9 +121,7 @@ g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sens
 
 ## T-Dongle-C5 (Hunter)
 
-The Hunter's host tests moved with it to `devices/lilygo-hunter/test/`
-in layout step 2 (2026-10-02). The build command is in
-`devices/lilygo-hunter/README.md`, "Host tests".
+Hunter's host and firmware tests live in the separate [Hunter repository](https://github.com/mikevan/Hunter). Run `python test/run_host_tests.py` there. This repository's tests cover the watch targets and their pinned shared dependencies.
 
 ## LayerTime Link
 

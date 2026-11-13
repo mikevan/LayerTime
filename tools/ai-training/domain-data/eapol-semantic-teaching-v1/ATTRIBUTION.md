@@ -1,1 +1,0 @@
-Wireshark source: Gerald Combs and contributors; IEEE 802.11 decoder also Axis Communications AB; EAPOL header also Ethan Young. GPL-2.0-or-later notices are preserved in source excerpts/intake and SOURCE-LICENSE.txt. Source facts are paraphrased decoder observations; interpretation limits and synthetic cases are project-authored. No downloaded source was executed.

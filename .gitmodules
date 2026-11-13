@@ -2,3 +2,9 @@
 	path = sensors
 	url = https://github.com/mikevan/LayerTime-Sensors.git
 	branch = main
+[submodule "shared-core"]
+	path = libraries/LayerTime-Core
+	url = https://github.com/mikevan/LayerTime-Core.git
+[submodule "shared-contracts"]
+	path = contracts
+	url = https://github.com/mikevan/LayerTime-Contracts.git

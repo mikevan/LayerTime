@@ -232,8 +232,8 @@ void one_target_never_reaches_into_another()
 }
 
 // Device folders whose code must reach the sensors only through core.
-const char *const kDeviceSrcs[] = {"../devices/lilygo-tultra/src", "../devices/lilygo-s3plus/src",
-                                   "../devices/lilygo-hunter/src"};
+// Hunter's device boundary is tested in its independently owned repository.
+const char *const kDeviceSrcs[] = {"../devices/lilygo-tultra/src", "../devices/lilygo-s3plus/src"};
 
 // Every include in `root` that names the sensor library, however spelled:
 // <lts/...>, or any path through sensors/src.

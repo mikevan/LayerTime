@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">LayerScope</string>
-    <string name="notif_channel_name">LayerTime Link</string>
-    <string name="notif_channel_desc">Holds the connection to a Hunter while the screen is off.</string>
-    <string name="key_service_label">LayerScope button</string>
-    <string name="key_service_desc">Makes the watch\'s green side button the LayerScope button. A short press opens LayerScope from anywhere; holding it is the normal Back. It reads no screen content.</string>
-</resources>

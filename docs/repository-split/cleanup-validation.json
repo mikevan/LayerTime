@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-13",
+  "sourceParent": "36138fcfbef2359f4c799c78ef02b5206cc9627f",
+  "scope": "Replace parent-owned shared source with pinned public Git submodules; remove duplicate independent-product source.",
+  "removedParentOwnedFiles": 1210,
+  "sharedRepositories": {
+    "LayerTime-Core": {
+      "submodule": "shared-core",
+      "path": "libraries/LayerTime-Core",
+      "url": "https://github.com/mikevan/LayerTime-Core.git",
+      "revision": "9d87bc399b267ef889c43e4c3dbb215443b682df",
+      "buildInputs": [
+        "src",
+        "library.json"
+      ]
+    },
+    "LayerTime-Contracts": {
+      "submodule": "shared-contracts",
+      "path": "contracts",
+      "url": "https://github.com/mikevan/LayerTime-Contracts.git",
+      "revision": "2cefe63077ae598148a42b1cb2ae011a9fa54841",
+      "buildInputs": [
+        "vectors"
+      ]
+    },
+    "LayerTime-Sensors": {
+      "submodule": "sensors",
+      "path": "sensors",
+      "url": "https://github.com/mikevan/LayerTime-Sensors.git",
+      "revision": "35e7213874d4577bd9385f226b20e614a65fbfa8",
+      "buildInputs": [
+        "src",
+        "library.json"
+      ]
+    }
+  },
+  "independentProducts": {
+    "Hunter": "https://github.com/mikevan/Hunter",
+    "Vixen": "https://github.com/mikevan/Vixen",
+    "LayerTime-C5": "https://github.com/mikevan/LayerTime-C5"
+  },
+  "builds": {
+    "twatch_ultra": {
+      "status": "passed",
+      "ramBytes": 108984,
+      "flashBytes": 2331855,
+      "reportedMemoryMatchesPreviousBuild": true,
+      "image": "devices/lilygo-tultra/bin/build/twatch_ultra/firmware.bin",
+      "sha256": "2c2930ea46e79d47c5d251e894308db28749d52f0cb59dcc4f080d8d61eb41ee"
+    },
+    "twatch_s3plus": {
+      "status": "passed",
+      "ramBytes": 71784,
+      "flashBytes": 1941091,
+      "reportedMemoryMatchesPreviousBuild": true,
+      "image": "devices/lilygo-s3plus/bin/build/twatch_s3plus/firmware.bin",
+      "sha256": "d9c00c47f3b5ed4068ed9adf672f23b136b280e3639196281b43b5e6cdc69e4e"
+    }
+  },
+  "host": {
+    "passedCheckGroups": 24,
+    "dependencyGuardTestsPassed": 7,
+    "legacySensorGuardTestsPassed": 19,
+    "remainingFailure": {
+      "suite": "sensor_equivalence",
+      "preExisting": true,
+      "oracleChanged": false
+    }
+  },
+  "garminProtocolVectors": "verified up to date",
+  "hardwareFlashed": false,
+  "originalUntrackedLocalData": "preserved; retired local workspaces ignored",
+  "recordScope": "Pre-commit validation. Dependency commit pins and artifact hashes identify tested inputs."
+}

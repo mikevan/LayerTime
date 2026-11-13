@@ -16,27 +16,36 @@ does not use GitHub Actions or any other hosted CI; this script is the gate.
   |---|---|
   | `twatch_ultra` | `devices/lilygo-tultra` |
   | `twatch_s3plus` | `devices/lilygo-s3plus` |
-  | `tdongle_c5_hunter` | `devices/lilygo-hunter` |
 
   Any other name stops the run before anything is built. A required firmware
   target that cannot run (no `pio` on PATH) is reported NOT RUN and fails the
   profile.
 
 Results are reported as PASS, FAIL, and NOT RUN. Exit codes: 0 passed,
-1 failed, 2 usage or setup error, 3 experimental (below). The run's inputs
+1 failed, 2 usage or setup error. The run's inputs
 (source commit, library commit, host compiler, device dependency pins) are
 written to `tools/ci/logs/preflight_manifest.txt`.
 
-## The sensor library guard
-`tools/sensors_check.py` is the single check, used by this script and by
-every device firmware build. It requires the recorded `sensors/` submodule
-commit, a clean library checkout (no modified tracked files, no untracked
-files, no ignored files inside `src/` or `library.json`), and readable git
-metadata; a source export without git metadata is not supported.
-`LAYERTIME_SENSORS_UNRECORDED=1` allows experimental work on an unrecorded
-or modified library: firmware builds continue with a warning, and this
-script reports EXPERIMENTAL, prints NOT VALID FOR ACCEPTANCE, and exits 3.
-`tools/ci/test_sensors_guard.sh` proves each of those cases.
+## Shared repository pins
+
+Initialize dependencies with `git submodule update --init --recursive` before
+running the gate. `shared-repositories.lock.json`, `.gitmodules` and the Git
+submodule entries pin Core, Contracts and Sensors. `tools/shared_repos_check.py`
+verifies those pins, the checked-out revisions, clean dependency worktrees and
+absence of ignored extra build inputs. Both watch firmware builds run the same
+check. Its seven isolated Git-fixture tests cover missing, modified, extra,
+wrong-revision and wrong-URL dependencies.
+
+`tools/sensors_check.py` remains as the sensor-specific diagnostic, with its
+existing 19 negative checks. Its legacy experimental override does not bypass
+the stricter shared-repository gate used by the watch builds.
+
+Hunter and Vixen build and test in their own repositories. The LayerTime gate
+accepts the two watch firmware targets listed above.
+
+The historical sensor-equivalence fixture mismatch is documented in
+`docs/repository-split/README.md`. It still fails on the unchanged detector
+revision; it is not silently excluded or relabeled as a pass.
 
 ## Supported environments
 - Linux or macOS with `g++`/`clang++`, `bash`, `python3`, and `git`: run

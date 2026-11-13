@@ -139,11 +139,22 @@ The offsets it uses come from `devices/lilygo-tultra/boards/lilygo-t-watch-ultra
 
 ## Hardware target
 
-This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_ultra` in `devices/lilygo-tultra/platformio.ini`), built on [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) (ESP32-S3, SX1262 LoRa, AXP2101 PMU, MIA-M10Q GNSS). The LilyGo template environments for the T-Watch-S3, T-LoRa-Pager, and the LilyGoLib emulator were removed in layout step 4. The other LayerTime targets (the S3 Plus, the Hunter, and the Garmin tactix) are their own projects under `devices/`.
+This project targets the **T-Watch Ultra** specifically (`default_envs = twatch_ultra` in `devices/lilygo-tultra/platformio.ini`), built on [LilyGoLib](https://github.com/Xinyuan-LilyGO/LilyGoLib) (ESP32-S3, SX1262 LoRa, AXP2101 PMU, MIA-M10Q GNSS). The LilyGo template environments for the T-Watch-S3, T-LoRa-Pager, and the LilyGoLib emulator were removed in layout step 4. The S3 Plus and Garmin tactix watch targets have their own projects under `devices/`. [Hunter](https://github.com/mikevan/Hunter) is maintained in its own repository.
 
 ## Build & flash (pioarduino)
 
 This project builds against **[pioarduino](https://github.com/pioarduino/platform-espressif32)**, the community fork of `platform-espressif32` — not the stock PlatformIO ESP32 platform. `platformio.ini` pins it directly, so the fork is used whether or not you notice.
+
+Fetch the shared repositories before opening a device project:
+
+```powershell
+git clone --recurse-submodules https://github.com/mikevan/LayerTime.git
+```
+
+For an existing checkout, run `git submodule update --init --recursive` from
+its root. Core, Sensors and Contracts are pinned by Git and
+`shared-repositories.lock.json`; every watch build verifies those pins and clean
+source. To review a dependency update, change its gitlink and lock together.
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/) and the **[pioarduino IDE](https://marketplace.visualstudio.com/items?itemName=pioarduino.pioarduino-ide)** extension (search the extension manager for "pioarduino ide").
 2. Open the `devices/lilygo-tultra` folder (not the repository root) in VS Code and let it fetch the platform and dependencies. The first fetch is slow — it pulls the ESP32 toolchain plus about ten libraries.
@@ -158,26 +169,26 @@ This project builds against **[pioarduino](https://github.com/pioarduino/platfor
 
 ## Project layout
 
-- `libraries/LayerTime-Core/` — reusable C++ application, model, logic, ports and Link codec, packaged for PlatformIO and CMake.
-- `libraries/LayerTime-C5/` — shared T-Dongle-C5 pins, button/identity logic, display, LED and board boot precautions. Hunter's sensing, SD logs, evidence and card-transfer tooling remain product code.
-- See the [repository separation record](docs/repository-split/README.md) for the top-level Vixen, Hunter and shared-library checkouts, provenance and validation status. Vixen is the flagship Android analysis product formerly called LayerScope; the old C5 beacon is a separate legacy build.
-- `libraries/LayerTime-Core/src/core/` — the LayerTime application itself, independent of any watch: the model, the application logic, and the ports a platform plugs into. It uses nothing but the C and C++ standard libraries and the sensor library below, which it reaches only through `libraries/LayerTime-Core/src/core/logic/ReconClassification`.
-- `sensors/` — LayerTime-Sensors, the detector library (BLE and Wi-Fi classifiers and their signature tables), maintained as its own open-source project and checked out here as a git submodule at the one revision LayerTime records. Clone with `git clone --recurse-submodules`, or run `git submodule update --init sensors` in an existing clone; `tools/ci/preflight.sh` and the host test builds stop with that instruction when it is missing, and a firmware build stops at pioarduino's dependency step, which names `sensors/`. Every firmware build and pre-flight run also checks that `sensors/` is exactly the recorded commit with no local changes (`tools/sensors_check.py`). Devices never include it directly.
-  - `link/` — the LayerTime Link codec (`contracts/link.md`): the byte layouts, the Node-side dispatcher, and the test-build probe payloads. Shared by the C5 and, through the same vectors, by the Connect IQ app.
-- `devices/lilygo-tultra/` — the T-Watch Ultra, a LayerTime watch product, its own pioarduino project (see its `README.md`). Its `src/` holds everything specific to the watch:
-  - `app/WatchApp.*` — wires the core, every service, and every screen together, and owns the settings-changed/mutual-exclusion logic.
-  - `services/` — hardware/protocol logic (Battery, Clock, GPS, Recon, MeshService (MeshCore), MeshtasticService, SdCardService, SettingsService).
-  - `ui/` — LVGL screens (WatchFace, GpsScreen, MappingScreen, MeshScreen, MeshtasticScreen, ReconScreen, SettingsScreen).
-  - `model/` — the watch's own state and settings structs (`TUltraSettings`, `WatchState`).
-  - the adapters that connect the core's ports to those services.
-- `devices/lilygo-hunter/` — the Hunter, the LayerTime Node on the LILYGO T-Dongle-C5 (Slice 1). Increment 0 bring-up: status LCD with the LayerTime owl, APA102 LED, BOOT button, PSRAM (`devices/lilygo-hunter/tools/c5_owl_image.py` regenerates the owl bitmap from `assets/LayerTime-owl.svg`). Increment 1: `C5Link` serves the LayerTime Link over NimBLE. Its own pioarduino project with the `tdongle_c5` environments in `devices/lilygo-hunter/platformio.ini`; `tdongle_c5_test` adds the Probe characteristic.
-- `devices/garmin-tactix/` — the LayerTime Connect IQ Device App for the Garmin tactix 8 AMOLED (Slice 1). Increment 1: finds the C5, keeps the link, shows the heartbeat, pings (`devices/garmin-tactix/source/link/`). `devices/garmin-tactix/source/link/LinkVectors.mc` is generated by `tools/gen_link_vectors_mc.py` from the contract vectors.
-- `devices/<manufacturer>-<device>/` — every device target keeps its own board definitions, pin variants, and build platform. The T-Ultra's build platform (pioarduino 55.03.36-1, Arduino core 3.3.6, with a one-line bootstrap patch) is `devices/lilygo-tultra/tools/pioarduino-platform-55.03.36-1-lt1/`.
-- `contracts/` — the canonical LayerTime application model and the LayerTime Link wire format (`link.md`); every target binds to them.
-- `test/` — host-side tests built with plain g++; see `test/README.md`.
-- `assets/` — source SVG assets (owl logo) and README imagery.
-- `docs/` — the browser flasher published by GitHub Pages (`index.html`, `manifest.json`, `firmware/`).
-- `support/` — maintainer scripts (GitHub issue creation). The flasher merge script is `devices/lilygo-tultra/tools/make_flasher_bin.ps1`.
+- `devices/lilygo-tultra/` — T-Watch Ultra firmware, hardware services, platform adapters and LVGL screens.
+- `devices/lilygo-s3plus/` — S3 Plus firmware and its isolated build configuration.
+- `devices/garmin-tactix/` — Garmin Connect IQ watch application and generated Link binding.
+- `libraries/LayerTime-Core/` — pinned submodule of [LayerTime-Core](https://github.com/mikevan/LayerTime-Core): application model, logic, platform ports and Link codec.
+- `sensors/` — pinned submodule of [LayerTime-Sensors](https://github.com/mikevan/LayerTime-Sensors): detector implementations and signature data. Watch devices use its public types through Core.
+- `contracts/` — pinned submodule of [LayerTime-Contracts](https://github.com/mikevan/LayerTime-Contracts): canonical message/model definitions and compatibility vectors.
+- `test/` — watch/core integration, model, boundary, protocol and replay checks.
+- `tools/ci/` — local host/build gates; `tools/shared_repos_check.py` checks all shared repository pins before firmware compilation.
+- `assets/` and `docs/` — artwork, documentation, and existing browser-install firmware distribution artifacts.
+
+[Hunter](https://github.com/mikevan/Hunter) owns C5 sensing, SD logs, PCAP evidence
+and card transfer. [Vixen](https://github.com/mikevan/Vixen) owns the Android
+analysis application and its AI workflow. [LayerTime-C5](https://github.com/mikevan/LayerTime-C5)
+owns shared C5 board support. Their source is maintained in those repositories;
+a watch checkout only fetches its three shared dependencies.
+
+See the [repository separation record](docs/repository-split/README.md) for the
+pinned revisions, migration history, and validation evidence. Existing browser
+firmware downloads remain in place; source cleanup does not publish a new
+hardware release.
 
 ## License
 

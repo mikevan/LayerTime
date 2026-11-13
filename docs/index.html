@@ -121,7 +121,7 @@ footer{border-top:2px solid var(--ink);margin-top:64px;padding-top:18px;font-fam
 
   <p>Everything is in the repo. It builds against <a href="https://github.com/pioarduino/platform-espressif32">pioarduino</a>, the community fork of <code>platform-espressif32</code> &mdash; <code>platformio.ini</code> pins it, so you get the fork either way. Easiest route is VS Code with the <a href="https://marketplace.visualstudio.com/items?itemName=pioarduino.pioarduino-ide">pioarduino IDE</a> extension: open the folder, let it fetch, and upload over USB. The first fetch pulls the ESP32 toolchain and about ten libraries and takes a while; after that it's quick.</p>
 
-  <pre><code>git clone https://github.com/mikevan/LayerTime.git
+  <pre><code>git clone --recurse-submodules https://github.com/mikevan/LayerTime.git
 cd LayerTime
 pio run -t upload</code></pre>
 

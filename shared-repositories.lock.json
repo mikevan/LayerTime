@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "repositories": {
+    "LayerTime-Core": {
+      "submodule": "shared-core",
+      "path": "libraries/LayerTime-Core",
+      "url": "https://github.com/mikevan/LayerTime-Core.git",
+      "revision": "9d87bc399b267ef889c43e4c3dbb215443b682df",
+      "buildInputs": ["src", "library.json"]
+    },
+    "LayerTime-Contracts": {
+      "submodule": "shared-contracts",
+      "path": "contracts",
+      "url": "https://github.com/mikevan/LayerTime-Contracts.git",
+      "revision": "2cefe63077ae598148a42b1cb2ae011a9fa54841",
+      "buildInputs": ["vectors"]
+    },
+    "LayerTime-Sensors": {
+      "submodule": "sensors",
+      "path": "sensors",
+      "url": "https://github.com/mikevan/LayerTime-Sensors.git",
+      "revision": "35e7213874d4577bd9385f226b20e614a65fbfa8",
+      "buildInputs": ["src", "library.json"]
+    }
+  }
+}

@@ -15,15 +15,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 GROUPS = {
     "shared-core": "libraries/LayerTime-Core/",
-    "shared-c5": "libraries/LayerTime-C5/",
     "contracts": "contracts/",
-    "hunter-and-legacy-beacon": "devices/lilygo-hunter/",
-    "vixen-android-candidate": "devices/layertime-controller-android/",
+    "sensors": "sensors/",
     "watch-ultra": "devices/lilygo-tultra/",
     "watch-s3plus": "devices/lilygo-s3plus/",
     "garmin": "devices/garmin-tactix/",
-    "ai-development": "tools/ai-training/",
-    "ai-runtime-tools": "tools/ai/",
     "shared-tests": "test/",
 }
 INCLUDE = re.compile(r'^\s*#\s*include\s*["<]([^">]+)[">]', re.M)
@@ -42,14 +38,19 @@ def group(path):
 
 def inventory():
     paths = git("ls-files", "-z").split("\0")
-    paths += [p.relative_to(ROOT).as_posix() for p in (ROOT / "libraries").rglob("*") if p.is_file()]
+    lock = json.loads((ROOT / "shared-repositories.lock.json").read_text(encoding="utf-8"))
+    for spec in lock["repositories"].values():
+        prefix = spec["path"]
+        child = ROOT / prefix
+        tracked = subprocess.check_output(["git", "--no-optional-locks", "-C", str(child), "ls-files", "-z"], text=True)
+        paths += [prefix + "/" + path for path in tracked.split("\0") if path]
     paths = sorted(set(paths))
     paths = [p for p in paths if p and (ROOT / p).is_file()]
     tracked = set(paths)
     files = []
     edges = []
-    search_roots = [ROOT / "libraries/LayerTime-Core/src", ROOT / "libraries/LayerTime-C5/src", ROOT / "sensors/src"]
-    for name in ("lilygo-hunter", "lilygo-tultra", "lilygo-s3plus"):
+    search_roots = [ROOT / "libraries/LayerTime-Core/src", ROOT / "sensors/src"]
+    for name in ("lilygo-tultra", "lilygo-s3plus"):
         search_roots.append(ROOT / "devices" / name / "src")
     for path in paths:
         category = group(path)
@@ -82,13 +83,14 @@ def inventory():
         "sourceRoot": str(ROOT), "sourceCommit": git("rev-parse", "HEAD"),
         "sourceStatus": git("status", "--porcelain=v1", "--untracked-files=normal").splitlines(),
         "sensorsRecorded": git("ls-tree", "HEAD", "sensors"),
+        "sharedRepositories": lock["repositories"],
         "groupCounts": dict(sorted(counts.items())),
         "crossGroupIncludeCounts": [{"from": a, "to": b, "count": n}
                                     for (a, b), n in sorted(cross.items())],
         "files": files, "resolvedIncludes": edges,
         "limits": ["Static include resolution is evidence of source coupling, not a linker reachability analysis.",
                    "Conditional includes are recorded regardless of build macro.",
-                   "Only tracked source is inventoried; submodule source is recorded by its pinned commit.",
+                   "Only parent and shared-submodule tracked source is inventoried; dependency pins are explicit in shared-repositories.lock.json.",
                    "Kotlin, Monkey C, Python, build scripts and relative resource paths need separate boundary review.",
                    "Git working-tree content is fingerprinted; this is not a claim that all files match HEAD."]}
 

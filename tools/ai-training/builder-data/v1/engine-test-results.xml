@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.projectrevivesolutions.layertime.controller.AiAuthoringTrainingSeedTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-10T09:27:43.317Z" hostname="DESKTOP-HI955UO" time="0.139">
-  <properties/>
-  <testcase name="proposalsMatchPromptSettingsAndExecuteOnKnownFrames" classname="com.projectrevivesolutions.layertime.controller.AiAuthoringTrainingSeedTest" time="0.139"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

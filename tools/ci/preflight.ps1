@@ -17,13 +17,20 @@ if (-not (Get-Command wsl -ErrorAction SilentlyContinue)) {
   Write-Host 'Prerequisite missing: WSL2 is not installed. See tools/ci/README.md.'
   exit 2
 }
-$have = wsl bash -lc 'for t in g++ python3 git; do command -v $t >/dev/null 2>&1 || echo $t; done'
+$have = wsl --exec bash -lc 'for t in g++ python3 git; do command -v $t >/dev/null 2>&1 || echo $t; done'
 if ($LASTEXITCODE -ne 0) { Write-Host 'WSL did not start.'; exit 2 }
 if ($have) {
   Write-Host ("Prerequisite missing in WSL: " + ($have -join ', ') + ". Install them in your WSL distro (for example: sudo apt-get install -y build-essential python3 git).")
   exit 2
 }
-$wslRepo = wsl wslpath -a "$repo"
+$repoForWsl = $repo.Replace('\', '/')
+$wslRepo = wsl --exec wslpath -a $repoForWsl
 if ($LASTEXITCODE -ne 0) { Write-Host "WSL cannot see $repo."; exit 2 }
-wsl bash -lc "cd '$wslRepo' && bash tools/ci/preflight.sh $($Rest -join ' ')"
+# WSL Git must interpret this Windows checkout with the same line-ending and
+# mode settings as Windows Git. Apply these only to this invocation.
+$checkoutAutoCrlf = git -C $repo config --get core.autocrlf
+if (-not $checkoutAutoCrlf) { $checkoutAutoCrlf = 'false' }
+$checkoutFileMode = git -C $repo config --get core.filemode
+if (-not $checkoutFileMode) { $checkoutFileMode = 'false' }
+wsl --exec env GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=core.autocrlf "GIT_CONFIG_VALUE_0=$checkoutAutoCrlf" GIT_CONFIG_KEY_1=core.filemode "GIT_CONFIG_VALUE_1=$checkoutFileMode" bash -lc "cd '$wslRepo' && bash tools/ci/preflight.sh $($Rest -join ' ')"
 exit $LASTEXITCODE

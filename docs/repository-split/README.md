@@ -1,131 +1,114 @@
-# Product and shared-library separation
+# Canonical repositories and the watch checkout
 
-Owner terminology confirmed November 13, 2026:
+LayerTime owns the Ultra, S3 Plus and Garmin watch targets and their integration
+tests. Shared source is fetched from its owning Git repository at a recorded
+commit. Hunter and Vixen are maintained independently.
 
-- **Vixen** is the flagship Android analysis product previously called LayerScope.
-- **Hunter** is the LilyGO T-Dongle-C5 with sensors, SD logging, evidence capture and card tooling. Its existing logo is retained.
-- The old fox-hunt beacon is a separate legacy build. Its old `tdongle_c5_vixen` environment and macro are compatibility names, not the Vixen flagship.
-- **Notella** remains a separate training product and its reusable core remains independent of the LayerTime profile.
+## Dependencies used by the watches
 
-## Local repositories
-
-| Repository | Prepared location | Ownership |
+| Location in LayerTime | Canonical repository | Pinned commit |
 |---|---|---|
-| Vixen | `C:\workspace\Vixen` | Android app, analysis, product-specific AI workflow and tracked teaching/evaluation assets |
-| Hunter | `C:\workspace\Hunter` | C5 sensor application, BLE transport, SD logs, PCAP evidence, card transfer and diagnostics |
-| LayerTime-Core | `C:\workspace\LayerTime-Core` | Hardware-independent C++ model, application logic, ports and Link codec |
-| LayerTime-C5 | `C:\workspace\LayerTime-C5` | Shared C5 pins, display, LED, logo rendering, button/identity logic and SPI boot precaution |
-| LayerTime-Sensors | `C:\workspace\LayerTime-Sensors` | Snapshot of the existing detector library at the revision LayerTime actually uses |
-| LayerTime-Contracts | `C:\workspace\LayerTime-Contracts` | Language-independent wire/model definitions and compatibility vectors |
+| `libraries/LayerTime-Core/` | [LayerTime-Core](https://github.com/mikevan/LayerTime-Core) | `9d87bc399b267ef889c43e4c3dbb215443b682df` |
+| `contracts/` | [LayerTime-Contracts](https://github.com/mikevan/LayerTime-Contracts) | `2cefe63077ae598148a42b1cb2ae011a9fa54841` |
+| `sensors/` | [LayerTime-Sensors](https://github.com/mikevan/LayerTime-Sensors) | `35e7213874d4577bd9385f226b20e614a65fbfa8` |
 
-These were initially prepared as local repositories. The subsequent GitHub
-checkpoints and remote URLs are recorded in `publication.json`. At the owner's
-request, all seven LayerTime-related repositories are public. The five newly
-created repositories were changed from private to public on November 13, 2026.
-Each records its original extraction ancestry
-and detector revision in `EXTRACTION.json`; that file is a historical preparation
-receipt rather than live publication state.
-Original Git history is retained in the original LayerTime repository; it has not
-been rewritten or deleted. The top-level Sensors snapshot is the recorded
-`35e7213874d4577bd9385f226b20e614a65fbfa8`, rather than the newer standalone
-Sensors working directory elsewhere under TUltra-Project.
+These locations are Git submodules. The parent repository stores gitlinks,
+while the shared repositories own their source files and history. The pins also
+appear in `shared-repositories.lock.json`. The sensor revision preserves the
+previously tested detector implementation.
 
-The original LayerTime checkout remains the watch/integration workspace. It now
-builds the extracted packages under `libraries/` instead of compiling core as
-application source. The top-level product repositories use the same extracted
-library content as sibling dependencies. These are migration copies, not a
-background synchronization service: make subsequent library changes deliberately
-and update consumers' recorded dependency inputs together.
+Initialize a fresh checkout with:
 
-## Actual shared code
+```powershell
+git clone --recurse-submodules https://github.com/mikevan/LayerTime.git
+```
 
-`LayerTime-Core` contains 64 relocated source files. Its public `core/...`
-include paths remain stable. Hunter and both watch firmware configurations now
-declare it as a PlatformIO library, and a CMake build is available independently
-of Arduino or a device application. Detector headers remain public imports from
-LayerTime-Sensors; the sensor submodule was not edited.
+After changing an existing checkout to this revision, run:
 
-`LayerTime-C5` contains nine relocated board-support files and the small shared
-`C5Board.h` boot helper. Hunter's SD logger delegates the chip-select precaution
-to that helper. The beacon uses the same helper directly, so it no longer needs
-the Hunter SD logger just to keep a card deselected at boot. SD logs, evidence,
-card-transfer logic and radio acquisition remain Hunter product code.
+```powershell
+git submodule update --init --recursive
+python tools/shared_repos_check.py
+```
 
-Vixen's Kotlin Link implementation and Garmin's Monkey C implementation are
-language bindings, not consumers of the C++ application library. They must agree
-with the same Contracts definitions and vectors. No claim is made that Kotlin,
-Monkey C and C++ are one compiled library.
+The same guard runs before both watch firmware builds. It checks agreement
+between the lock, `.gitmodules`, index gitlinks and checked-out commits, along
+with clean dependency source and absence of ignored extra build inputs. Seven
+isolated Git-fixture tests cover its acceptance and failure cases. The index
+check permits reviewing a staged dependency update before committing it; the
+same gitlinks are recorded in HEAD when that update is committed.
 
-## Dependency and build checks
+Develop shared code in its owning repository, then update the gitlink and lock
+together and rerun the consuming tests. A regular submodule update follows the
+recorded commit and does not float to a branch tip.
 
-The top-level Hunter build uses sibling Core, C5 and Sensors repositories.
-`dependencies.lock.json` records every source input and package manifest by
-SHA-256, with text line endings normalized for Windows/Linux compatibility.
-`tools/dependencies_check.py` runs before a PlatformIO build and refuses missing,
-changed or extra source files. It never silently updates the lock or downloads
-replacement code. Four tests cover those failure cases and line-ending parity.
+## Independent products
 
-Build Hunter from its repository with `pio run -e tdongle_c5_hunter` using the
-existing pinned C5 toolchain. Its flash tools retain serial-number selection and
-the occupied-port refusal; no hardware has been flashed during this separation.
-
-Configure standalone Core with CMake using explicit
-`LAYERTIME_SENSORS_DIR` and, for tests, `LAYERTIME_CONTRACTS_DIR` paths. Enable
-`LAYERTIME_BUILD_TESTS` to run the 21 core-only suites. Device model/boundary and
-cross-language tests remain integration checks in the original workspace.
-
-Vixen's Android project lives in `android/`. Its existing application IDs and
-Kotlin namespaces are preserved for update compatibility; app display strings
-including notifications and exports use Vixen. Its native runtime path was adjusted for the new directory depth.
-Downloaded inference source, native Wireshark build dependencies, local models,
-signing keys, private captures, old APKs and build caches are not source exports.
-The existing public Wireshark teaching reference cache was separately restored
-and hash-verified for local tests; it remains ignored by Git.
-
-Local Android verification reuses the installed SDK, staged Wireshark native
-libraries/headers, and an ignored checkout of the inference runtime at its locked
-revision. They are not added to the source export. The Android build and all
-364 Android unit tests pass from the new Vixen checkout. Its Python AI workflow
-passes a 168-test run with two skips in the existing training environment.
-
-## Evidence and known baseline failure
-
-Final validation on November 13, 2026:
-
-| Check | Result |
+| Repository | Owned source |
 |---|---|
-| Standalone Core CMake build and tests | 21 suites passed, using sibling Sensors and Contracts |
-| Standalone Hunter board/SD/card-transfer host tests | 517 checks passed |
-| Standalone Hunter firmware build | Passed; same reported RAM/flash usage as the integration build |
-| Original workspace Hunter build | Passed with extracted libraries |
-| T-Watch Ultra firmware build | Passed using its compatible watch toolchain |
-| S3 Plus firmware build | Passed |
-| Legacy C5 beacon firmware build | Passed |
-| Vixen Android debug APK | Built from the new repository |
-| Vixen Android unit tests | 364 passed |
-| Vixen Python workflow | 168-test run passed with 2 skips, using the installed training environment |
-| Shared-library content-lock tests | 4 passed |
-| Original full host gate | 22 check groups pass; 1 pre-existing historical fixture mismatch remains |
+| [Hunter](https://github.com/mikevan/Hunter) | LilyGO T-Dongle-C5 sensing, radio acquisition, BLE transport, SD logs, PCAP evidence, card transfer and diagnostics |
+| [Vixen](https://github.com/mikevan/Vixen) | Android analysis application, product-specific AI workflow, teaching assets and evaluation material |
+| [LayerTime-C5](https://github.com/mikevan/LayerTime-C5) | C5 pins, display, LED, button/identity logic and board boot precautions |
 
-The Ultra and C5 use different Arduino package versions. Their builds were
-verified with separate package directories after their shared package setup
-contended; no SDK or firmware version pins were upgraded. Build success is not
-a new device or field acceptance claim. No hardware was flashed or app installed.
+The parent-owned copies of these products, the duplicated AI workflow and its
+collected documentation, and the old one-time extraction/template scripts were
+removed. The source was already committed and verified in the owning public
+repositories. Root-level watch firmware downloads and historical distribution
+artifacts remain in place. Original Git history preserves earlier source and
+releases.
 
-The initial source inventory is `before-extraction.json`; the current dependency
-inventory is `after-extraction.json`. Both name the original LayerTime source
-commit `7aec804eaea2387b67dbfaa378d26466d493a491` and fingerprint working-tree
-inputs. They are source inventories, not proof of firmware behavior.
+Hunter keeps its existing logo. Vixen is the flagship formerly called
+LayerScope. The old `tdongle_c5_vixen` environment in Hunter is the legacy
+fox-hunt beacon compatibility name.
 
-The historical `test_sensor_equivalence` fixture already disagrees with the
-recorded detector library: one example expects a confirmed Find My tracker while
-the actual library reports an unknown Find My beacon type. Building that test
-against the original committed core reproduces the same failure. Full emitted
-detector output before and after extraction has the identical SHA-256:
+Untracked local captures, models, signing material, logs and caches were
+preserved. The retired local workspace paths are ignored to prevent accidental
+reintroduction of their data into the watch repository.
+
+## Build and test evidence
+
+Both watch projects retain their board, SDK and library version pins. The
+verification uses the installed compatible watch package directory
+`~/.platformio-s3plus`; the Ultra invocation selects it explicitly, and the
+S3 Plus configuration already selects it.
+
+With the pioarduino CLI available:
+
+```powershell
+$env:PLATFORMIO_CORE_DIR = "$env:USERPROFILE\.platformio-s3plus"
+pio run -d devices/lilygo-tultra -e twatch_ultra
+pio run -d devices/lilygo-s3plus -e twatch_s3plus
+```
+
+The output images remain at:
+
+- `devices/lilygo-tultra/bin/build/twatch_ultra/firmware.bin`
+- `devices/lilygo-s3plus/bin/build/twatch_s3plus/firmware.bin`
+
+`tools/ci/preflight.ps1 --host` runs the host, model, architecture, protocol and
+replay checks under WSL. Its Git checks use this Windows checkout's line-ending
+and file-mode settings only for that invocation. Shared guard and legacy sensor
+guard negative tests are part of the host profile. Hunter and Vixen run their
+own tests in their owning repositories.
+
+The historical `test_sensor_equivalence` fixture mismatch remains: an older
+oracle expects a confirmed Find My tracker for one input, while the pinned
+library reports an unknown Find My beacon type. The same failure was reproduced
+before extraction. Complete detector output before and after extraction had
+identical SHA-256:
 
 `903dde150c23e3302d32e0473ff2aafcdb987555eaaacacea3dee5006dd345cf`
 
-The old oracle was not rewritten to manufacture a passing result. The original
-full host gate therefore remains red on this existing mismatch even though its
-other 22 check groups pass. This is separate from the 21 passing standalone core
-suites. Logs remain under ignored `tools/ci/logs/`.
+That oracle has not been rewritten or silently excluded. The host gate reports
+this existing failure explicitly. Watch build results and checkout verification
+for the canonical-repository cleanup are recorded in `cleanup-validation.json`.
+No hardware is flashed by these checks.
+
+## Migration history
+
+`before-extraction.json` and `after-extraction.json` are historical inventories
+from the initial split. `validation.json` records its original validation;
+`publication.json` records the published owning repository commits and public
+visibility. They describe that earlier stage, including temporary migration
+copies which this cleanup replaced with submodules or external product links.
+The read-only inventory tool now reads tracked shared-submodule contents and the
+explicit lock instead of scanning old product copies.

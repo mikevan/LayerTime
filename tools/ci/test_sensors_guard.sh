@@ -133,7 +133,7 @@ if [ "$with_preflight" -eq 1 ]; then
     ( cd "$p/sensors" && git checkout -q -- src/lts/Signatures.cpp ); fi
   if want_case 3; then
     echo "// local edit" >> "$p/sensors/src/lts/Signatures.cpp"
-    pexpect "same with override: EXPERIMENTAL, NOT VALID FOR ACCEPTANCE" 3 "$(pf "$p" LAYERTIME_SENSORS_UNRECORDED=1)"
+    pexpect "shared-repository gate rejects the legacy experimental override" 1 "$(pf "$p" LAYERTIME_SENSORS_UNRECORDED=1)"
     if grep -q "NOT VALID FOR ACCEPTANCE" "$scratch/pf.out"; then echo "PASS  preflight: override run prints NOT VALID FOR ACCEPTANCE"; pass=$((pass+1))
     else echo "FAIL  preflight: banner missing"; fail=$((fail+1)); fi
     ( cd "$p/sensors" && git checkout -q -- src/lts/Signatures.cpp ); fi
@@ -149,10 +149,9 @@ if [ "$with_preflight" -eq 1 ]; then
   if want_case 7; then
     # --full maps each environment to its own project: a stand-in pio records where it ran.
     mkdir -p "$scratch/fakebin"; printf '#!/bin/sh\necho "$PWD|$*" >> "%s"\n' "$scratch/pio_calls" > "$scratch/fakebin/pio"; chmod +x "$scratch/fakebin/pio"
-    (cd "$p" && PATH="$scratch/fakebin:$PATH" bash tools/ci/preflight.sh --full --targets twatch_ultra,twatch_s3plus,tdongle_c5_hunter >"$scratch/pf.out" 2>&1)
+    (cd "$p" && PATH="$scratch/fakebin:$PATH" bash tools/ci/preflight.sh --full --targets twatch_ultra,twatch_s3plus >"$scratch/pf.out" 2>&1)
     want="$p/devices/lilygo-tultra|run -e twatch_ultra
-$p/devices/lilygo-s3plus|run -e twatch_s3plus
-$p/devices/lilygo-hunter|run -e tdongle_c5_hunter"
+$p/devices/lilygo-s3plus|run -e twatch_s3plus"
     if [ "$(cat "$scratch/pio_calls" 2>/dev/null)" = "$want" ]; then echo "PASS  preflight: --full builds each environment in its own project"; pass=$((pass+1))
     else echo "FAIL  preflight: --full mapping"; cat "$scratch/pio_calls" 2>/dev/null | sed 's/^/      /'; fail=$((fail+1)); fi
   fi

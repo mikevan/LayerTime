@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.projectrevivesolutions.layertime.controller.AiCorrelationTrainingSeedTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-10T11:53:10.797Z" hostname="DESKTOP-HI955UO" time="0.148">
-  <properties/>
-  <testcase name="wholeRecordingLinksAndCrossPageReferencesAreExportedWithoutInventingOutcomes" classname="com.projectrevivesolutions.layertime.controller.AiCorrelationTrainingSeedTest" time="0.148"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

@@ -1,6 +1,0 @@
-{
-  "maxInputTokens": 1653,
-  "maxOutputTokens": 384,
-  "contextTokens": 4096,
-  "truncated": false
-}

@@ -1,5 +1,0 @@
-{
-  "status": "superseded-by-user-request-for-domain-ontology-and-dataset",
-  "modelTrainingPerformed": false,
-  "note": "Only Builder ontology/prompt scaffolding existed. No quantity-v3 corpus or model was trained. Do not resume this narrow path as a substitute for domain work."
-}
