@@ -49,9 +49,11 @@
     "branch": "repair/hunter-connection-preserve-builder",
     "scope": "Shared-library extraction, watch build wiring, tests, source inventories and repository preparation tools"
   },
-  "newRepositoriesVisibility": "private",
+  "newRepositoriesVisibility": "public",
   "existingRepositoriesVisibility": "unchanged",
   "forcePushUsed": false,
   "validation": "validation.json",
-  "originalUnrelatedLocalFiles": "excluded from commit"
+  "originalUnrelatedLocalFiles": "excluded from commit",
+  "visibilityChangedAtOwnerRequest": "2026-11-13",
+  "allSevenProjectRepositoriesVerifiedPublic": true
 }

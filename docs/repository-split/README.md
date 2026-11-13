@@ -19,9 +19,10 @@ Owner terminology confirmed November 13, 2026:
 | LayerTime-Contracts | `C:\workspace\LayerTime-Contracts` | Language-independent wire/model definitions and compatibility vectors |
 
 These were initially prepared as local repositories. The subsequent GitHub
-checkpoints and remote URLs are recorded in `publication.json`. The five newly
-created GitHub repositories are private; existing LayerTime and Sensors
-repository visibility is unchanged. Each records its original extraction ancestry
+checkpoints and remote URLs are recorded in `publication.json`. At the owner's
+request, all seven LayerTime-related repositories are public. The five newly
+created repositories were changed from private to public on November 13, 2026.
+Each records its original extraction ancestry
 and detector revision in `EXTRACTION.json`; that file is a historical preparation
 receipt rather than live publication state.
 Original Git history is retained in the original LayerTime repository; it has not
