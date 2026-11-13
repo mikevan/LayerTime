@@ -1,7 +1,41 @@
 # LayerTime pre-flight gate
 
-One script, `tools/ci/preflight.sh`, run locally before every push. LayerTime
-does not use GitHub Actions or any other hosted CI; this script is the gate.
+The same `tools/ci/preflight.sh` host gate runs locally and in GitHub Actions.
+`.github/workflows/ci.yml` also builds both watch targets on fresh Ubuntu
+runners. Hunter and Vixen have their own workflows in their owning repositories.
+
+## Hosted checks
+
+Every push and pull request runs the checks; manual runs are also available.
+Jobs use read-only repository access, pinned action commits and recursive
+submodules. No local build folders, signing keys or private captures are needed.
+Results, firmware binaries and ELF debugging files are retained for 14 days
+under the run's Artifacts section. Firmware builds never flash hardware.
+
+The reusable workflow accepts `candidate_repository` and a full
+`candidate_revision` SHA for shared-library integration checks. The four shared
+repositories call their affected consumers on pushes and pull requests:
+
+| Library | Consumers |
+|---|---|
+| Core | Both watches, Hunter |
+| C5 | Hunter |
+| Sensors | Both watches, Hunter |
+| Contracts | Both watches, Vixen |
+
+`test_dependency_candidate.py` stages the candidate gitlink and updates the
+corresponding lock in an ephemeral runner checkout. A local integration commit
+makes the legacy HEAD-based Sensors check and index-based checks agree. Hunter
+also computes candidate source hashes. All normal guards and tests still run.
+`candidate-validation.json` records the original consumer and exact candidate.
+These runs do not push pins, publish releases or change product repositories.
+Adopting a tested library remains a product change with its own checked gitlink
+and lock update. Candidate artifacts are labelled with the library name; use
+the product's `pinned` artifacts for ordinary hardware acceptance.
+
+See [hardware acceptance](../../docs/firmware/hardware-acceptance.md) before
+calling a build device-verified. Required merge checks are configured only
+after their jobs have successfully run on GitHub.
 
 ## Profiles
 - `--host`  the sensor library revision guard, the sensor library's own
