@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# LayerTime pre-flight gate. Run it locally before every push. LayerTime does
-# not use GitHub Actions or any other hosted CI; this script is the gate.
+# LayerTime pre-flight gate. Run it locally before every push. LayerTime
+# uses the same host gate locally and in GitHub Actions.
 #
 # PROFILES (pick one):
 #   --host    the sensor library suite (LayerTime-Sensors, isolated), host unit
