@@ -23,7 +23,7 @@
 // Why it exists: the radios find detections on their own tasks (the Wi-Fi
 // driver's promiscuous callback, the NimBLE host's scan callback), and those
 // detections go straight into the core's event history
-// (src/core/logic/MonitorEventLog). The main loop reads that same history to
+// (libraries/LayerTime-Core/src/core/logic/MonitorEventLog). The main loop reads that same history to
 // raise alerts and draw the Recon screen. The core documents this as "Not
 // thread-safe", a race the T-Ultra carries unchanged. The S3 Plus closes it
 // with one mutex, owned here, without changing the core.

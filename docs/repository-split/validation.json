@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-13",
+  "sourceCommit": "7aec804eaea2387b67dbfaa378d26466d493a491",
+  "localRepositories": [
+    "C:\\workspace\\Vixen",
+    "C:\\workspace\\Hunter",
+    "C:\\workspace\\LayerTime-Core",
+    "C:\\workspace\\LayerTime-C5",
+    "C:\\workspace\\LayerTime-Sensors",
+    "C:\\workspace\\LayerTime-Contracts"
+  ],
+  "tests": {
+    "standaloneCoreSuites": {
+      "passed": 21
+    },
+    "hunterHostChecks": {
+      "passed": 517
+    },
+    "vixenAndroid": {
+      "passed": 364,
+      "failures": 0
+    },
+    "vixenPython": {
+      "run": 168,
+      "skipped": 2,
+      "status": "passed"
+    },
+    "dependencyLock": {
+      "passed": 4
+    }
+  },
+  "builds": {
+    "standaloneHunter": "passed",
+    "integrationHunter": "passed",
+    "watchUltra": "passed",
+    "watchS3Plus": "passed",
+    "legacyC5Beacon": "passed",
+    "vixenAndroidFullDebug": "passed"
+  },
+  "baselineFailure": {
+    "suite": "sensor_equivalence",
+    "preExisting": true,
+    "beforeAfterOutputSha256": "903dde150c23e3302d32e0473ff2aafcdb987555eaaacacea3dee5006dd345cf",
+    "oracleModified": false
+  },
+  "committed": false,
+  "published": false,
+  "hardwareFlashed": false,
+  "appInstalled": false,
+  "recordScope": "Validation at the initial local extraction stage; subsequent repository publication is recorded in publication.json.",
+  "publicationRecord": "publication.json"
+}

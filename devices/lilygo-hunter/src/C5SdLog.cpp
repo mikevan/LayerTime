@@ -20,6 +20,7 @@
 #if defined(LAYERTIME_TARGET_TDONGLE_C5)
 
 #include "C5SdLog.h"
+#include "C5Board.h"
 #include "CardTransferLogic.h"
 #include "TDongleC5Pins.h"
 
@@ -57,8 +58,7 @@ void copyText(char *out, size_t size, const char *text)
 
 void C5SdLog::holdCardDeselected()
 {
-    digitalWrite(pins::kSdCs, HIGH);
-    pinMode(pins::kSdCs, OUTPUT);
+    holdC5CardDeselected();
 }
 
 bool C5SdLog::begin()

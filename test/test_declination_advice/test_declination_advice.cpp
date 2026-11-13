@@ -1,4 +1,4 @@
-// Unit tests for src/core/logic/DeclinationAdvice, moved out of MappingScreen
+// Unit tests for libraries/LayerTime-Core/src/core/logic/DeclinationAdvice, moved out of MappingScreen
 // in Phase 0 Step 3b. test_declination_text proves the screen still shows
 // the same words; this suite pins the core function on its own.
 

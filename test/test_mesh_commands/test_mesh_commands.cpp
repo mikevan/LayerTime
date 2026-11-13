@@ -1,4 +1,4 @@
-// Unit tests for the mesh side of src/core/app/LayerTimeCore, added in
+// Unit tests for the mesh side of libraries/LayerTime-Core/src/core/app/LayerTimeCore, added in
 // Phase 0 Step 5: command validation and routing (contracts/commands.md),
 // quick messages by id, channel commands, MeshState filled from transport
 // observations, and the conversation a removed channel leaves behind.

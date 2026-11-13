@@ -1,4 +1,4 @@
-// Unit tests for the application settings in src/core/app/LayerTimeCore,
+// Unit tests for the application settings in libraries/LayerTime-Core/src/core/app/LayerTimeCore,
 // added in Phase 0 Step 6: the six settings commands, their results
 // (contracts/commands.md), loading and saving through the SettingsStore
 // port, and sleep mode reaching the alert policy. Fake ports; no platform.

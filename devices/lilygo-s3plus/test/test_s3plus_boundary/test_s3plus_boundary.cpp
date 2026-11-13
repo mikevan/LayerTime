@@ -1,7 +1,7 @@
 // The S3 Plus target's boundary, checked on the source tree itself.
 //
 // devices/lilygo-s3plus/ is its own project beside src/, the way devices/garmin-tactix/ is. Its code may
-// reach the shared, hardware-independent core (src/core/) and its own files,
+// reach the shared, hardware-independent core (libraries/LayerTime-Core/src/core/) and its own files,
 // and nothing else in the repository: never another target's platform code
 // (src/platform/...), never src/main.cpp. In the other direction, nothing
 // under src/ may reach devices/lilygo-s3plus/, so the T-Watch Ultra build (which compiles
@@ -112,7 +112,7 @@ void s3plus_reaches_only_its_own_files_and_core()
             if (inc.target.empty()) continue; // system or library header
             const bool ok = under(inc.target, kS3) || under(inc.target, kCore) ||
                             under(inc.target, kS3 / "variants" / "lilygo_twatch_s3");
-            if (!ok) report(inc, "reaches outside devices/lilygo-s3plus/ and src/core/");
+            if (!ok) report(inc, "reaches outside devices/lilygo-s3plus/ and libraries/LayerTime-Core/src/core/");
         }
     }
 }

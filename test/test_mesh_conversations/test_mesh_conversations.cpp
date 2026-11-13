@@ -1,4 +1,4 @@
-// Unit tests for src/core/logic/MeshConversations, moved out of
+// Unit tests for libraries/LayerTime-Core/src/core/logic/MeshConversations, moved out of
 // MeshtasticScreen in Phase 0 Step 3h. test_meshtastic_chats still checks
 // the screen; this suite checks the rules directly, with a non-zero node
 // number for "us", which the screen test cannot set.

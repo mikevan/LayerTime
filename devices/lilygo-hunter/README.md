@@ -4,7 +4,7 @@ The Hunter is the LayerTime Node on the LILYGO T-Dongle-C5: it runs Recon
 on the C5's Wi-Fi (5 GHz and 2.4 GHz) and BLE radios and serves the watch over
 the LayerTime Link (`contracts/link.md`). It is its own pioarduino project:
 open this folder, not the repository root, to build it in the pioarduino IDE.
-It compiles only the repository's `src/core/` and this folder's `src/`.
+It compiles only the repository's `libraries/LayerTime-Core/src/core/` and this folder's `src/`.
 
 ## Layout
 
@@ -69,11 +69,11 @@ are in `src/SdLogLogic.h` (host-tested); the card handling is in
 Run from `devices/lilygo-hunter/test/`:
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../../../sensors/src -I../src -o tests_tdongle_c5_bringup test_tdongle_c5_bringup/test_tdongle_c5_bringup.cpp ../src/BringUpLogic.cpp ../src/SdLogLogic.cpp ../src/CardTransferLogic.cpp ../../../src/core/link/LinkCard.cpp ../../../src/core/link/LinkCodec.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -I../../../libraries/LayerTime-C5/src -o tests_tdongle_c5_bringup test_tdongle_c5_bringup/test_tdongle_c5_bringup.cpp ../../../libraries/LayerTime-C5/src/BringUpLogic.cpp ../src/SdLogLogic.cpp ../src/CardTransferLogic.cpp ../../../libraries/LayerTime-Core/src/core/link/LinkCard.cpp ../../../libraries/LayerTime-Core/src/core/link/LinkCodec.cpp
 ./tests_tdongle_c5_bringup
 ```
 
-The Hunter's scheduler is core's (`src/core/logic/ReconScheduler`); its
+The Hunter's scheduler is core's (`libraries/LayerTime-Core/src/core/logic/ReconScheduler`); its
 suite, `test_recon_scheduler`, stays with the root suites in `test/`.
 
 ## Regenerating the screen heads

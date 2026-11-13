@@ -1,7 +1,7 @@
 # LayerTime Commands
 
 Contract version 0.1. Enum values are in `vectors/enums.json`. The C++
-binding is `src/core/model/LayerTimeCommand.h`.
+binding is `libraries/LayerTime-Core/src/core/model/LayerTimeCommand.h`.
 
 A screen never calls a service. It issues a `LayerTimeCommand` and renders
 the state that results. Every command returns exactly one `CommandResult`.

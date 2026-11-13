@@ -1,6 +1,6 @@
 // Conformance tests for the C++ binding of the LayerTime contracts.
 //
-// Checks that src/core/model matches contracts/vectors, that the T-Ultra
+// Checks that libraries/LayerTime-Core/src/core/model matches contracts/vectors, that the T-Ultra
 // profile matches its JSON profile, and that the new model agrees with the
 // existing T-Ultra types it will be adapted from. Run from test/, see
 // test/README.md.
@@ -679,7 +679,7 @@ void default_quick_messages_match_tultra_phrases()
     CHECK_TRUE(arr != std::string::npos);
 
     // Since Phase 0 Step 5 the T-Ultra's phrases are the core's default
-    // library (src/core/logic/QuickMessages), no longer src/ui/QuickPhrases.h.
+    // library (libraries/LayerTime-Core/src/core/logic/QuickMessages), no longer src/ui/QuickPhrases.h.
     uint8_t count = 0;
     const QuickMessage *lib = layertime::mesh::defaultQuickMessages(count);
     CHECK_INT(count, QuickMessageLibrary::kMaxMessages);

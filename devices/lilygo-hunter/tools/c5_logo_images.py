@@ -21,7 +21,7 @@ Since 2026-11-01 the dongle no longer shows the owl (the owl is the Layers
 and PRS logo): a Hunter shows the Hunter cat, and a Vixen shows the Vixen
 fox. This script crops each head out of its logo master in assets/,
 downsamples it to a 56 x 56 RGB565 bitmap on black, and writes both as
-devices/lilygo-hunter/src/C5LogoImages.cpp. Rerun it whenever a logo
+libraries/LayerTime-C5/src/C5LogoImages.cpp. Rerun it whenever a logo
 master changes, then recheck the indicator boxes in C5LogoImages.h:
 
     python3 devices/lilygo-hunter/tools/c5_logo_images.py
@@ -36,7 +36,7 @@ import struct
 from PIL import Image
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]  # the repository root
-OUTPUT = ROOT / "devices/lilygo-hunter/src/C5LogoImages.cpp"
+OUTPUT = ROOT / "libraries/LayerTime-C5/src/C5LogoImages.cpp"
 
 SIZE = 56   # pixels, square
 PAD = 1     # pixels of black around the artwork

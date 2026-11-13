@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-13",
+  "repositories": {
+    "LayerTime-Core": {
+      "commit": "9d87bc399b267ef889c43e4c3dbb215443b682df",
+      "branch": "main",
+      "url": "https://github.com/mikevan/LayerTime-Core",
+      "pushed": true,
+      "files": 93
+    },
+    "LayerTime-C5": {
+      "commit": "652eb8dabcd7ffec58615c09df56f908de2197db",
+      "branch": "main",
+      "url": "https://github.com/mikevan/LayerTime-C5",
+      "pushed": true,
+      "files": 15
+    },
+    "LayerTime-Contracts": {
+      "commit": "2cefe63077ae598148a42b1cb2ae011a9fa54841",
+      "branch": "main",
+      "url": "https://github.com/mikevan/LayerTime-Contracts",
+      "pushed": true,
+      "files": 18
+    },
+    "LayerTime-Sensors": {
+      "commit": "3119b97dc024662fde70052cf0ff65f9aeda8d32",
+      "branch": "main",
+      "url": "https://github.com/mikevan/LayerTime-Sensors",
+      "pushed": true,
+      "files": 2
+    },
+    "Hunter": {
+      "commit": "1f0a167f8aefc20410dccb7fd412cb7b8ef5aeae",
+      "branch": "main",
+      "url": "https://github.com/mikevan/Hunter",
+      "pushed": true,
+      "files": 42
+    },
+    "Vixen": {
+      "commit": "e2e8566e9bde75de65b434dea065b43044a605fe",
+      "branch": "main",
+      "url": "https://github.com/mikevan/Vixen",
+      "pushed": true,
+      "files": 1065
+    }
+  },
+  "layerTime": {
+    "url": "https://github.com/mikevan/LayerTime",
+    "branch": "repair/hunter-connection-preserve-builder",
+    "scope": "Shared-library extraction, watch build wiring, tests, source inventories and repository preparation tools"
+  },
+  "newRepositoriesVisibility": "private",
+  "existingRepositoriesVisibility": "unchanged",
+  "forcePushUsed": false,
+  "validation": "validation.json",
+  "originalUnrelatedLocalFiles": "excluded from commit"
+}

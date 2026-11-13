@@ -23,11 +23,18 @@ import java.io.File
 class LinkCodecConformanceTest {
 
     private fun locateVectors(): File {
+        System.getenv("LAYERTIME_CONTRACTS_DIR")?.let { path ->
+            return File(path, "vectors/link_frames.json").also {
+                require(it.isFile) { "LAYERTIME_CONTRACTS_DIR does not contain vectors/link_frames.json" }
+            }
+        }
         // Walk up from the module working directory to the repo root.
         var dir: File? = File(System.getProperty("user.dir")).absoluteFile
         while (dir != null) {
             val f = File(dir, "contracts/vectors/link_frames.json")
             if (f.exists()) return f
+            val shared = File(dir, "LayerTime-Contracts/vectors/link_frames.json")
+            if (shared.exists()) return shared
             dir = dir.parentFile
         }
         error("contracts/vectors/link_frames.json not found above ${System.getProperty("user.dir")}")

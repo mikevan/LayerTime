@@ -42,7 +42,7 @@ constexpr uint32_t kBleCycleMs = 12000;
 constexpr uint32_t kBleScanMs = 1800;
 
 // Pulls one advertisement's manufacturer records and 16-bit UUIDs out of
-// NimBLE for core's classification entry point (src/core/logic/ReconClassification).
+// NimBLE for core's classification entry point (libraries/LayerTime-Core/src/core/logic/ReconClassification).
 void bleManufacturerThunk(uint8_t index, std::string &out, const void *context)
 {
     out = static_cast<const NimBLEAdvertisedDevice *>(context)->getManufacturerData(index);
@@ -83,7 +83,7 @@ public:
 ReconBleScanCallbacks gBleScanCallbacks;
 }
 
-// Selection rules and names live in core (src/core/logic/ReconSelection).
+// Selection rules and names live in core (libraries/LayerTime-Core/src/core/logic/ReconSelection).
 // These keep ReconService's existing interface for the screens.
 
 const char *ReconService::detectorName(ReconDetector detector)
@@ -365,7 +365,7 @@ void ReconService::setCandidateSink(layertime::recon::CandidateSink sink, void *
 void ReconService::deliver(const layertime::recon::Candidate &candidate, layertime::SourceKind kind,
                            layertime::Band band)
 {
-    // The event log itself is core's (src/core/logic/MonitorEventLog).
+    // The event log itself is core's (libraries/LayerTime-Core/src/core/logic/MonitorEventLog).
     if (_candidateSink == nullptr) return;
     layertime::recon::Candidate stamped = candidate;
     stamped.sourceKind = kind;
@@ -388,7 +388,7 @@ void ReconService::onPromiscuousPacket(void *buf, int type)
     // rx_state (ESP-IDF: "0: no error; others: error numbers which are not
     // public"). No detector reads such a frame.
     if (packet->rx_ctrl.rx_state != 0) return;
-    // Frame classification goes through core (src/core/logic/ReconClassification).
+    // Frame classification goes through core (libraries/LayerTime-Core/src/core/logic/ReconClassification).
     // This side only unpacks what the Wi-Fi driver handed over.
     _wifiClassifier.classify(packet->payload, packet->rx_ctrl.sig_len, packet->rx_ctrl.rssi,
                              packet->rx_ctrl.channel, millis(), wantsThunk, this,

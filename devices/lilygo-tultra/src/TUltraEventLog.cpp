@@ -30,7 +30,7 @@ void TUltraEventLog::append(const MonitorEvent &event)
         return;
     }
 
-    // The row format lives in core (src/core/logic/DetectionCsv).
+    // The row format lives in core (libraries/LayerTime-Core/src/core/logic/DetectionCsv).
     detection_log::RowFields fields;
     fields.year = _state.year;
     fields.month = _state.month;

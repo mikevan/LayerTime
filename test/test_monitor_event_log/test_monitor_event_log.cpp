@@ -1,4 +1,4 @@
-// Unit tests for src/core/logic/MonitorEventLog, the Recon event history
+// Unit tests for libraries/LayerTime-Core/src/core/logic/MonitorEventLog, the Recon event history
 // moved out of ReconService in Phase 0 Step 4. The end-to-end behaviour is
 // still pinned by test_recon, test_recon_screen and test_detection_log
 // through the real radio entry points; these check the log on its own.

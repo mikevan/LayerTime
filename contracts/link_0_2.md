@@ -112,7 +112,7 @@ All new ops reply on Data. Every frame stays 20 bytes or less unless the interfa
 ### Card ops (2026-11-04)
 
 The phone pulls the Hunter's SD card files over the Link, so field analysis needs no
-computer. Read only. Code: `src/core/link/LinkCard.h`; tests: `test/test_link_card`.
+computer. Read only. Code: `libraries/LayerTime-Core/src/core/link/LinkCard.h`; tests: `test/test_link_card`.
 
 - **CARD_LIST** (op `0x0B`, 2 bytes: op, reqId) answers one **CARD_ENTRY** (type `0x8B`,
   13 bytes: type, reqId, kind, serial u16, eventId u32, size u32) per file, then END.

@@ -1,4 +1,4 @@
-// Unit tests for src/core/logic/ReconStageLog, the ring of stage timestamps
+// Unit tests for libraries/LayerTime-Core/src/core/logic/ReconStageLog, the ring of stage timestamps
 // and the interval histogram behind the Slice 1 Increment 2A no-link
 // baseline on the T-Dongle-C5. The C5 keeps the ring in PSRAM and stamps
 // esp_timer_get_time(); here the buffer is an array and the stamps are

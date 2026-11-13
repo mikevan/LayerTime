@@ -1,0 +1,19 @@
+{
+  "name": "LayerTime-Core",
+  "version": "0.1.0",
+  "description": "Hardware-independent application model, logic, ports and Link protocol.",
+  "license": "GPL-3.0-or-later",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
+  },
+  "export": {
+    "include": [
+      "src",
+      "CMakeLists.txt",
+      "library.json",
+      "README.md",
+      "LICENSE"
+    ]
+  }
+}

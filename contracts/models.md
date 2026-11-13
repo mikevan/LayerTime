@@ -1,7 +1,7 @@
 # LayerTime Models
 
 Contract version 0.1. Enum values are in `vectors/enums.json`. The C++
-binding is `src/core/model/`.
+binding is `libraries/LayerTime-Core/src/core/model/`.
 
 The "T-Ultra source" column says where the T-Watch Ultra gets each value
 today. It is there so the adapter work maps existing behaviour instead of

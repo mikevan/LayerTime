@@ -46,8 +46,8 @@ done
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$here"
-while [ "$root" != "/" ] && [ ! -f "$root/src/core/logic/ReconClassification.cpp" ]; do root="$(dirname "$root")"; done
-[ -f "$root/src/core/logic/ReconClassification.cpp" ] || { echo "pre-flight: repository root not found." >&2; exit 2; }
+while [ "$root" != "/" ] && [ ! -f "$root/libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp" ]; do root="$(dirname "$root")"; done
+[ -f "$root/libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp" ] || { echo "pre-flight: repository root not found." >&2; exit 2; }
 # The sensor library is a submodule at sensors/. Stop with the fix, not with
 # a wall of missing-header errors, when it has not been fetched.
 if [ ! -f "$root/sensors/library.json" ] || [ ! -f "$root/sensors/src/lts/Detectors.h" ]; then
@@ -59,7 +59,7 @@ harness=""; [ -f "$root/test/replay/test_sensor_replay.cpp" ] && harness="$root/
 
 CXX="${CXX:-g++}"; FLAGS="-std=c++17 -O0 -Wall -Wextra"
 out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT
-T="$root/test"; S="$root/src"; L="$S/core/logic"; A="$S/core/app"; K="$S/core/link"
+T="$root/test"; S="$root/libraries/LayerTime-Core/src"; L="$S/core/logic"; A="$S/core/app"; K="$S/core/link"
 Z="$root/sensors/src"; ZS=("$Z"/lts/*.cpp)
 logdir="$root/tools/ci/logs"; mkdir -p "$logdir"
 PASS=(); FAIL=(); NOTRUN=()
@@ -151,7 +151,18 @@ else
 fi
 echo
 echo "Sensor library (LayerTime-Sensors, built and run in an isolated copy):"
-if bash "$root/sensors/tools/run_tests.sh" >"$out/sensors.log" 2>&1; then
+# Windows Git may check the sensor submodule's shell scripts out with CRLF.
+# Normalize only a temporary test copy; never modify the pinned checkout.
+sensor_test_root="$out/LayerTime-Sensors"
+mkdir -p "$sensor_test_root"
+cp -R "$root/sensors/src" "$root/sensors/test" "$root/sensors/tools" "$root/sensors/sources" "$root/sensors/library.json" "$sensor_test_root/"
+python3 - "$sensor_test_root/tools" <<'PY'
+from pathlib import Path
+import sys
+for p in Path(sys.argv[1]).rglob('*.sh'):
+    p.write_bytes(p.read_bytes().replace(b'\r\n', b'\n'))
+PY
+if bash "$sensor_test_root/tools/run_tests.sh" >"$out/sensors.log" 2>&1; then
   PASS+=("sensors library ($(tail -n1 "$out/sensors.log"))")
 else
   FAIL+=("sensors library (see tools/ci/logs/sensors.log)"); cp "$out/sensors.log" "$logdir/sensors.log"
@@ -169,12 +180,12 @@ host_check recon_stage_log    "$T/test_recon_stage_log/test_recon_stage_log.cpp"
 host_check mesh_conversations "$T/test_mesh_conversations/test_mesh_conversations.cpp" "$L/MeshConversations.cpp"
 host_check detection_csv      "$T/test_detection_csv/test_detection_csv.cpp" "$L/DetectionCsv.cpp"
 host_check monitor_event_log  "$T/test_monitor_event_log/test_monitor_event_log.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/ReconSelection.cpp"
-host_check layertime_core     "$T/test_layertime_core/test_layertime_core.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp"
-host_check mesh_commands      "$T/test_mesh_commands/test_mesh_commands.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp"
-host_check settings_commands  "$T/test_settings_commands/test_settings_commands.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp"
+host_check layertime_core     "$T/test_layertime_core/test_layertime_core.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp" "$L/ReconSelection.cpp"
+host_check mesh_commands      "$T/test_mesh_commands/test_mesh_commands.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp" "$L/ReconSelection.cpp"
+host_check settings_commands  "$T/test_settings_commands/test_settings_commands.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp" "$L/ReconSelection.cpp"
 host_check link_codec         "$T/test_link_codec/test_link_codec.cpp" "$K/LinkCodec.cpp"
 host_check link_vectors_mc    "$T/test_link_vectors_mc/test_link_vectors_mc.cpp"
-host_check link_server        "$T/test_link_server/test_link_server.cpp" "$K/LinkServer.cpp" "$K/ChangeTracker.cpp" "$K/LinkCodec.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp"
+host_check link_server        "$T/test_link_server/test_link_server.cpp" "$K/LinkServer.cpp" "$K/ChangeTracker.cpp" "$K/LinkCodec.cpp" "$A/LayerTimeCore.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "$L/MeshConversations.cpp" "$L/QuickMessages.cpp" "$L/ReconSelection.cpp"
 host_check boundary           "$T/test_boundary/test_boundary.cpp"
 host_check sensor_equivalence "$T/test_sensor_equivalence/test_sensor_equivalence.cpp" "$L/ReconClassification.cpp" "$L/ReconSelection.cpp" "${ZS[@]}"
 if [ -n "$harness" ]; then host_check sensor_replay "$harness/test_sensor_replay.cpp" "$L/ReconClassification.cpp" "$L/ReconSelection.cpp" "$L/MonitorEventLog.cpp" "$L/AlertPolicy.cpp" "${ZS[@]}"

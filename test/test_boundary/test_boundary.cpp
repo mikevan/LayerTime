@@ -40,7 +40,7 @@ namespace fs = std::filesystem;
 namespace {
 
 const fs::path kRepo = fs::weakly_canonical("..");
-const fs::path kSrc = fs::weakly_canonical("../src");
+const fs::path kSrc = fs::weakly_canonical("../libraries/LayerTime-Core/src");
 const fs::path kUltraSrc = fs::weakly_canonical("../devices/lilygo-tultra/src");
 const fs::path kSensorsSrc = fs::weakly_canonical("../sensors/src");
 

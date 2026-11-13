@@ -3,7 +3,7 @@
 No IDE, no framework, no platform. One compiler invocation.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests test_geogrid/test_geogrid.cpp ../src/core/logic/GeoGrid.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests test_geogrid/test_geogrid.cpp ../libraries/LayerTime-Core/src/core/logic/GeoGrid.cpp
 ./tests
 ```
 
@@ -16,8 +16,8 @@ One case in isolation, which is how the density tooling works:
 ## Coverage and density
 
 ```
-g++ -std=c++17 -O0 -g --coverage -I. -I../src -I../sensors/src -c ../src/core/logic/GeoGrid.cpp -o GeoGrid.o
-g++ -std=c++17 -O0 -g --coverage -I. -I../src -I../sensors/src -c test_geogrid/test_geogrid.cpp -o tests.o
+g++ -std=c++17 -O0 -g --coverage -I. -I../libraries/LayerTime-Core/src -I../sensors/src -c ../libraries/LayerTime-Core/src/core/logic/GeoGrid.cpp -o GeoGrid.o
+g++ -std=c++17 -O0 -g --coverage -I. -I../libraries/LayerTime-Core/src -I../sensors/src -c test_geogrid/test_geogrid.cpp -o tests.o
 g++ --coverage GeoGrid.o tests.o -o test_cov
 python3 density.py
 ```
@@ -31,13 +31,13 @@ standalone g++ call that knows nothing about the device.
 
 ## Core model conformance
 
-Checks `src/core/model` against `contracts/vectors`, the T-Ultra capability
+Checks `libraries/LayerTime-Core/src/core/model` against `contracts/vectors`, the T-Ultra capability
 profile against its JSON, and the new model against the existing T-Ultra
 types it will be adapted from. Run from `test/`, because the vectors are read
 from `../contracts/vectors/`.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_core test_core_model/test_core_model.cpp ../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_core test_core_model/test_core_model.cpp ../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp
 ./tests_core
 ```
 
@@ -55,10 +55,10 @@ is recorded, not fixed, so a later fix shows up as a deliberate change.
 
 ## Core logic unit suites
 
-Phase 0 Step 3 moved application and detection logic into `src/core/logic`,
-Step 4 added the event log (`src/core/logic/MonitorEventLog`), the
-application core (`src/core/app/LayerTimeCore`), and the ports it talks to
-the platform through (`src/core/ports`), Step 5 added the mesh commands,
+Phase 0 Step 3 moved application and detection logic into `libraries/LayerTime-Core/src/core/logic`,
+Step 4 added the event log (`libraries/LayerTime-Core/src/core/logic/MonitorEventLog`), the
+application core (`libraries/LayerTime-Core/src/core/app/LayerTimeCore`), and the ports it talks to
+the platform through (`libraries/LayerTime-Core/src/core/ports`), Step 5 added the mesh commands,
 the quick-message library, and the conversation table, and Step 6 added the
 application settings and their commands. The T-Watch Ultra's characterization
 suites (now in `devices/lilygo-tultra/test/`) still prove the moved code
@@ -79,43 +79,43 @@ detection: it replays a fixed corpus and compares every candidate against
 the output recorded from 894b508, before the move.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_decl_advice test_declination_advice/test_declination_advice.cpp ../src/core/logic/DeclinationAdvice.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_decl_advice test_declination_advice/test_declination_advice.cpp ../libraries/LayerTime-Core/src/core/logic/DeclinationAdvice.cpp
 ./tests_decl_advice
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_recon_selection test_recon_selection/test_recon_selection.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_recon_selection test_recon_selection/test_recon_selection.cpp ../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp
 ./tests_recon_selection
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_recon_classification test_recon_classification/test_recon_classification.cpp ../src/core/logic/ReconClassification.cpp ../src/core/logic/ReconSelection.cpp ../sensors/src/lts/*.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_recon_classification test_recon_classification/test_recon_classification.cpp ../libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp ../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../sensors/src/lts/*.cpp
 ./tests_recon_classification
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_sensor_equivalence test_sensor_equivalence/test_sensor_equivalence.cpp ../src/core/logic/ReconClassification.cpp ../src/core/logic/ReconSelection.cpp ../sensors/src/lts/*.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_sensor_equivalence test_sensor_equivalence/test_sensor_equivalence.cpp ../libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp ../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../sensors/src/lts/*.cpp
 ./tests_sensor_equivalence
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_alert_policy test_alert_policy/test_alert_policy.cpp ../src/core/logic/AlertPolicy.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_alert_policy test_alert_policy/test_alert_policy.cpp ../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp
 ./tests_alert_policy
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_recon_scheduler test_recon_scheduler/test_recon_scheduler.cpp ../src/core/logic/ReconScheduler.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_recon_scheduler test_recon_scheduler/test_recon_scheduler.cpp ../libraries/LayerTime-Core/src/core/logic/ReconScheduler.cpp ../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp
 ./tests_recon_scheduler
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_recon_stage_log test_recon_stage_log/test_recon_stage_log.cpp ../src/core/logic/ReconStageLog.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_recon_stage_log test_recon_stage_log/test_recon_stage_log.cpp ../libraries/LayerTime-Core/src/core/logic/ReconStageLog.cpp
 ./tests_recon_stage_log
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_mesh_conversations test_mesh_conversations/test_mesh_conversations.cpp ../src/core/logic/MeshConversations.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_mesh_conversations test_mesh_conversations/test_mesh_conversations.cpp ../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp
 ./tests_mesh_conversations
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_detection_csv test_detection_csv/test_detection_csv.cpp ../src/core/logic/DetectionCsv.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_detection_csv test_detection_csv/test_detection_csv.cpp ../libraries/LayerTime-Core/src/core/logic/DetectionCsv.cpp
 ./tests_detection_csv
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_monitor_event_log test_monitor_event_log/test_monitor_event_log.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_monitor_event_log test_monitor_event_log/test_monitor_event_log.cpp ../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp
 ./tests_monitor_event_log
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_layertime_core test_layertime_core/test_layertime_core.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_layertime_core test_layertime_core/test_layertime_core.cpp ../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp ../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp
 ./tests_layertime_core
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_mesh_commands test_mesh_commands/test_mesh_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_mesh_commands test_mesh_commands/test_mesh_commands.cpp ../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp ../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp
 ./tests_mesh_commands
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_settings_commands test_settings_commands/test_settings_commands.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_settings_commands test_settings_commands/test_settings_commands.cpp ../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp ../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp
 ./tests_settings_commands
 ```
 
@@ -129,7 +129,7 @@ in layout step 2 (2026-10-02). The build command is in
 
 The LayerTime Link 0.1 wire format of `contracts/link.md`, added in Slice 1
 Increment 1. `test_link_codec` runs the C++ codec and the Node dispatcher in
-`src/core/link` against every byte-exact vector in
+`libraries/LayerTime-Core/src/core/link` against every byte-exact vector in
 `contracts/vectors/link_frames.json`. `test_link_vectors_mc` reads the
 generated Monkey C copy of those vectors, `devices/garmin-tactix/source/link/LinkVectors.mc`,
 back with its own parser and checks it against the same JSON, so the Connect
@@ -149,39 +149,39 @@ lock never being held around a command that reaches the radios; and rule 2's
 one outstanding request on the Node (`LinkPipe`).
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_codec test_link_codec/test_link_codec.cpp ../src/core/link/LinkCodec.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_link_codec test_link_codec/test_link_codec.cpp ../libraries/LayerTime-Core/src/core/link/LinkCodec.cpp
 ./tests_link_codec
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_vectors_mc test_link_vectors_mc/test_link_vectors_mc.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_link_vectors_mc test_link_vectors_mc/test_link_vectors_mc.cpp
 ./tests_link_vectors_mc
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_server test_link_server/test_link_server.cpp ../src/core/link/LinkServer.cpp ../src/core/link/ChangeTracker.cpp ../src/core/link/LinkCodec.cpp ../src/core/app/LayerTimeCore.cpp ../src/core/logic/MonitorEventLog.cpp ../src/core/logic/AlertPolicy.cpp ../src/core/logic/MeshConversations.cpp ../src/core/logic/QuickMessages.cpp ../src/core/logic/ReconSelection.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_link_server test_link_server/test_link_server.cpp ../libraries/LayerTime-Core/src/core/link/LinkServer.cpp ../libraries/LayerTime-Core/src/core/link/ChangeTracker.cpp ../libraries/LayerTime-Core/src/core/link/LinkCodec.cpp ../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp ../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp
 ./tests_link_server
 ```
 
 ### Link 0.2 Phase 0 measurement
 
-`test_link_measure` covers the measurement helpers in `src/core/link/LinkMeasure`:
+`test_link_measure` covers the measurement helpers in `libraries/LayerTime-Core/src/core/link/LinkMeasure`:
 the test-only BULK op the measurement firmware (`tdongle_c5_measure`) answers,
 and the CRC-32 check that tells whether a captured Wi-Fi frame ends with its
 FCS. It also proves the Node dispatcher, release or test build, still answers
 BULK with ERROR UnknownOp. See `claude/link_0_2_phase0_plan.md` in the project.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_measure test_link_measure/test_link_measure.cpp ../src/core/link/LinkMeasure.cpp ../src/core/link/LinkCodec.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_link_measure test_link_measure/test_link_measure.cpp ../libraries/LayerTime-Core/src/core/link/LinkMeasure.cpp ../libraries/LayerTime-Core/src/core/link/LinkCodec.cpp
 ./tests_link_measure
 ```
 
 ### HUNT v1
 
-`test_link_hunt` covers `src/core/link/LinkHunt`: the HUNT_START, HUNT_STOP and
+`test_link_hunt` covers `libraries/LayerTime-Core/src/core/link/LinkHunt`: the HUNT_START, HUNT_STOP and
 GET_HUNT codec, the HUNT_READING frame, HuntTracker's readings (one window per
 poll, the rounded mean, lost after 5 s, saturation), and the answers the
 Hunter gives. It also proves the Node dispatcher without HUNT answers the
 HUNT ops with ERROR UnknownOp. See `claude/hunt_v1_layervixen_plan.md` in the project.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_hunt test_link_hunt/test_link_hunt.cpp ../src/core/link/LinkHunt.cpp ../src/core/link/LinkCodec.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_link_hunt test_link_hunt/test_link_hunt.cpp ../libraries/LayerTime-Core/src/core/link/LinkHunt.cpp ../libraries/LayerTime-Core/src/core/link/LinkCodec.cpp
 ./tests_link_hunt
 ```
 
@@ -200,35 +200,35 @@ folders. Run from `test/`, because it reads `../src` and
 `../devices/lilygo-tultra/src`.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_boundary test_boundary/test_boundary.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_boundary test_boundary/test_boundary.cpp
 ./tests_boundary
 ```
 
 ## Evidence (Link 0.2 slice 2, 2026-11-04)
 
-The frames behind each Wi-Fi detection (`src/core/logic/EvidenceStore`) and the
-two Link requests that pull them (`src/core/link/LinkEvidence`).
+The frames behind each Wi-Fi detection (`libraries/LayerTime-Core/src/core/logic/EvidenceStore`) and the
+two Link requests that pull them (`libraries/LayerTime-Core/src/core/link/LinkEvidence`).
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_evidence_store test_evidence_store/test_evidence_store.cpp ../src/core/logic/EvidenceStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_evidence_store test_evidence_store/test_evidence_store.cpp ../libraries/LayerTime-Core/src/core/logic/EvidenceStore.cpp
 ./tests_evidence_store
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_evidence test_link_evidence/test_link_evidence.cpp ../src/core/link/LinkEvidence.cpp ../src/core/link/LinkCodec.cpp ../src/core/logic/EvidenceStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_link_evidence test_link_evidence/test_link_evidence.cpp ../libraries/LayerTime-Core/src/core/link/LinkEvidence.cpp ../libraries/LayerTime-Core/src/core/link/LinkCodec.cpp ../libraries/LayerTime-Core/src/core/logic/EvidenceStore.cpp
 ./tests_link_evidence
 ```
 
-`test_evidence_pcap` covers `src/core/logic/EvidencePcap`: a window as the pcap
+`test_evidence_pcap` covers `libraries/LayerTime-Core/src/core/logic/EvidencePcap`: a window as the pcap
 file the Hunter writes to its SD card (2026-11-04), byte for byte the radiotap
 LayerScope writes.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_evidence_pcap test_evidence_pcap/test_evidence_pcap.cpp ../src/core/logic/EvidencePcap.cpp ../src/core/logic/EvidenceStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_evidence_pcap test_evidence_pcap/test_evidence_pcap.cpp ../libraries/LayerTime-Core/src/core/logic/EvidencePcap.cpp ../libraries/LayerTime-Core/src/core/logic/EvidenceStore.cpp
 ./tests_evidence_pcap
 ```
 
-`test_link_card` covers `src/core/link/LinkCard`: the Link 0.2 card ops
+`test_link_card` covers `libraries/LayerTime-Core/src/core/link/LinkCard`: the Link 0.2 card ops
 (2026-11-04) that let LayerScope pull the Hunter's SD card files over the Link.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../src -I../sensors/src -o tests_link_card test_link_card/test_link_card.cpp ../src/core/link/LinkCard.cpp ../src/core/link/LinkCodec.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../libraries/LayerTime-Core/src -I../sensors/src -o tests_link_card test_link_card/test_link_card.cpp ../libraries/LayerTime-Core/src/core/link/LinkCard.cpp ../libraries/LayerTime-Core/src/core/link/LinkCodec.cpp
 ./tests_link_card
 ```

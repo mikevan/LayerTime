@@ -19,9 +19,9 @@
 
 // Recon acquisition on the T-Dongle-C5: the Wi-Fi promiscuous capture and
 // the NimBLE passive scan, handed to core's classification entry point
-// (src/core/logic/ReconClassification, which runs the LayerTime-Sensors
+// (libraries/LayerTime-Core/src/core/logic/ReconClassification, which runs the LayerTime-Sensors
 // classifiers), plus the six
-// radio primitives core's ReconScheduler drives (src/core/ports/ReconRadio).
+// radio primitives core's ReconScheduler drives (libraries/LayerTime-Core/src/core/ports/ReconRadio).
 //
 // This is the C5's Recon acquisition, ported in Slice 1 Increment 2A from
 // the T-Watch Ultra's ReconService (frozen reference code) and deliberately

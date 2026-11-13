@@ -5,16 +5,16 @@
 # can gate on it.
 #
 # It finds the repository root by walking up from this script until it sees
-# src/core/logic/ReconClassification.cpp, so it runs from any working directory.
+# libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp, so it runs from any working directory.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$here"
-while [ "$root" != "/" ] && [ ! -f "$root/src/core/logic/ReconClassification.cpp" ]; do
+while [ "$root" != "/" ] && [ ! -f "$root/libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp" ]; do
   root="$(dirname "$root")"
 done
-if [ ! -f "$root/src/core/logic/ReconClassification.cpp" ]; then
-  echo "run_harness: could not find the repository root (src/core/logic/ReconClassification.cpp)." >&2
+if [ ! -f "$root/libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp" ]; then
+  echo "run_harness: could not find the repository root (libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp)." >&2
   exit 2
 fi
 
@@ -27,13 +27,13 @@ out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 
 g++ -std=c++17 -O0 -Wall -Wextra \
-  -I"$root/src" -I"$root/sensors/src" -I"$root/test" -I"$here" \
+  -I"$root/libraries/LayerTime-Core/src" -I"$root/sensors/src" -I"$root/test" -I"$here" \
   -o "$out/test_sensor_replay" \
   "$here/test_sensor_replay.cpp" \
-  "$root/src/core/logic/ReconClassification.cpp" \
+  "$root/libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp" \
   "$root/sensors/src/lts/"*.cpp \
-  "$root/src/core/logic/ReconSelection.cpp" \
-  "$root/src/core/logic/MonitorEventLog.cpp" \
-  "$root/src/core/logic/AlertPolicy.cpp"
+  "$root/libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp" \
+  "$root/libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp" \
+  "$root/libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp"
 
 "$out/test_sensor_replay" "$@"

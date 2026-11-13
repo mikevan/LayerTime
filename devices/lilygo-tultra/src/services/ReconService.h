@@ -32,13 +32,13 @@ class NimBLEAdvertisedDevice;
 // existing T-Ultra names. The enumerators and their values are identical
 // (test_core_model checks every one), so every existing use compiles and
 // behaves exactly as before. Group and detector semantics are documented in
-// src/core/logic/ReconSelection.h.
+// libraries/LayerTime-Core/src/core/logic/ReconSelection.h.
 using SignalConfidence = layertime::Confidence;
 using ReconDetector = layertime::ReconTarget;
 
 // What the radios are doing. Since Phase 0 Step 4 the detection log, its
 // event serial and the pending alert live in core
-// (src/core/logic/MonitorEventLog), not here: this service only acquires.
+// (libraries/LayerTime-Core/src/core/logic/MonitorEventLog), not here: this service only acquires.
 struct ReconStatus {
     ReconDetector detector = ReconDetector::None;
     ReconDetector activeDetector = ReconDetector::None;

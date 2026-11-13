@@ -1,7 +1,7 @@
 # LayerTime Device Capabilities
 
 Contract version 0.1. Enum values are in `vectors/enums.json`. The C++
-binding is `src/core/model/DeviceCapabilities.h`.
+binding is `libraries/LayerTime-Core/src/core/model/DeviceCapabilities.h`.
 
 Application behaviour branches on capabilities, never on which device it is
 running on.

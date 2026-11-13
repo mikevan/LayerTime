@@ -3,7 +3,7 @@
 The original LayerTime watch and one of the two LayerTime watch products,
 alongside the T-Watch S3 Plus. It is its own pioarduino project: open this
 folder, not the repository root, to build it in the pioarduino IDE. It
-compiles only the repository's `src/core/` and this folder's `src/`. Moved
+compiles only the repository's `libraries/LayerTime-Core/src/core/` and this folder's `src/`. Moved
 here from the repository root in layout step 4 (2026-10-07); the firmware
 version stays 0.2.3.
 
@@ -70,43 +70,43 @@ The production files emit a few compiler warnings of their own, so these
 commands do not use `-Werror`. Run each from `devices/lilygo-tultra/test/`.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -I../../../src -I../../../sensors/src -I../src -o tests_ubx test_ubx/test_ubx.cpp ../src/UbxParser.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_ubx test_ubx/test_ubx.cpp ../src/UbxParser.cpp
 ./tests_ubx
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_recon test_recon/test_recon.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_recon test_recon/test_recon.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp
 ./tests_recon
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_chats test_meshtastic_chats/test_meshtastic_chats.cpp ../src/ui/MeshtasticScreen.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_chats test_meshtastic_chats/test_meshtastic_chats.cpp ../src/ui/MeshtasticScreen.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp
 ./tests_chats
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_decl test_declination_text/test_declination_text.cpp ../src/ui/MappingScreen.cpp ../../../src/core/logic/DeclinationAdvice.cpp ../../../src/core/logic/DeclinationCalculator.cpp ../../../src/core/logic/GeoGrid.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_decl test_declination_text/test_declination_text.cpp ../src/ui/MappingScreen.cpp ../../../libraries/LayerTime-Core/src/core/logic/DeclinationAdvice.cpp ../../../libraries/LayerTime-Core/src/core/logic/DeclinationCalculator.cpp ../../../libraries/LayerTime-Core/src/core/logic/GeoGrid.cpp
 ./tests_decl
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/app/WatchApp.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../src/TUltraEventLog.cpp ../../../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/logic/QuickMessages.cpp ../src/TUltraSettingsStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_log test_detection_log/test_detection_log.cpp ../src/app/WatchApp.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../src/TUltraEventLog.cpp ../../../libraries/LayerTime-Core/src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp ../src/TUltraSettingsStore.cpp
 ./tests_log
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_recon_screen test_recon_screen/test_recon_screen.cpp ../src/ui/ReconScreen.cpp ../src/services/ReconService.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_recon_screen test_recon_screen/test_recon_screen.cpp ../src/ui/ReconScreen.cpp ../src/services/ReconService.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp
 ./tests_recon_screen
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_watch_face_threats test_watch_face_threats/test_watch_face_threats.cpp ../src/ui/WatchFace.cpp ../src/services/ReconService.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_watch_face_threats test_watch_face_threats/test_watch_face_threats.cpp ../src/ui/WatchFace.cpp ../src/services/ReconService.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp
 ./tests_watch_face_threats
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_mesh_screen test_mesh_screen/test_mesh_screen.cpp ../src/ui/MeshScreen.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_mesh_screen test_mesh_screen/test_mesh_screen.cpp ../src/ui/MeshScreen.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp
 ./tests_mesh_screen
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_meshtastic_actions test_meshtastic_actions/test_meshtastic_actions.cpp ../src/ui/MeshtasticScreen.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_meshtastic_actions test_meshtastic_actions/test_meshtastic_actions.cpp ../src/ui/MeshtasticScreen.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp
 ./tests_meshtastic_actions
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_mesh_radio_exclusivity test_mesh_radio_exclusivity/test_mesh_radio_exclusivity.cpp ../src/ui/SettingsScreen.cpp ../src/app/WatchApp.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../src/TUltraEventLog.cpp ../../../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/logic/QuickMessages.cpp ../src/TUltraSettingsStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_mesh_radio_exclusivity test_mesh_radio_exclusivity/test_mesh_radio_exclusivity.cpp ../src/ui/SettingsScreen.cpp ../src/app/WatchApp.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../src/TUltraEventLog.cpp ../../../libraries/LayerTime-Core/src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp ../src/TUltraSettingsStore.cpp
 ./tests_mesh_radio_exclusivity
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_settings_persistence test_settings_persistence/test_settings_persistence.cpp ../src/services/SettingsService.cpp ../src/TUltraSettingsStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_settings_persistence test_settings_persistence/test_settings_persistence.cpp ../src/services/SettingsService.cpp ../src/TUltraSettingsStore.cpp
 ./tests_settings_persistence
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_settings_flow test_settings_flow/test_settings_flow.cpp ../src/services/SettingsService.cpp ../src/ui/SettingsScreen.cpp ../src/app/WatchApp.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../src/TUltraEventLog.cpp ../../../src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/logic/QuickMessages.cpp ../src/TUltraSettingsStore.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_settings_flow test_settings_flow/test_settings_flow.cpp ../src/services/SettingsService.cpp ../src/ui/SettingsScreen.cpp ../src/app/WatchApp.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../src/TUltraAlertSink.cpp ../src/TUltraEventLog.cpp ../../../libraries/LayerTime-Core/src/core/logic/DetectionCsv.cpp ../src/services/ReconService.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp ../src/TUltraSettingsStore.cpp
 ./tests_settings_flow
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_watch_face_units test_watch_face_units/test_watch_face_units.cpp ../src/ui/WatchFace.cpp ../src/services/ReconService.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../src/core/app/LayerTimeCore.cpp ../../../src/core/logic/MonitorEventLog.cpp ../../../src/core/logic/AlertPolicy.cpp ../../../src/core/logic/MeshConversations.cpp ../../../src/core/logic/QuickMessages.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_watch_face_units test_watch_face_units/test_watch_face_units.cpp ../src/ui/WatchFace.cpp ../src/services/ReconService.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconClassification.cpp ../../../sensors/src/lts/Signatures.cpp ../../../sensors/src/lts/WifiFrameClassifier.cpp ../../../sensors/src/lts/BleAdvertClassifier.cpp ../../../libraries/LayerTime-Core/src/core/app/LayerTimeCore.cpp ../../../libraries/LayerTime-Core/src/core/logic/MonitorEventLog.cpp ../../../libraries/LayerTime-Core/src/core/logic/AlertPolicy.cpp ../../../libraries/LayerTime-Core/src/core/logic/MeshConversations.cpp ../../../libraries/LayerTime-Core/src/core/logic/QuickMessages.cpp
 ./tests_watch_face_units
 ```
 
@@ -116,13 +116,13 @@ that command line.
 
 `ReconService` and the suites above are the Ultra's own Recon path. The Recon
 schedule `ReconService` runs was expressed in core as
-`src/core/logic/ReconScheduler` behind the `src/core/ports/ReconRadio` port,
+`libraries/LayerTime-Core/src/core/logic/ReconScheduler` behind the `libraries/LayerTime-Core/src/core/ports/ReconRadio` port,
 and the C5 (`devices/lilygo-hunter/src`) is its consumer.
 `test_recon_scheduler` below pins that schedule on its own;
 `test_recon` still characterizes the T-Ultra's original.
 
 Since Phase 0 Step 4 the Recon event history, the alert, and the Recon
-commands are in core (`src/core/app`, `src/core/logic/MonitorEventLog`),
+commands are in core (`libraries/LayerTime-Core/src/core/app`, `libraries/LayerTime-Core/src/core/logic/MonitorEventLog`),
 reached through the T-Ultra adapters in `devices/lilygo-tultra/src`. The
 Recon, screen and detection-log suites wire those together the way
 `WatchApp` does, in their harnesses only; the cases themselves are unchanged.
@@ -131,9 +131,9 @@ before the move, against the code as it stood.
 
 Step 5 did the same for mesh. Both mesh screens now send and configure
 channels through core commands, take their phrase list from the core
-(`src/core/logic/QuickMessages`), and the Meshtastic screen keeps its
+(`libraries/LayerTime-Core/src/core/logic/QuickMessages`), and the Meshtastic screen keeps its
 conversations and read times in the core; MeshCore and Meshtastic plug in
-through `src/core/ports/MeshTransport`. `test_mesh_screen`,
+through `libraries/LayerTime-Core/src/core/ports/MeshTransport`. `test_mesh_screen`,
 `test_meshtastic_actions` and `test_mesh_radio_exclusivity` were added in
 Step 5a, before the move, against the code as it stood; since then only
 their harnesses changed, as did `test_meshtastic_chats`'s. The exclusivity
@@ -141,7 +141,7 @@ suite drives the real Settings rows into the real `WatchApp`.
 
 Step 6 split the settings. The application settings (clock format, units,
 sleep mode, early warning, mesh advertising, the Meshtastic name) are the
-core's (`src/core/model/Settings.h`), changed by commands and kept by
+core's (`libraries/LayerTime-Core/src/core/model/Settings.h`), changed by commands and kept by
 `devices/lilygo-tultra/src/TUltraSettingsStore` in the same NVS keys as
 before; `SettingsService` keeps the T-Ultra's own. `test_settings_persistence`
 and `test_settings_flow` were added in Step 6a, before the split, against the
@@ -155,9 +155,9 @@ The T-Ultra adapters in `devices/lilygo-tultra/src` that are not already
 covered by the characterization suites. Run from `devices/lilygo-tultra/test/`.
 
 ```
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../src -I../../../sensors/src -I../src -o tests_navigation_source test_navigation_source/test_navigation_source.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -Istubs -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_navigation_source test_navigation_source/test_navigation_source.cpp
 ./tests_navigation_source
 
-g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -I../../../src -I../../../sensors/src -I../src -o tests_mesh_transports test_mesh_transports/test_mesh_transports.cpp
+g++ -std=c++17 -O0 -Wall -Wextra -I. -I../../../test -I../../../libraries/LayerTime-Core/src -I../../../sensors/src -I../src -o tests_mesh_transports test_mesh_transports/test_mesh_transports.cpp
 ./tests_mesh_transports
 ```

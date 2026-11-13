@@ -1,4 +1,4 @@
-// Unit tests for src/core/logic/ReconSelection, moved out of ReconService in
+// Unit tests for libraries/LayerTime-Core/src/core/logic/ReconSelection, moved out of ReconService in
 // Phase 0 Step 3c. test_recon still drives the same rules through
 // ReconService; this suite pins the core functions on their own.
 

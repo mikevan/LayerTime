@@ -1,4 +1,4 @@
-// Unit tests for src/core/logic/ReconScheduler, the Recon schedule expressed
+// Unit tests for libraries/LayerTime-Core/src/core/logic/ReconScheduler, the Recon schedule expressed
 // in core in Slice 1 Increment 2A from the T-Watch Ultra reference
 // (test_recon characterizes that original through its own ReconService).
 // This suite pins the core scheduler on its own, against a recording radio

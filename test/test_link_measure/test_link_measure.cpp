@@ -1,5 +1,5 @@
 // Link 0.2 Phase 0 measurement helpers: the test-only BULK op and the FCS
-// check (src/core/link/LinkMeasure). Also proves the release Node
+// check (libraries/LayerTime-Core/src/core/link/LinkMeasure). Also proves the release Node
 // dispatcher still answers BULK with ERROR UnknownOp: BULK lives only in
 // the measurement firmware.
 //

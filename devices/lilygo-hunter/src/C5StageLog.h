@@ -18,7 +18,7 @@
 #pragma once
 
 // The Recon stage log on the T-Dongle-C5: core's ReconStageLog
-// (src/core/logic/ReconStageLog) over a ring in PSRAM, stamped with
+// (libraries/LayerTime-Core/src/core/logic/ReconStageLog) over a ring in PSRAM, stamped with
 // esp_timer_get_time(), behind a spinlock because the Wi-Fi driver task,
 // the NimBLE host task and the loop task all record. Measurement
 // instrumentation for the Slice 1 Increment 2A no-link baseline; nothing

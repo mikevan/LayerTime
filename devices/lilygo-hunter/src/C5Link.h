@@ -21,7 +21,7 @@
 // the Control, Status and Data characteristics of contracts/link.md, plus
 // the Probe characteristic on test builds (LAYERTIME_LINK_TEST).
 //
-// All protocol logic lives in src/core/link (LinkCodec, LinkServer,
+// All protocol logic lives in libraries/LayerTime-Core/src/core/link (LinkCodec, LinkServer,
 // LinkPipe); this class only moves bytes between NimBLE and that code, keeps
 // the heartbeat, and re-advertises when the central goes away.
 //

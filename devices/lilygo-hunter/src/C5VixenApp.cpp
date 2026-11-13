@@ -32,7 +32,7 @@
 #include "BringUpLogic.h"
 #include "C5Display.h"
 #include "C5Led.h"
-#include "C5SdLog.h"
+#include "C5Board.h"
 #include "TDongleC5Pins.h"
 
 #include "core/link/LinkHunt.h"
@@ -161,7 +161,7 @@ void serviceUnitSerial()
 
 void setup()
 {
-    C5SdLog::holdCardDeselected(); // the card's CS floats otherwise (TDongleC5Pins.h)
+    holdC5CardDeselected(); // shared SPI board setup; no Hunter SD tooling
     Serial.begin(115200);
     Serial.setTxTimeoutMs(kSerialTxTimeoutMs);
     const uint32_t waitStart = millis();

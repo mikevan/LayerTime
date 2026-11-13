@@ -1,4 +1,4 @@
-// Unit tests for src/core/logic/DetectionCsv, moved out of
+// Unit tests for libraries/LayerTime-Core/src/core/logic/DetectionCsv, moved out of
 // WatchApp::logReconDetection in Phase 0 Step 3i. test_detection_log still
 // checks the rows WatchApp writes; this suite checks the format directly.
 

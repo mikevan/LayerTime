@@ -602,7 +602,7 @@ const char *MeshtasticScreen::channelTag(const MeshtasticChannel &channel)
 }
 
 namespace {
-// The conversation rules live in core (src/core/logic/MeshConversations);
+// The conversation rules live in core (libraries/LayerTime-Core/src/core/logic/MeshConversations);
 // this describes a Meshtastic message to them.
 layertime::mesh::MessageFacts factsOf(const MeshtasticMessage &m)
 {

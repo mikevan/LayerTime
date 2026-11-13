@@ -14,6 +14,10 @@
 #include <string>
 #include <vector>
 
+#ifndef LAYERTIME_LINK_VECTORS_FILE
+#define LAYERTIME_LINK_VECTORS_FILE "../contracts/vectors/link_frames.json"
+#endif
+
 // --- A small JSON reader, enough for link_frames.json --------------------
 
 struct Json {
@@ -108,7 +112,7 @@ const Json &vectors()
 {
     static std::unique_ptr<Json> loaded;
     if (!loaded) {
-        std::ifstream f("../contracts/vectors/link_frames.json");
+        std::ifstream f(LAYERTIME_LINK_VECTORS_FILE);
         std::stringstream ss; ss << f.rdbuf();
         const std::string text = ss.str();
         Parser p(text);

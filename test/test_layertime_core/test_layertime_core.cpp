@@ -1,4 +1,4 @@
-// Unit tests for src/core/app/LayerTimeCore against fake ports. Checks the
+// Unit tests for libraries/LayerTime-Core/src/core/app/LayerTimeCore against fake ports. Checks the
 // command routing, the split between clearing event history and resetting
 // acquisition, alert actuation once per new alerting event, and the order
 // tick() runs things in.

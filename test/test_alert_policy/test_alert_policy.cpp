@@ -1,4 +1,4 @@
-// Unit tests for src/core/logic/AlertPolicy, moved out of
+// Unit tests for libraries/LayerTime-Core/src/core/logic/AlertPolicy, moved out of
 // ReconService::addDetection in Phase 0 Step 3g. The whole truth table is
 // small, so every combination is checked.
 

@@ -16,7 +16,7 @@ functionality. This folder is the whole target, organized like `devices/garmin-t
 | `bin/` | Build output and libraries (git-ignored, like `devices/garmin-tactix/bin/`) |
 | `.vscode/` | Editor settings (git-ignored, like `devices/garmin-tactix/.vscode/`) |
 
-Outside this folder it uses only: `src/core/` (shared, hardware-independent,
+Outside this folder it uses only: `libraries/LayerTime-Core/src/core/` (shared, hardware-independent,
 compiled unchanged through the project's source filter), `boards/` and
 `variants/lilygo_twatch_s3/` (read only), `contracts/vectors/profile_twatch_s3plus.json`,
 and the S3 Plus files in `tools/`.
@@ -66,7 +66,7 @@ script under this platform, compiles nothing differently, and the normal
 
 0.2.x runs Recon on this watch: the T-Ultra's onboard Wi-Fi and BLE
 monitoring, threats, and alerts, through the shared core
-(`src/core/app/LayerTimeCore`) and S3 Plus adapters behind the core's ports.
+(`libraries/LayerTime-Core/src/core/app/LayerTimeCore`) and S3 Plus adapters behind the core's ports.
 Logging is R2; the long run and the side-by-side comparison with the Ultra
 are R3. The LoRa radio is never initialised and its power rail is switched
 off (mesh is deferred).
@@ -258,7 +258,7 @@ From `devices/lilygo-s3plus/test/`:
 
     g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -o tests_s3plus_boundary test_s3plus_boundary/test_s3plus_boundary.cpp
     ./tests_s3plus_boundary
-    g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../src -o tests_s3plus_profile test_s3plus_profile/test_s3plus_profile.cpp
+    g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../libraries/LayerTime-Core/src -I../src -o tests_s3plus_profile test_s3plus_profile/test_s3plus_profile.cpp
     ./tests_s3plus_profile
     g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../src -o tests_s3plus_bringup test_s3plus_bringup/test_s3plus_bringup.cpp ../src/BringUpCheck.cpp
     ./tests_s3plus_bringup
@@ -268,7 +268,7 @@ From `devices/lilygo-s3plus/test/`:
     ./tests_s3plus_gnss_rules
     g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../src -o tests_s3plus_display test_s3plus_display/test_s3plus_display.cpp ../src/ui/DisplayGate.cpp
     ./tests_s3plus_display
-    g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../src -I../src -o tests_s3plus_text test_s3plus_text/test_s3plus_text.cpp ../src/ui/TextFormat.cpp ../../../src/core/logic/ReconSelection.cpp ../../../src/core/logic/GeoGrid.cpp ../src/gnss/Solar.cpp
+    g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../../../libraries/LayerTime-Core/src -I../src -o tests_s3plus_text test_s3plus_text/test_s3plus_text.cpp ../src/ui/TextFormat.cpp ../../../libraries/LayerTime-Core/src/core/logic/ReconSelection.cpp ../../../libraries/LayerTime-Core/src/core/logic/GeoGrid.cpp ../src/gnss/Solar.cpp
     ./tests_s3plus_text
     g++ -std=c++17 -O0 -Wall -Wextra -I../../../test -I../src -o tests_s3plus_solar test_s3plus_solar/test_s3plus_solar.cpp ../src/gnss/Solar.cpp
     ./tests_s3plus_solar

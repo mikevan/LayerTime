@@ -584,7 +584,7 @@ void C5ReconRadio::deliver(const recon::Candidate &candidate, SourceKind kind, B
         _stage->record(recon::Stage::Candidate, d, static_cast<uint16_t>(static_cast<uint8_t>(candidate.rssi)),
                        static_cast<uint32_t>(kind));
     }
-    // The event log itself is core's (src/core/logic/MonitorEventLog).
+    // The event log itself is core's (libraries/LayerTime-Core/src/core/logic/MonitorEventLog).
     if (_candidateSink == nullptr) return;
     recon::Candidate stamped = candidate;
     stamped.sourceKind = kind;
