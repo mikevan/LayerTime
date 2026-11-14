@@ -15,13 +15,15 @@
 
 ## Why this exists
 
-> **How would I know if someone were using wireless technology to watch the room I'm sleeping in — and if normal communications failed, how would I reach anyone?**
+People facing surveillance or disruption need awareness and a way to communicate when normal connections become unreliable. LayerTime brings those capabilities to the wrist, helping people understand their surroundings without depending on a remote service.
 
-A few years ago, while reviewing open camera feeds around the AirBNB I was staying at, I found a feed from its bedroom. If I hadn't been looking specifically for it, I wouldn't have known, and would've probably ended up as some jerk's fat-guy OnlyFans material.
+## How it serves that purpose
 
-I should have had a tool to let me be aware of it, on my wrist, to warn me immediately. But all smartwatches do today is tell you how many steps you've walked. Gee. That's useful. What I needed was a field watch providing awareness, position, and a way to talk when the blackouts start.
+LayerTime listens for supported wireless signatures and presents observations to the wearer. Its field functions combine local awareness, position, and supported LoRa communication without requiring internet access. In the Hunter–Vixen workflow, T-Ultra is an independent verifier: its saved observations can be compared with Hunter's records and the evidence Vixen analyzes.
 
-LayerTime is that watch. It listens to the 2.4 GHz and BLE spectrum around you for the signatures of surveillance and intrusion hardware, fixes your position and hands you a grid reference you can read over a radio, and carries a LoRa mesh radio that doesn't care whether the internet still works.
+## What this repository provides
+
+Watch firmware for the LayerTime ecosystem, including the T-Ultra and S3 Plus builds and their integration tests. Capabilities depend on the selected hardware and build; this is not a guarantee of communications delivery or threat detection.
 
 No health tracking, no subscription, no account, no cloud.
 

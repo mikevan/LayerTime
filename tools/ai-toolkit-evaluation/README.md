@@ -1,5 +1,7 @@
 # Embedded AI workflow evaluation
 
+Portable analysis should be available on equipment people can carry and control. This experiment evaluates a framework choice within that wider purpose; it does not qualify an AI interpretation or demonstrate an end-to-end warning.
+
 This isolated Kotlin/JVM project evaluates Koog 1.3.0 without changing the Android application's Kotlin 2.0.21 toolchain. The published framework uses Kotlin 2.3.10 dependencies.
 
 Run with the repository's existing Gradle wrapper:

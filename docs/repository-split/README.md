@@ -1,5 +1,7 @@
 # Canonical repositories and the watch checkout
 
+The ecosystem helps people recognize developing danger, preserve evidence, and make informed decisions. Separate repositories make each contribution clear: watches monitor, Hunter preserves observations, Vixen analyzes evidence, and shared libraries keep their foundations consistent. Repository boundaries support that purpose; they do not establish field qualification.
+
 LayerTime owns the Ultra, S3 Plus and Garmin watch targets and their integration
 tests. Shared source is fetched from its owning Git repository at a recorded
 commit. Hunter and Vixen are maintained independently.
