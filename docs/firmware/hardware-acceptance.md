@@ -1,5 +1,7 @@
 # Watch, Hunter and Vixen hardware acceptance
 
+People relying on field tools need evidence of ordinary operation on the actual hardware. This checklist tests the capture, monitoring, and analysis chain without mistaking a successful build or a controlled component demonstration for field readiness.
+
 Status: prepared; no hardware results are claimed by this checklist.
 
 Use product CI artifacts labelled `pinned`, from an entirely successful run.
