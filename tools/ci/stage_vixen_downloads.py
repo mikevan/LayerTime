@@ -40,12 +40,20 @@ def verify_apk(directory):
     if digests != [APK_CERT_SHA256]:
         raise ValueError("APK signing certificate differs from the previous public download")
 
-    package_report = (directory / "package.txt").read_text(encoding="utf-8")
-    package = re.search(r"^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'",
-                        package_report, re.MULTILINE)
-    if not package or package[1] != APK_ID or int(package[2]) < 84:
+    signed = read_package(directory / "package.txt")
+    if signed[0] != APK_ID or signed[1] < 84:
         raise ValueError("APK must use the existing public package ID and a compatible version code")
-    return int(package[2]), package[3]
+    if signed != read_package(directory / "ci-package.txt"):
+        raise ValueError("Locally signed APK package or version differs from the tested CI build")
+    return signed[1], signed[2]
+
+
+def read_package(path):
+    package = re.search(r"^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'",
+                        path.read_text(encoding="utf-8"), re.MULTILINE)
+    if not package:
+        raise ValueError(f"Missing APK package metadata in {path.name}")
+    return package[1], int(package[2]), package[3]
 
 
 def stage(site, build, hunter_rev, vixen_rev, site_rev):

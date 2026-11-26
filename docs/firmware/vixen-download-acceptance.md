@@ -1,26 +1,31 @@
 # Vixen download page acceptance
 
-The public fox-hunt download page is served at `/LayerTime/vixen/`. Its Android APK comes from Vixen. Both ESP32-C5 factory images come from Hunter, which owns the Hunter and Vixen beacon firmware targets.
+The public fox-hunt page at `/LayerTime/vixen/` serves the Vixen Android APK and two ESP32-C5 factory images. Vixen owns the Android build. Hunter owns both firmware targets.
 
-## Check-in and publication
+## Build and sign the APK locally
 
-1. Merge the accepted Hunter and Vixen changes to their respective `main` branches. The product workflows must both support the `download_bundle` input before enabling the LayerTime publishing workflow.
-2. Merge the publishing workflow into LayerTime `main`. It runs on changes to the Pages source and publishing code, and checks hourly for product updates. For an immediate check after the product merges, run `gh workflow run vixen-downloads.yml -R mikevan/LayerTime --ref main`.
-3. Confirm both product checks and the Pages deployment passed. On the public page, open **Build details and checksums** and verify that the listed Hunter and Vixen commits match the accepted commits. Check the APK link and both installer manifests. Their files should match the SHA-256 digests in `downloads.json`.
+Use the existing Vixen checkout at `C:\workspace_LayerTime\Vixen`. Pull the accepted `main` with `git pull --ff-only` and confirm the working tree is clean. Gradle reads the ignored `android/keystore.properties` file. Configure that file locally with the existing release keystore. Use an absolute `storeFile` path. Keep the file and signing key on your machine.
 
-Each run resolves exact product commits before building. It runs Hunter's host checks and Vixen's Android tests, builds both factory images and signs the full sideload APK. The publication refuses unexpected Android package or certificate identities, downgrades, incomplete firmware images and superseded revisions. The APK remains at the existing `layerscope.apk` URL for saved links. The visible app name is Vixen.
+From the Vixen `android` folder, build `:app:assembleFullRelease`. The signed output is `app/build/outputs/apk/full/release/app-full-release.apk`. Verify it with Android SDK `apksigner verify --print-certs`. The certificate must match the previous public download:
 
-## One-time GitHub setup
+`907dfd514ed86f34f3caba164a6df00d78fd70bca3479b895c0e9798370747f0`
 
-In `mikevan/LayerTime`, change Settings > Pages > Source to **GitHub Actions** when both product workflow updates are on `main` and signing is ready. The workflow builds the existing `docs/` site with Jekyll and deploys the assembled site. Only the deploy job receives Pages write permission. No APK or generated firmware needs to be checked into Git.
+## Submit the signed APK
 
-Configure these Actions secrets in LayerTime using the release key that signed the existing public Android APK.
+Copy the signed output to `vixen.apk` outside the repository. Get the full Vixen commit SHA with `git rev-parse HEAD`. On `mikevan/Vixen`, create a GitHub prerelease tagged `website-apk-<full SHA>` targeting that exact commit and attach `vixen.apk`. The prerelease is a public staging location. Upload only the signed APK.
 
-- `VIXEN_DOWNLOAD_KEYSTORE_BASE64`
-- `VIXEN_DOWNLOAD_STORE_PASSWORD`
-- `VIXEN_DOWNLOAD_KEY_ALIAS`
-- `VIXEN_DOWNLOAD_KEY_PASSWORD`
+```powershell
+gh release create "website-apk-$vixenCommit" $signedApkPath --repo mikevan/Vixen --target $vixenCommit --prerelease --title "Website APK $vixenCommit" --notes 'Locally signed APK for download-page acceptance.'
+```
 
-The expected signing certificate SHA-256 is `907dfd514ed86f34f3caba164a6df00d78fd70bca3479b895c0e9798370747f0`. Keep the signing material out of Git and build artifacts.
+Set `$vixenCommit` to the full commit SHA and `$signedApkPath` to the full path ending in `vixen.apk` before running the command.
 
-For first publication or any signing change, install the signed APK over the previous public version on an Android test device and confirm its data is accessible. Flash the Hunter and beacon images only to identified spare boards, then follow the existing hardware acceptance procedure. GitHub Actions verifies the packaged files and product checks. Those results do not establish handset or board acceptance.
+## Publish and verify
+
+1. After merging the publisher update into LayerTime `main`, switch [LayerTime Pages](https://github.com/mikevan/LayerTime/settings/pages) to **GitHub Actions** once the signed APK is available.
+2. Run `gh workflow run vixen-downloads.yml -R mikevan/LayerTime --ref main` for immediate publication. The hourly run also detects the APK. If Vixen main moves, build and sign an APK for the new commit before it can publish.
+3. Confirm both product checks and the Pages deployment passed. On the public page, open **Build details and checksums**. Compare the listed Hunter and Vixen commits and the three file digests with the accepted build and downloads.
+
+The workflow verifies the APK signature, certificate and alignment. It checks that the release tag points to the tested source revision and that the signed APK package ID and version match the CI build. The release tag records the source used for the local build. The CI and local APK binaries can differ. The site builds both factory images from the accepted Hunter commit and refuses stale revisions or Android downgrades.
+
+For first publication, check an in-place upgrade on an Android test device and flash the firmware to identified spare boards using the [hardware acceptance procedure](hardware-acceptance.md).
