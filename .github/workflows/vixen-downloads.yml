@@ -41,6 +41,18 @@ jobs:
               publish=false
             fi
           fi
+          if [[ "$publish" == true ]]; then
+            tag="website-apk-$vixen"
+            ref=$(git ls-remote https://github.com/mikevan/Vixen.git "refs/tags/$tag" | cut -f1)
+            if [[ "$ref" != "$vixen" ]] || ! curl -fsIL --max-time 30 "https://github.com/mikevan/Vixen/releases/download/$tag/vixen.apk" >/dev/null; then
+              if [[ "$EVENT" == workflow_dispatch ]]; then
+                echo "::error::Upload the locally signed vixen.apk for Vixen main $vixen first."
+                exit 1
+              fi
+              echo "Waiting for the locally signed Vixen APK for $vixen."
+              publish=false
+            fi
+          fi
           printf 'hunter=%s\nvixen=%s\npublish=%s\n' "$hunter" "$vixen" "$publish" >> "$GITHUB_OUTPUT"
 
   hunter:
@@ -84,27 +96,17 @@ jobs:
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
         with:
           packages: build-tools;36.0.0
-      - name: Sign and verify the existing Android download identity
+      - name: Download and verify the locally signed Vixen APK
         env:
-          KEYSTORE: ${{ secrets.VIXEN_DOWNLOAD_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.VIXEN_DOWNLOAD_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.VIXEN_DOWNLOAD_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.VIXEN_DOWNLOAD_KEY_PASSWORD }}
+          VIXEN_REV: ${{ needs.resolve.outputs.vixen }}
         run: |
           set -euo pipefail
-          if [[ -z "$KEYSTORE" || -z "$STORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
-            echo "::error::Configure the four VIXEN_DOWNLOAD signing secrets before publishing."
-            exit 1
-          fi
-          umask 077
-          key=$(mktemp)
-          trap 'rm -f "$key"' EXIT
-          printf '%s' "$KEYSTORE" | base64 --decode > "$key"
+          curl -fSL --retry 3 --max-time 300 "https://github.com/mikevan/Vixen/releases/download/website-apk-$VIXEN_REV/vixen.apk" -o build/vixen/layerscope.apk
           tools="$ANDROID_HOME/build-tools/36.0.0"
-          "$tools/apksigner" sign --ks "$key" --ks-key-alias "$KEY_ALIAS" --ks-pass env:STORE_PASSWORD --key-pass env:KEY_PASSWORD --out build/vixen/layerscope.apk build/vixen/vixen-unsigned.apk
           "$tools/apksigner" verify --print-certs build/vixen/layerscope.apk > build/vixen/certificates.txt
           "$tools/zipalign" -c -P 16 4 build/vixen/layerscope.apk
           "$tools/aapt" dump badging build/vixen/layerscope.apk > build/vixen/package.txt
+          "$tools/aapt" dump badging build/vixen/vixen-unsigned.apk > build/vixen/ci-package.txt
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.11'
