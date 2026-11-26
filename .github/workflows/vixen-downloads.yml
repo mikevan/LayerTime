@@ -1,0 +1,156 @@
+name: Publish accepted Vixen downloads
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/vixen-downloads.yml'
+      - 'tools/ci/stage_vixen_downloads.py'
+  workflow_dispatch:
+  schedule:
+    - cron: '23 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vixen-downloads
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    outputs:
+      hunter: ${{ steps.heads.outputs.hunter }}
+      vixen: ${{ steps.heads.outputs.vixen }}
+      publish: ${{ steps.heads.outputs.publish }}
+    steps:
+      - id: heads
+        name: Resolve exact product revisions
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          hunter=$(git ls-remote https://github.com/mikevan/Hunter.git refs/heads/main | cut -f1)
+          vixen=$(git ls-remote https://github.com/mikevan/Vixen.git refs/heads/main | cut -f1)
+          [[ "$hunter" =~ ^[0-9a-f]{40}$ && "$vixen" =~ ^[0-9a-f]{40}$ ]]
+          publish=true
+          if [[ "$EVENT" == schedule ]] && curl -fsSL --max-time 20 https://mikevan.github.io/LayerTime/vixen/downloads.json -o previous.json; then
+            if jq -e --arg hunter "$hunter" --arg vixen "$vixen" --arg site "$GITHUB_SHA" '.hunter == $hunter and .vixen == $vixen and .site == $site' previous.json >/dev/null; then
+              publish=false
+            fi
+          fi
+          printf 'hunter=%s\nvixen=%s\npublish=%s\n' "$hunter" "$vixen" "$publish" >> "$GITHUB_OUTPUT"
+
+  hunter:
+    needs: resolve
+    if: needs.resolve.outputs.publish == 'true'
+    uses: mikevan/Hunter/.github/workflows/ci.yml@main
+    with:
+      product_ref: ${{ needs.resolve.outputs.hunter }}
+      download_bundle: true
+
+  vixen:
+    needs: resolve
+    if: needs.resolve.outputs.publish == 'true'
+    uses: mikevan/Vixen/.github/workflows/ci.yml@main
+    with:
+      product_ref: ${{ needs.resolve.outputs.vixen }}
+      download_bundle: true
+
+  package:
+    needs: [resolve, hunter, vixen]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: hunter-download-bundle
+          path: build/hunter
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: vixen-download-bundle
+          path: build/vixen
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
+        with:
+          packages: build-tools;36.0.0
+      - name: Sign and verify the existing Android download identity
+        env:
+          KEYSTORE: ${{ secrets.VIXEN_DOWNLOAD_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.VIXEN_DOWNLOAD_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.VIXEN_DOWNLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.VIXEN_DOWNLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE" || -z "$STORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+            echo "::error::Configure the four VIXEN_DOWNLOAD signing secrets before publishing."
+            exit 1
+          fi
+          umask 077
+          key=$(mktemp)
+          trap 'rm -f "$key"' EXIT
+          printf '%s' "$KEYSTORE" | base64 --decode > "$key"
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          "$tools/apksigner" sign --ks "$key" --ks-key-alias "$KEY_ALIAS" --ks-pass env:STORE_PASSWORD --key-pass env:KEY_PASSWORD --out build/vixen/layerscope.apk build/vixen/vixen-unsigned.apk
+          "$tools/apksigner" verify --print-certs build/vixen/layerscope.apk > build/vixen/certificates.txt
+          "$tools/zipalign" -c -P 16 4 build/vixen/layerscope.apk
+          "$tools/aapt" dump badging build/vixen/layerscope.apk > build/vixen/package.txt
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Validate and stage the download page
+        env:
+          HUNTER_REV: ${{ needs.resolve.outputs.hunter }}
+          VIXEN_REV: ${{ needs.resolve.outputs.vixen }}
+        run: |
+          if ! curl -fsSL --max-time 20 https://mikevan.github.io/LayerTime/vixen/downloads.json -o build/previous.json; then
+            rm -f build/previous.json
+          fi
+          python3 tools/ci/stage_vixen_downloads.py docs/vixen build "$HUNTER_REV" "$VIXEN_REV" "$GITHUB_SHA"
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+      - uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697
+        with:
+          source: docs
+          destination: ./_site
+      - name: Verify the built Pages payload
+        run: |
+          cmp docs/vixen/layerscope.apk _site/vixen/layerscope.apk
+          cmp docs/vixen/firmware/hunter.bin _site/vixen/firmware/hunter.bin
+          cmp docs/vixen/firmware/vixen.bin _site/vixen/firmware/vixen.bin
+          cmp docs/vixen/downloads.json _site/vixen/downloads.json
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: ./_site
+
+  deploy:
+    needs: [resolve, package]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Reject a superseded publication
+        env:
+          HUNTER_REV: ${{ needs.resolve.outputs.hunter }}
+          VIXEN_REV: ${{ needs.resolve.outputs.vixen }}
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote https://github.com/mikevan/Hunter.git refs/heads/main | cut -f1)" = "$HUNTER_REV"
+          test "$(git ls-remote https://github.com/mikevan/Vixen.git refs/heads/main | cut -f1)" = "$VIXEN_REV"
+          test "$(git ls-remote https://github.com/mikevan/LayerTime.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
+      - id: deploy
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e

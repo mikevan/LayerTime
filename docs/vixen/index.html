@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Vixen: flash the Vixen and the Hunter, install LayerScope</title>
-<meta name="description" content="Vixen is a Bluetooth fox hunt. Flash the Vixen and the Hunter onto two LilyGo T-Dongle-C5 boards from your browser, then install LayerScope on an Android device.">
+<title>Vixen: flash the Vixen and the Hunter, install Vixen for Android</title>
+<meta name="description" content="Vixen is a Bluetooth fox hunt. Flash the Vixen and the Hunter onto two LilyGo T-Dongle-C5 boards from your browser, then install Vixen for Android on an Android device.">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -59,15 +59,15 @@ footer{border-top:2px solid var(--amber);margin-top:64px;padding-top:18px;font-f
 
   <div class="specstrip">
     <span>2 &times; LILYGO T-DONGLE-C5</span>
-    <span>ANDROID 8.0 OR NEWER</span>
+    <span>ARM64 ANDROID 8.0 OR NEWER</span>
     <span>CHROME OR EDGE ON A DESKTOP</span>
     <span>USB-C DATA CABLE</span>
   </div>
 
-  <p style="margin-top:28px">You need two T-Dongle-C5 boards. One becomes the <b>Vixen</b>, the dongle you hunt. It's a small Bluetooth beacon that sits in a hiding spot and does nothing else. The other becomes the <b>Hunter</b>. It runs the Hunter firmware, listens for the Vixen, and reports how strong its signal is. The Hunter talks to <b>LayerScope</b>, an Android app that turns that signal into a radar, a tone, and a step trail. Vixen is one game you can play with it. Bring two power banks: one for each dongle.</p>
+  <p style="margin-top:28px">You need two T-Dongle-C5 boards. One becomes the <b>Vixen</b>, the dongle you hunt. It's a small Bluetooth beacon that sits in a hiding spot and does nothing else. The other becomes the <b>Hunter</b>. It runs the Hunter firmware, listens for the Vixen, and reports how strong its signal is. The Hunter talks to <b>Vixen for Android</b>, an Android app that turns that signal into a radar, a tone, and a step trail. Vixen is one game you can play with it. Bring two power banks: one for each dongle.</p>
 
   <div class="note nowebserial" id="nowebserial">
-    <b>This browser can't flash.</b> Flashing over USB needs Web Serial, and only Chrome and Edge on a desktop have it. Firefox, Safari, and every browser on a phone do not. Open this page in Chrome or Edge on a computer. You can still download LayerScope in step 3 from here.
+    <b>This browser can't flash.</b> Flashing over USB needs Web Serial, and only Chrome and Edge on a desktop have it. Firefox, Safari, and every browser on a phone do not. Open this page in Chrome or Edge on a computer. You can still download Vixen for Android in step 3 from here.
   </div>
 
   <div class="note">
@@ -97,18 +97,18 @@ footer{border-top:2px solid var(--amber);margin-top:64px;padding-top:18px;font-f
     <p>When it finishes, the screen shows the Hunter's name, such as Hunter-C5-BSV72. That dongle is now the Hunter.</p>
   </div>
 
-  <h2><span class="num">3</span>Install LayerScope</h2>
-  <img class="sublogo" src="layerscope-logo.png" alt="LayerScope" width="420" height="96" style="max-width:420px">
-  <p>LayerScope runs on any Android device with Android 8.0 or newer and Bluetooth: a phone, a tablet, or an Android watch. Open this page on that device and tap the button. It isn't in the Play Store, so Android will ask you to allow the install.</p>
+  <h2><span class="num">3</span>Install Vixen for Android</h2>
+  <p>Vixen for Android runs on ARM64 phones, tablets and Android watches with Android 8.0 or newer and Bluetooth. Open this page on that device and tap the button. It isn't in the Play Store, so Android will ask you to allow the install.</p>
   <div class="flashbox" style="margin-bottom:22px">
-    <a class="btn" href="layerscope.apk" download>Download LayerScope</a>
-    <p>About 137 MB. Version <span id="apkver">0.1.82</span>.</p>
+    <a class="btn" href="layerscope.apk" download>Download Vixen for Android</a>
+    <p id="apk-details" hidden></p>
+    <p id="build-details" hidden><a href="downloads.json">Build details and checksums</a></p>
   </div>
   <ol>
-    <li>Tap <b>Download LayerScope</b>, then open the file when the download finishes.</li>
+    <li>Tap <b>Download Vixen for Android</b>, then open the file when the download finishes.</li>
     <li>If Android blocks it, tap <b>Settings</b> in the message, turn on <b>Allow from this source</b>, and go back.</li>
     <li>Tap <b>Install</b>.</li>
-    <li>Open LayerScope. Allow Bluetooth and location when it asks. Android requires location permission to scan for Bluetooth devices, and the app doesn't record where you are.</li>
+    <li>Open Vixen for Android. Allow Bluetooth and location when it asks. Android requires location permission to scan for Bluetooth devices, and the app doesn't record where you are.</li>
   </ol>
 
   <h2>How to play</h2>
@@ -120,13 +120,13 @@ footer{border-top:2px solid var(--amber);margin-top:64px;padding-top:18px;font-f
   <h3>The Hunter</h3>
   <ol>
     <li>Plug the Hunter into the other power bank.</li>
-    <li>In LayerScope, tap <span class="label">SCAN &amp; CONNECT</span>.</li>
+    <li>In Vixen for Android, tap <span class="label">SCAN &amp; CONNECT</span>.</li>
     <li>Tap <span class="label">HUNT VIXEN</span>. The first time, Android asks for <b>Physical activity</b> permission. Allow it, because that's how the step trail counts your steps.</li>
     <li>Walk. Each step drops a dot on the trail, colored red, yellow, or green by signal strength. The tone climbs as you close in, and the side of the screen says <span class="label">CLOSING</span> or <span class="label">OPENING</span>.</li>
     <li>Hold a strong signal for two seconds and the screen flashes <span class="label">FOUND!</span>. Tap <span class="label">HUNT AGAIN</span> for another round, or <span class="label">STOP HUNT</span> to quit.</li>
   </ol>
   <div class="note">
-    <b>It tells you hotter or colder, not which way.</b> LayerScope doesn't use a compass, so the radar shows how close you are, never a direction. If the screen ever shows an arrow pointing at the Vixen, something is wrong. If the Vixen goes quiet for five seconds, you'll see <span class="label">TARGET LOST</span>. Usually that means the power bank went to sleep.
+    <b>It tells you hotter or colder, not which way.</b> Vixen for Android doesn't use a compass, so the radar shows how close you are, never a direction. If the screen ever shows an arrow pointing at the Vixen, something is wrong. If the Vixen goes quiet for five seconds, you'll see <span class="label">TARGET LOST</span>. Usually that means the power bank went to sleep.
   </div>
 
   <h2>If it won't connect</h2>
@@ -148,6 +148,17 @@ footer{border-top:2px solid var(--amber);margin-top:64px;padding-top:18px;font-f
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
 <script>
+  fetch('downloads.json').then(function (response) {
+    if (!response.ok) return null;
+    return response.json();
+  }).then(function (downloads) {
+    if (!downloads) return;
+    const details = document.getElementById('apk-details');
+    const size = downloads.files['layerscope.apk'].bytes;
+    details.textContent = 'Version ' + downloads.android.versionName + ' · ' + Math.round(size / 1000000) + ' MB';
+    details.hidden = false;
+    document.getElementById('build-details').hidden = false;
+  }).catch(function () {});
   if (!('serial' in navigator)) {
     document.getElementById('nowebserial').style.display = 'block';
     document.querySelectorAll('.flash').forEach(function (el) { el.style.display = 'none'; });
