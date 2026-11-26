@@ -85,3 +85,5 @@ does not certify a release. Mark unavailable hardware tests NOT RUN.
 
 The Play submission checklist belongs to the
 [Vixen repository](https://github.com/mikevan/Vixen/blob/main/docs/play-candidate.md).
+
+For publication after product check-in, see [Vixen download page acceptance](vixen-download-acceptance.md).
